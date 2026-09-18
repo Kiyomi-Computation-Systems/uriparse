@@ -56,6 +56,16 @@ uri_add_test(
   TIMEOUT 120
   LABELS unit)
 
+# src/ is pure R6RS (decision 0007): every .sls leads with #!r6rs and none names
+# (chezscheme). Asserted, not trusted -- and, like the rename audit, it needs no
+# Scheme runtime, so it also holds under the no-scheme preset.
+uri_add_test(
+  NAME uri.harness.import-audit.cmake.direct
+  COMMAND "${CMAKE_COMMAND}" -P
+          "${CMAKE_CURRENT_LIST_DIR}/support/cmake/UriImportAuditSpec.cmake"
+  TIMEOUT 120
+  LABELS unit)
+
 # uri_mutation_verdict decides whether a mutation was caught, and for
 # the declared reason -- the decision every specification in this tree is
 # ultimately trusted through, including the mutation suite below, which
@@ -799,6 +809,49 @@ uri_add_scheme_lane(
           "${CMAKE_CURRENT_LIST_DIR}/common/generator-abi-tests.sps"
   TIMEOUT 180
   LABELS unit)
+
+# --- The grammar (M2 Slice ①) ----------------------------------------------
+#
+# `(uri grammar)` imports `(uri vocabulary)`, so a lane that had one and not the
+# other would build against a stale table. The scanner is judged through the
+# reference interpreter against the split oracle -- the decompositions were
+# derived from RFC 3986's ABNF independently of this grammar.
+set(URI_VOCABULARY "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/vocabulary.sls")
+set(URI_GRAMMAR ${URI_VOCABULARY} "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/grammar.sls")
+set(URI_GENERATED_PARSER "${URI_SRC_CHEZ_LIBRARY_ROOT}/generated/uri-scanner.sls")
+
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.grammar.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/grammar-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
+            ${URI_GRAMMAR}
+            "${CMAKE_CURRENT_LIST_DIR}/common/grammar-tests.sps"
+    TIMEOUT 180
+    LABELS unit)
+endforeach()
+
+# The scanner ships as a checked-in derived artifact, committed so it is
+# reviewable as a diff and loadable without a generator (decision 0002 item 4).
+# This lane re-emits and compares bytes, reads the ABI out of the committed text,
+# and runs the ARTIFACT ITSELF against the interpreter -- so a grammar edit
+# without a `make parser-refresh`, a hand-edited artifact, and a stale ABI all
+# redden. Source only: it re-emits, which needs the compiler; the aot twin would
+# compile the whole generator to re-answer the same question.
+uri_add_scheme_lane(
+  NAME uri.determinism.generated-artifact.chez.source
+  BACKEND chez
+  PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/generated-artifact-tests.sps"
+  SOURCES ${URI_HARNESS_MANIFEST}
+          ${URI_GENERATOR_SOURCES}
+          ${URI_GRAMMAR}
+          ${URI_GENERATED_PARSER}
+          "${CMAKE_CURRENT_LIST_DIR}/common/generated-artifact-tests.sps"
+  ENVIRONMENT "URI_GENERATED_PARSER=${URI_GENERATED_PARSER}"
+  TIMEOUT 180
+  LABELS determinism)
 
 # The corpus is DERIVED from the vendored RFC text (decision 0005). This lane
 # re-derives it and compares, so a hand edit to a vector -- the one thing that

@@ -82,14 +82,14 @@
 
 (harness-group "callbacks"
   (lambda ()
-    (harness-case "the two verdict events are events, named for the outcome"
+    (harness-case "the verdict events are events, named for the outcome"
       (lambda ()
         (check-equal "events" uri-event-callback-names
-                     '(on-scheme-confirmed on-segment-confirmed))))
+                     '(on-scheme-confirmed on-segment-confirmed on-rooted))))
 
-    (harness-case "the full callback list is 8 spans x 2 plus 2 events"
+    (harness-case "the full callback list is 8 spans x 2 plus 3 events"
       (lambda ()
-        (check-equal "count" (length uri-callback-names) 18)))
+        (check-equal "count" (length uri-callback-names) 19)))
 
     ;; The whole vocabulary, pinned by identity, not just by count and shape.
     ;; The grammar, the harness and an embedder all bind these exact names, so a
@@ -106,7 +106,8 @@
                        on-path-data          on-path-complete
                        on-query-data         on-query-complete
                        on-fragment-data      on-fragment-complete
-                       on-scheme-confirmed   on-segment-confirmed))))
+                       on-scheme-confirmed   on-segment-confirmed
+                       on-rooted))))
 
     (harness-case "no callback name is declared twice"
       (lambda ()
@@ -126,7 +127,8 @@
                   (uri-callback-name? (uri-span-complete-callback span))))
          uri-span-names)
         (check "scheme-confirmed listed"  (uri-callback-name? 'on-scheme-confirmed))
-        (check "segment-confirmed listed" (uri-callback-name? 'on-segment-confirmed))))))
+        (check "segment-confirmed listed" (uri-callback-name? 'on-segment-confirmed))
+        (check "rooted listed"            (uri-callback-name? 'on-rooted))))))
 
 (harness-group "errors"
   (lambda ()

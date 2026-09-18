@@ -164,6 +164,144 @@ wrong" gaps closed before commit, each with a fresh mutation witness watched red
   stronger witness would need to perturb the emitter, which is not cheaply
   available.
 
-GATE ⓪: stopping for review. Next is Slice ①: `src/uri/grammar.sls` for modes 1
-and 2, the emitter, the committed `(generated uri-scanner)`, and the second ABI
-lane + the determinism lane over it.
+GATE ⓪: passed. User: "go ahead with slice 1." Ultracode is on for this session
+(a system-reminder confirms it), so the working style is: I drive the grammar
+(a single interconnected artifact fan-out would only fracture), and workflows do
+the survey and verification the user endorsed, run exhaustively.
+
+SLICE ① OPEN (2026-09-18): `src/uri/grammar.sls` (modes 1 & 2), the emitter, the
+committed `(generated uri-scanner)`, the committed-artifact ABI lane and the
+determinism lane.
+
+THE SPLIT ORACLE. Because a splitter has no normative component-split corpus
+(§1.1.2's example URIs "carry no expected decomposition"), the test vectors must
+not come from the same head that writes the grammar (the sibling's own rule:
+numbers come from the oracle, never the code under test). A workflow fanned out
+one agent per reference deriving its decomposition from RFC 3986's ABNF alone,
+each cross-checked by an adversary told to refute it: 26/26 derived, **0
+disagreements**. The table is the Slice-① test oracle; it confirmed the
+load-bearing distinctions independently -- `http:///p` host EMPTY vs `http:/p`
+host ABSENT (both path `/p`); `http://@h` userinfo EMPTY; `http://h:` port
+EMPTY; `http://a` path EMPTY; `http://a?` query EMPTY.
+
+TWO HARD AMBIGUITIES, BOTH THE SAME SHAPE AS DECISION 0004'S SCHEME/SEGMENT,
+found by pressing on the machine rather than the prose (the prose called this
+"delimiter work"):
+
+  1. `//` (authority) vs a single `/` (path-absolute). Measured against
+     byte-machine v0.6.0: a span's mark is always the cursor at span-start and a
+     span cannot be re-marked (`invalid-span-state` on re-entry); there is no
+     rewind; a sequence-dispatch keeps the bytes it consumed on a mismatch. So a
+     leading `/` cannot be both "held back in case it is path content" and
+     "discarded as the first half of `//`". Pre-opening path preserves the
+     path-absolute `/` but pollutes the authority case with a spurious `//`;
+     not pre-opening splits the authority but drops path-absolute's `/` (and
+     cannot even tell `/p` from `p`). Delegated to a focused research subagent
+     to find the idiom or the least-bad compromise, with the empirical findings
+     handed over so it does not redo them. Two spikes recorded the facts:
+     scratchpad/seq-mismatch-spike.sps and preopen-spike.sps.
+
+  2. userinfo vs host, and the `:` that is userinfo content before an `@` but the
+     port delimiter after it. `@` occurs only as the userinfo terminator (it is
+     in no host production), so the first `@` ends userinfo -- but a forward-only
+     machine does not know an `@` is coming, so the leading authority run is
+     userinfo-or-host undecided until the delimiter, exactly the leading-token
+     shape, and there is no neutral authority span in the vocabulary.
+
+SLICE ① COMPLETE (2026-09-18). The scanner for modes 1 & 2. Evidence: release
+47/47 (was 43), no-scheme 11/11 (was 10). Decision 0018 records the `//`
+compromise. Darwin arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3.
+
+Landed: `src/uri/grammar.sls` (the source machine); `tools/emit-machine.ss` and
+the committed `src/generated/uri-scanner.sls` (ABI 9, imports `(byte-machine
+runtime)` alone, leads with `#!r6rs`); `make parser-refresh` + the determinism
+lane over the committed artifact; the `on-rooted` verdict event in `(uri
+vocabulary)`; and the decision-0007 src import-audit lane. The grammar opens
+five spans -- scheme, host (the whole authority in this slice), path, query,
+fragment -- dispatches the mode field at offset 0 (mode 0/3/other -> mode-unset,
+mode 3 pinned until Slice ②), and raises scheme-required / scheme-forbidden /
+mode-unset at the oracle's exact offsets.
+
+JUDGED AGAINST AN INDEPENDENT ORACLE. `unit.grammar` (59 cases / 350 checks)
+asserts the scanner's output -- spans, the `on-rooted` verdict, and error offsets
+-- against decompositions a workflow derived from the ABNF, not from this
+grammar. Every row matches, including the load-bearing distinctions
+(`http:///p` empty host vs `http:/p` absent host; `http://a` empty path;
+`http://a?` empty query), the `on-rooted` recovery of a path-absolute's dropped
+slash, query/fragment content-transparency (a `?` and `/` stay inside them), and
+chunk-invariance byte-at-a-time (using the COMPLETION callback for presence,
+since an empty data fragment is suppressed across a feed boundary).
+`determinism.generated-artifact` (26 cases) re-emits byte-identically, reads ABI
+9 out of the committed text, and runs the ARTIFACT ITSELF against the interpreter
+across the full oracle spread -- so a stale artifact, a hand-edit, or a
+compile-vs-interpret divergence all redden.
+
+MUTATION WITNESSES, each watched red then reverted: routing hier-slash1's
+fallback past `on-rooted` (path-absolute recovery + determinism both red); a
+`(chezscheme)` import and a stripped `#!r6rs` (the import audit both ways).
+
+ADVERSARIAL REVIEW (subagent) before commit: no blockers; the grammar verifies,
+emits byte-identically, matches the oracle on every input, and honours the
+verifier rules. Five findings closed here: (1) the committed artifact lacked
+`#!r6rs` -- the emitter now leads with it and the determinism lane prepends the
+same prefix so they cannot drift; (2) decision 0007's src-purity lane did not
+exist -- added and witnessed; (3) query/fragment content-transparency had no
+oracle row, so a `frag-scan` that stopped on `?` would have survived -- two rows
+added; (4) the grammar↔vocabulary cross-check ignored callback names -- now
+asserted; (5) the determinism differential ran a narrower vector set than the
+grammar oracle -- widened to the full spread.
+
+FINDING FROM AUTHORING, benign: a mode-1 scheme with no colon that ends at EOF
+(`foo`) flushes its open `scheme` span's data (`"foo"`) before the
+`scheme-required` error, because `parser-finish!` delivers an open span's bytes
+at the boundary; the byte-delimiter form (`foo/bar`) errors mid-feed with no
+flush. Either way the error is what a consumer reads, and `(uri collect)` ignores
+spans on an error, so the partial delivery is harmless -- recorded so the slice
+that writes collect knows to expect it.
+
+SCOPE CALL (provisional, pending the `//` research). Slice ① resolves ambiguity 1
+and covers scheme / authority-as-one-host-span / path / query / fragment for
+modes 1 & 2 -- which is correct wherever authority == host (no userinfo, no
+port), is what the exit criterion needs (route on a path, read a raw query), and
+carries the empty-vs-absent host distinction. The userinfo/host/port sub-split
+(ambiguity 2) becomes Slice ①b, so all eight spans are split by the M2 merge
+(decision 0008 item 2) without one slice carrying two open research problems.
+
+AMBIGUITY 1 -- THE `//` RESEARCH CAME BACK WITH AN IMPOSSIBILITY PROOF, VERIFIED
+HERE (2026-09-18). No clean structure exists, and it is provable from
+byte-machine v0.6.0 source, not merely unfound: a span's mark is ALWAYS the
+cursor at span-open and is only ever written to pos / 0 / the feed start
+(runtime.sls:748,754,1022,1177,1370); the sole span primitives are start and end
+(graph.sls:124) -- no cancel, no reset -- and re-opening is refused at verify
+(verify.sls:1770-1777); the machine is forward-only (transition-and-cursor-
+semantics §1). To read byte 2 you must `advance` past byte 1, and a sequence-
+dispatch keeps its matched prefix on a mismatch (measured: `/x` -> path `x`,
+the `/` gone). But `//x` needs byte 1's `/` in NO span (delimiter) while `/x`
+(path-absolute) needs the SAME byte 1 `/` INSIDE the path span -- an
+irrevocable, opposite fate decided before byte 2 is legible. QED.
+
+THE COMPROMISE, MACHINE A ("authority-canonical"), verdict-spike.sps, run and
+confirmed here. Two 1-byte dispatches, NO span across the leading `/`; the host
+span carries authority presence byte-perfectly (fires iff `//`; EMPTY for
+`///p`, non-empty for `//h`, never for path-absolute/rootless/empty); the path
+span opens ON the post-authority `/` so it keeps that slash. Its ONE defect:
+path-absolute's path span omits its own literal leading `/` (`/p` delivers span
+`p`, not `/p`), because that byte was consumed with no span open and no mark
+reaches back. Recovered OUT OF BAND: a zero-width `on-rooted` event (and,
+redundantly, a `rooted` uint flag) fires EXACTLY in the path-absolute branch, so
+`(uri collect)` prepends the `/` -- path component = `(if rooted "/" "") ++
+span`. The pre-open alternative is strictly worse: it fires a phantom `//` path
+fragment on ALL FIVE authority cases (path fires twice) -- also verified.
+
+GOTCHA to obey when authoring: a byte edge (advance/reexecute) may NOT target a
+`finish` terminal -- only an EOF transition may (verify.sls:1213-1214,
+`non-eof-into-finish`). Reach finish through a dispatch's eof-target or a
+zero-width span chain, never a byte edge.
+
+THIS IS A DESIGN DECISION FOR THE MAINTAINER, NOT A SILENT BAKE-IN. `on-rooted`
+is a verdict-style event on the public callback ABI, and decision 0008 item 4
+set out to avoid sentinel events (though for PRESENCE, which the callback
+sequence already carries; the dropped `/` is genuinely new information the
+sequence cannot carry). Ambiguity 2 (userinfo/host/port) is the same family and
+may want the same event/neutral-span pattern. Holding both for one consolidated
+design checkpoint rather than interrupting twice.

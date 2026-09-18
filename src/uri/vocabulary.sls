@@ -111,10 +111,13 @@
   (define (uri-span-complete-callback name)
     (caddr (uri-span-row 'uri-span-complete-callback name)))
 
-  ;; The two zero-width verdict events mode 3 fires after `leading-token` closes
-  ;; (decision 0004 item 4). They are events, not spans: they name what the
-  ;; leading token turned out to be and carry no bytes.
-  (define uri-event-callback-names '(on-scheme-confirmed on-segment-confirmed))
+  ;; The zero-width verdict events. `on-scheme-confirmed` / `on-segment-confirmed`
+  ;; mode 3 fires after `leading-token` closes (decision 0004 item 4);
+  ;; `on-rooted` fires when a path-absolute reference's leading `/` was dropped
+  ;; from the path span and must be restored (decision 0018). They are events,
+  ;; not spans: each names what a token turned out to be and carries no bytes.
+  (define uri-event-callback-names
+    '(on-scheme-confirmed on-segment-confirmed on-rooted))
 
   ;; Every callback name the grammar declares and an embedder binds: each span's
   ;; data and completion callback, then the two verdict events. Derived from the
