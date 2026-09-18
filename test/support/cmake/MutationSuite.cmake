@@ -35,7 +35,7 @@
 cmake_minimum_required(VERSION 3.26)
 
 set(EXPECTED_PASSES 1)
-set(EXPECTED_MUTATIONS 75)
+set(EXPECTED_MUTATIONS 77)
 
 include("${CMAKE_CURRENT_LIST_DIR}/MutationRunner.cmake")
 
@@ -746,6 +746,34 @@ uri_mutation(
   FIND [[# --- Vocabulary ------------------------------------------------------------]]
   REPLACE "${RENAME_AUDIT_CASE_PLANT}"
   EXPECT_OUTPUT_MATCHES "upstream project token leaked")
+
+# --- CorpusProvenance -------------------------------------------------------
+#
+# The corpus is DERIVED from the vendored RFC text and a lane re-derives it
+# (decision 0005 item 2: a vector is never edited to make a test pass). That is
+# the most load-bearing claim in this tree and the easiest one to lose
+# silently, so the corpus and the RFC text join the stage and the lane is asked
+# to catch both ways it can be broken.
+list(APPEND URI_MUTATION_STAGE_DIRS "test/conformance" "test/vendor")
+
+# An edited expectation: the one edit that would turn a red resolution lane
+# green and say nothing.
+uri_mutation(
+  FILE test/conformance/rfc3986/resolution.scm SPEC CorpusProvenanceSpec.cmake
+  LABEL "corpus-provenance: an expectation was edited by hand"
+  FIND [[("5.4.1" "g" "http://a/b/c/g")]]
+  REPLACE [[("5.4.1" "g" "http://a/b/c/EDITED")]]
+  EXPECT_OUTPUT_MATCHES "CORPUS-DERIVATION-MISMATCH")
+
+# A substituted source. Re-deriving would then AGREE with the corpus -- the
+# comparison alone cannot see this -- so the digest recorded in PROVENANCE is
+# what catches it.
+uri_mutation(
+  FILE test/vendor/rfc3986.txt SPEC CorpusProvenanceSpec.cmake
+  LABEL "corpus-provenance: the vendored RFC text was substituted"
+  FIND [[      "g"             =  "http://a/b/c/g"]]
+  REPLACE [[      "g"             =  "http://a/b/c/SUBSTITUTED"]]
+  EXPECT_OUTPUT_MATCHES "CORPUS-SOURCE-MISMATCH")
 
 uri_mutation_run("${SOURCE_ROOT}" "${STAGE_DIR}")
 

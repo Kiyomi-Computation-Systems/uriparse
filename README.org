@@ -2,14 +2,73 @@
 
 (CI badge goes here)
 
-RFC 3986 compliant URI parser in pure R6RS Scheme.
+An RFC 3986 URI parser for Chez Scheme, in portable R6RS.
 
 #+begin_quote
 ✨ *AI Disclosure:* LLMs are used extensively in the planning and development of this project.
 #+end_quote
 
+** Status: M1 — the instrument, with no parser
 
-* License
+*There is no parser yet.* What exists is the thing a parser will be measured
+with: the RFC's own vectors, the loader that reads them, the comparator, the
+two-way ratchet, and the harness and build layer around all of it.
+
+What this project will *not* claim until it is measured:
+
+- Not "RFC 3986 compliant". v0.1 splits URIs into components and resolves
+  references; charset and host-grammar validation are v0.2
+  ([[file:.plans/decisions/0011-v01-is-resolution-first.md][decision 0011]]).
+  It will accept bytes the ABNF rejects, and says so here rather than in a
+  footnote.
+- Not "portable". The source is R6RS and imports only ~(rnrs)~,
+  ~(byte-machine ...)~ and its own libraries — asserted by a lane, not trusted
+  — but no second implementation is in CI, and a property is measured or it is
+  not claimed ([[file:.plans/decisions/0007-src-is-pure-r6rs-and-chez-is-confined.md][decision 0007]]).
+
+** Requirements
+
+- Chez Scheme 10.4.1 or newer, the full system (not Petite: the ahead-of-time
+  lane needs ~compile-program~)
+- CMake 3.26 or newer
+
+Discovery tries ~scheme~, ~chez~, ~chezscheme~ in that order. If it cannot find
+a runtime, point it at one:
+
+#+begin_src sh
+cmake --preset dev -DURI_CHEZ_EXECUTABLE=/absolute/path/to/scheme
+#+end_src
+
+** Building and testing
+
+#+begin_src sh
+make          # list every target
+make test     # the pull-request selection
+make test-all # the complete selection
+make no-scheme # the CMake layer alone, on a host with no Scheme
+#+end_src
+
+** The corpus
+
+[[file:test/conformance/rfc3986/][test/conformance/rfc3986/]] is *derived*, not authored: extracted from
+[[file:test/vendor/rfc3986.txt][the vendored RFC text]] by ~cmake/UriCorpus.cmake~, with the source's digest
+recorded in ~PROVENANCE~. ~make corpus-refresh~ rewrites it and a registered
+lane re-derives and compares, so a vector edited by hand reddens rather than
+surviving. RFC 3986 §5.4 is the only normative vector set this project has, and
+M6 is gated on all 42 of its rows passing.
+
+** Layout
+
+| ~.plans/~           | plans, and ~decisions/~ — the record of every choice a reader would otherwise reverse-engineer |
+| ~src/~              | the shipped libraries. Pure R6RS; empty until M2                                               |
+| ~test/conformance/~ | the derived corpus and the ratchet                                                             |
+| ~test/support/~     | the harness and the build-layer specifications                                                 |
+| ~docs/~             | user-facing documentation only                                                                 |
+
+Start with [[file:.plans/2026-09-18-chez-uri-design.md][the design]]: what byte-machine actually enforces, the span and
+callback surface those constraints permit, and where v0.1 stops.
+
+** License
 
 © [[https://kiyomicomputation.systems/][Kiyomi Computation Systems LLC]]. Licensed under BSD 3-Clause — see
 [[file:LICENSE][LICENSE]].

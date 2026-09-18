@@ -151,12 +151,14 @@ cmake_minimum_required(VERSION 3.26)
 # decisions) and one per uri_slice5b_launcher_pass call (three: the
 # aot-side launchers' new refusals), is 28 passes. The mutation count is the
 # declarations inside those passes: 47 written out below plus the 12 the two
-# helpers declare, 59. The upstream passes that mutated a product source
-# tree did not port -- this repository has no product code yet -- and their
-# numbers left with them; the totals check at the bottom is what notices if
-# this paragraph ever stops being true.
-set(EXPECTED_PASSES 28)
-set(EXPECTED_MUTATIONS 59)
+# helpers declare, 59. Pass 29 -- the corpus reading machinery, which is M1's
+# own exit criterion -- adds one pass and eight mutations, for 29 and 67. The
+# upstream passes that mutated a product source tree did not port -- this
+# repository has no product code yet -- and their numbers left with them; the
+# totals check at the bottom is what notices if this paragraph ever stops
+# being true.
+set(EXPECTED_PASSES 29)
+set(EXPECTED_MUTATIONS 67)
 
 include("${CMAKE_CURRENT_LIST_DIR}/MutationRunner.cmake")
 
@@ -200,7 +202,8 @@ endif()
 # slice gives it something to stage; the engine refuses a listed directory
 # that stages nothing, so adding it early would fail every run.
 set(URI_MUTATION_STAGE_DIRS
-  "cmake" "test/support/cmake" "test/support/harness" "test/support/launchers")
+  "cmake" "test/support/cmake" "test/support/harness" "test/support/launchers"
+  "test/common" "test/conformance")
 
 set(URI_MUTATION_VERIFY_COMMAND
   "${URI_CHEZ_EXECUTABLE}"
@@ -1758,6 +1761,104 @@ uri_mutation(
   REPLACE [[  (adapter-exit harness-status-failed))]]
   EXPECT_STATUS 1
   EXPECT_OUTPUT_MATCHES "PROVENANCE-ERROR fingerprint mismatch")
+
+uri_mutation_run("${SOURCE_ROOT}" "${STAGE_DIR}")
+
+uri_mutation_reset()
+
+# --- Pass 29: the corpus reading machinery ---------------------------------
+#
+# M1's exit criterion in as many words: the comparator is mutation-witnessed --
+# a deliberately corrupted expectation must fail it. Everything M6 will claim
+# about RFC 3986's vectors is claimed THROUGH these three decisions, so a
+# comparator that always agreed, or a ratchet that only failed in one
+# direction, would let the whole resolution layer go green while checking
+# nothing.
+#
+# The verify command is the corpus lane itself. It reads the corpus and the
+# manifest out of the environment, exactly as CTest's registration does, and
+# the paths point into the STAGE so a pass that mutated the corpus would be
+# judged against the mutated copy rather than the pristine one.
+set(URI_MUTATION_VERIFY_COMMAND
+  "${URI_CHEZ_EXECUTABLE}"
+  "--script" "${STAGE_DIR}/test/support/launchers/chez-source.ss"
+  "--library-root" "${STAGE_DIR}/test/support/harness"
+  "--object-guard" "${GUARD_DIR}"
+  "--program" "${STAGE_DIR}/test/common/corpus-tests.sps")
+set(ENV{URI_CORPUS_DIR} "${STAGE_DIR}/test/conformance/rfc3986")
+set(ENV{URI_RATCHET_FILE} "${STAGE_DIR}/test/conformance/ratchet.txt")
+
+set(CORPUS test/support/harness/uri/test/corpus.sls)
+set(RATCHET test/support/harness/uri/test/ratchet.sls)
+
+# THE ONE M1 NAMES. With this in place every vector "agrees" with every
+# expectation, and M6 could be declared done against a resolver that returned
+# the empty string for all 42.
+uri_mutation(
+  FILE ${CORPUS} SPEC corpus-tests.sps
+  LABEL "comparator: every comparison agrees"
+  FIND [[          ((string=? expected actual) #f)]]
+  REPLACE [[          ((string? actual) #f)]])
+
+# Decision 0008's distinction, at the one place a lane can lose it: a resolver
+# that produced NOTHING compared equal to one that produced "".
+uri_mutation(
+  FILE ${CORPUS} SPEC corpus-tests.sps
+  LABEL "comparator: a missing result is treated as an empty one"
+  FIND [[    (cond ((not (string? actual))]]
+  REPLACE [[    (cond ((and #f (not (string? actual)))]])
+
+# The direction a one-way ratchet misses, and the reason decision 0005 asks
+# for two. Without this arm a vector may start passing and never be recorded,
+# so "42 of 42" can arrive without anyone having claimed it.
+uri_mutation(
+  FILE ${RATCHET} SPEC corpus-tests.sps
+  LABEL "ratchet: a deferred vector that passes is not noticed"
+  FIND [[                            ((and (eq? status 'not-yet) (not d))]]
+  REPLACE [[                            ((and #f (eq? status 'not-yet) (not d))]])
+
+# The other direction: a regression against a vector this project already
+# claimed.
+uri_mutation(
+  FILE ${RATCHET} SPEC corpus-tests.sps
+  LABEL "ratchet: a claimed vector that fails is not noticed"
+  FIND [[                            ((and (eq? status 'passing) d)]]
+  REPLACE [[                            ((and #f (eq? status 'passing) d)]])
+
+# The check that keeps the other two honest. With the stale-row scan gone,
+# deleting a manifest row is a way to make either violation disappear.
+uri_mutation(
+  FILE ${RATCHET} SPEC corpus-tests.sps
+  LABEL "ratchet: a row whose vector is gone is tolerated"
+  FIND [[      (append moved stale))))]]
+  REPLACE [[      moved)))]])
+
+# A status word that is neither is silently ignored, so a typo'd row would
+# defer a vector that nobody deferred on purpose.
+uri_mutation(
+  FILE ${RATCHET} SPEC corpus-tests.sps
+  LABEL "ratchet: an unknown status word is accepted"
+  FIND [[                 (unless (memq sym ratchet-statuses)]]
+  REPLACE [[                 (unless #t]])
+
+# The loader, at the one decision that decides whether a corpus row can go
+# missing without any count noticing.
+uri_mutation(
+  FILE ${CORPUS} SPEC corpus-tests.sps
+  LABEL "corpus: a malformed row is skipped rather than refused"
+  FIND [[                   (unless (and (list? row) (= (length row) 3))]]
+  REPLACE [[                   (unless (and (list? row) (>= (length row) 2))]])
+
+# The section 5.2.4 traces are read BY COLUMN, and the reason is that step 1's
+# single field is the input buffer while a trace's last single field is the
+# output buffer. Swapping them inverts exactly two of thirteen rows.
+uri_mutation(
+  FILE ${CORPUS} SPEC corpus-tests.sps
+  LABEL "corpus: the dot-segment buffers are read in the wrong order"
+  FIND [[                    (string-or-refuse (caddr row) 'corpus-parse-dot-segments "output")
+                    (string-or-refuse (cadddr row) 'corpus-parse-dot-segments "input")]]
+  REPLACE [[                    (string-or-refuse (cadddr row) 'corpus-parse-dot-segments "output")
+                    (string-or-refuse (caddr row) 'corpus-parse-dot-segments "input")]])
 
 uri_mutation_run("${SOURCE_ROOT}" "${STAGE_DIR}")
 

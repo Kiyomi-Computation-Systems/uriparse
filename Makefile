@@ -18,7 +18,7 @@ CTEST_FLAGS ?= --output-on-failure --no-tests=error
 # Bare 'make' prints the target list rather than building; 'make all' still builds.
 .DEFAULT_GOAL := help
 
-.PHONY: all help doctor configure build dev test test-all no-scheme prod clean
+.PHONY: all help doctor configure build dev test test-all no-scheme prod clean corpus-refresh
 
 all: build   ## build the development preset
 
@@ -63,6 +63,14 @@ no-scheme:   ## run the CMake-layer specifications with no Scheme runtime
 prod:   ## configure and build the release preset
 	$(CMAKE) --preset prod
 	$(CMAKE) --build --preset prod
+
+# test/conformance/rfc3986/ is DERIVED from the vendored RFC text and is never
+# hand-edited (decision 0005 item 2). This is the only way it is written: the
+# initial derivation and every refresh run the same script, and the registered
+# lane uri.harness.corpus-provenance runs the same functions and compares, so a
+# refresh cannot drift from the check that guards it.
+corpus-refresh:   ## re-derive the RFC 3986 corpus from the vendored text
+	$(CMAKE) -P cmake/UriCorpusRefresh.cmake
 
 clean:   ## remove all build trees
 	$(CMAKE) -E rm -rf build

@@ -692,3 +692,46 @@ uri_add_scheme_lane(
   EXPECT_EXIT 3
   TIMEOUT 120
   LABELS expected-red)
+
+# --- The corpus harness (M1) ------------------------------------------------
+#
+# Decision 0005 makes RFC 3986's own vectors the anchor of the resolution
+# layer, which puts the reading of them on the critical path: a loader that is
+# one row off makes every later comparison wrong and the failure reads as a
+# parser defect. These lanes judge the reading machinery -- loader, comparator,
+# ratchet -- on the committed corpus and on hand-built inputs, before any URI
+# is parsed.
+
+set(URI_CORPUS_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/rfc3986")
+set(URI_RATCHET_FILE "${CMAKE_CURRENT_LIST_DIR}/conformance/ratchet.txt")
+set(URI_CORPUS_LIB
+    "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/corpus.sls")
+set(URI_RATCHET_LIB
+    "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/ratchet.sls")
+
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.corpus.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/corpus-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_CORPUS_LIB}
+            ${URI_RATCHET_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/corpus-tests.sps"
+    ENVIRONMENT "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+                "URI_RATCHET_FILE=${URI_RATCHET_FILE}"
+    TIMEOUT 120
+    LABELS unit)
+endforeach()
+
+# The corpus is DERIVED from the vendored RFC text (decision 0005). This lane
+# re-derives it and compares, so a hand edit to a vector -- the one thing that
+# would make a green lane meaningless -- reddens instead. It runs the same
+# functions `make corpus-refresh` runs, and needs no Scheme runtime, so it also
+# holds under the no-scheme preset.
+uri_add_test(
+  NAME uri.harness.corpus-provenance.cmake.direct
+  COMMAND "${CMAKE_COMMAND}" -P
+          "${CMAKE_CURRENT_LIST_DIR}/support/cmake/CorpusProvenanceSpec.cmake"
+  TIMEOUT 120
+  LABELS unit)
