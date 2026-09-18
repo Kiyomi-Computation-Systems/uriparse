@@ -33,18 +33,21 @@
 ;; several feeds reads back the same as one delivered whole. A span whose
 ;; completion never fires is absent (#f). `chunk` feeds one byte at a time.
 (define (parse mode str . chunk?)
-  (let ((frags '()) (completes '()) (rooted #f))
+  (let ((frags '()) (completes '()) (rooted #f) (verdict #f))
     (define (data-cb name)
       (lambda (p c bv from to) (set! frags (cons (cons name (bytes->str bv from to)) frags)) callback-continue))
     (define (done-cb name)
       (lambda (p c) (set! completes (cons name completes)) callback-continue))
     (define bindings
       (list (list 'on-scheme-data (data-cb 'scheme))   (list 'on-scheme-complete (done-cb 'scheme))
+            (list 'on-leading-token-data (data-cb 'leading-token)) (list 'on-leading-token-complete (done-cb 'leading-token))
             (list 'on-authority-data (data-cb 'authority)) (list 'on-authority-complete (done-cb 'authority))
             (list 'on-path-data (data-cb 'path))        (list 'on-path-complete (done-cb 'path))
             (list 'on-query-data (data-cb 'query))      (list 'on-query-complete (done-cb 'query))
             (list 'on-fragment-data (data-cb 'fragment)) (list 'on-fragment-complete (done-cb 'fragment))
-            (list 'on-rooted (lambda (p c) (set! rooted #t) callback-continue))))
+            (list 'on-rooted (lambda (p c) (set! rooted #t) callback-continue))
+            (list 'on-scheme-confirmed (lambda (p c) (set! verdict 'scheme) callback-continue))
+            (list 'on-segment-confirmed (lambda (p c) (set! verdict 'segment) callback-continue))))
     (let* ((p (make-parser CM bindings #f (list (cons 'mode mode))))
            (bv (string->utf8 str))
            (n (bytevector-length bv)))
@@ -54,6 +57,7 @@
       (let ((r (parser-finish! p)))
         (list (cons 'status (parser-result-status r))
               (cons 'rooted rooted)
+              (cons 'verdict verdict)
               (cons 'frags (reverse frags))
               (cons 'completes completes)
               (cons 'err (and (parser-result-error r)
@@ -63,15 +67,25 @@
 ;; accessors over a parse-record
 (define (pr-status r) (cdr (assq 'status r)))
 (define (pr-rooted r) (cdr (assq 'rooted r)))
+(define (pr-verdict r) (cdr (assq 'verdict r)))   ; 'scheme | 'segment | #f
 (define (pr-err r) (cdr (assq 'err r)))
 ;; #f = absent (completion never fired); otherwise the concatenated fragments.
 (define (pr-span r name)
   (and (memq name (cdr (assq 'completes r)))
        (apply string-append
               (map cdr (filter (lambda (c) (eq? (car c) name)) (cdr (assq 'frags r)))))))
-;; the path COMPONENT collect will build, from the raw span and the verdict
+;; The COMPONENTS collect will build from the raw spans and the verdict.
+;; scheme = the `scheme` span, or the leading token when the verdict is `scheme`.
+(define (pr-scheme r)
+  (if (eq? (pr-verdict r) 'scheme) (pr-span r 'leading-token) (pr-span r 'scheme)))
+;; path = [leading token, when it was the first segment] ++ ["/" when rooted] ++
+;; [the path span].
 (define (pr-path r)
-  (let ((s (pr-span r 'path))) (and s (if (pr-rooted r) (string-append "/" s) s))))
+  (let ((lt (and (eq? (pr-verdict r) 'segment) (pr-span r 'leading-token)))
+        (p  (pr-span r 'path)))
+    (if (or lt p (pr-rooted r))
+        (string-append (or lt "") (if (pr-rooted r) "/" "") (or p ""))
+        #f)))
 
 (harness-begin "unit.grammar")
 
@@ -93,12 +107,14 @@
           (check-equal "status" (pr-status r) 'error)
           (check-equal "code"   (car (pr-err r)) 'mode-unset)
           (check-equal "offset" (cdr (pr-err r)) 0))))
-    ;; Mode 3 is uri-reference and is Slice ②; until then it shares the unset
-    ;; arm. This case pins the CURRENT behaviour so the slice that builds mode 3
-    ;; has to change it deliberately.
-    (harness-case "mode 3 is not yet built and refuses like unset"
+    (harness-case "mode 3 resolves the scheme/segment ambiguity by the delimiter"
       (lambda ()
-        (check-equal "code" (car (pr-err (parse 3 "g"))) 'mode-unset)))))
+        ;; The same prefix `g` is a scheme in `g:h` and a first path segment in
+        ;; `g/h`, decided only by the delimiter -- the verdict names which.
+        (check-equal "g: is a scheme"  (pr-verdict (parse 3 "g:h")) 'scheme)
+        (check-equal "g/ is a segment" (pr-verdict (parse 3 "g/h")) 'segment)
+        (check-equal "a value above 3 is unset"
+                     (car (pr-err (parse 4 "g"))) 'mode-unset)))))
 
 ;;; --- the split oracle: modes 1 & 2, every span ---------------------------
 ;;;
@@ -147,13 +163,49 @@
            (lambda ()
              (let ((r (parse mode uri)))
                (check-equal "status"   (pr-status r) 'finished)
-               (check-equal "scheme"   (pr-span r 'scheme) e-scheme)
+               (check-equal "scheme"   (pr-scheme r) e-scheme)
                (check-equal "authority" (pr-span r 'authority) e-auth)
                (check-equal "path"     (pr-path r) e-path)
                (check-equal "rooted"   (pr-rooted r) e-rooted)
                (check-equal "query"    (pr-span r 'query) e-query)
                (check-equal "fragment" (pr-span r 'fragment) e-frag))))))
      oracle)))
+
+;;; --- mode 3 (uri-reference): the leading-token verdict -------------------
+;;;
+;;; The scanner cannot know scheme from first-segment until the delimiter, so it
+;;; opens the neutral `leading-token` and names the verdict with a zero-width
+;;; event; `(uri collect)` reads it. Each row: (uri scheme authority path query
+;;; fragment verdict), the COMPONENTS collect will build, plus the raw verdict.
+(define mode3-oracle
+  '(("g:h"            "g"      #f  "h"   #f  #f  scheme)
+    ("g/h"            #f       #f  "g/h" #f  #f  segment)
+    ("g"              #f       #f  "g"   #f  #f  segment)
+    ("g?q"            #f       #f  "g"   "q" #f  segment)
+    ("g#f"            #f       #f  "g"   #f  "f" segment)
+    ("//h/p"          #f       "h" "/p"  #f  #f  #f)
+    ("/p"             #f       #f  "/p"  #f  #f  #f)
+    ("http://a/b?q#f" "http"   "a" "/b"  "q" "f" scheme)
+    ("?q"             #f       #f  ""    "q" #f  #f)
+    ("#f"             #f       #f  ""    #f  "f" #f)
+    (""               #f       #f  ""    #f  #f  #f)
+    ("mailto:a@b"     "mailto" #f  "a@b" #f  #f  scheme)))
+
+(harness-group "mode-3"
+  (lambda ()
+    (for-each
+     (lambda (row)
+       (harness-case (if (string=? (car row) "") "(empty)" (car row))
+         (lambda ()
+           (let ((r (parse 3 (car row))))
+             (check-equal "status"    (pr-status r) 'finished)
+             (check-equal "scheme"    (pr-scheme r) (list-ref row 1))
+             (check-equal "authority" (pr-span r 'authority) (list-ref row 2))
+             (check-equal "path"      (pr-path r) (list-ref row 3))
+             (check-equal "query"     (pr-span r 'query) (list-ref row 4))
+             (check-equal "fragment"  (pr-span r 'fragment) (list-ref row 5))
+             (check-equal "verdict"   (pr-verdict r) (list-ref row 6))))))
+     mode3-oracle)))
 
 ;;; --- absent is not empty (decision 0008), the load-bearing pairs ---------
 (harness-group "absent-is-not-empty"
@@ -202,16 +254,19 @@
     (for-each
      (lambda (row)
        (let ((mode (list-ref row 0)) (uri (list-ref row 1)))
-         (harness-case (string-append "byte-by-byte: " uri)
+         (harness-case (string-append "m" (number->string mode) " byte-by-byte: "
+                                      (if (string=? uri "") "(empty)" uri))
            (lambda ()
              (let ((whole (parse mode uri)) (drip (parse mode uri #t)))
-               (check-equal "scheme"   (pr-span drip 'scheme) (pr-span whole 'scheme))
+               (check-equal "scheme"    (pr-scheme drip) (pr-scheme whole))
                (check-equal "authority" (pr-span drip 'authority) (pr-span whole 'authority))
-               (check-equal "path"     (pr-path drip) (pr-path whole))
-               (check-equal "rooted"   (pr-rooted drip) (pr-rooted whole))
-               (check-equal "query"    (pr-span drip 'query) (pr-span whole 'query))
-               (check-equal "fragment" (pr-span drip 'fragment) (pr-span whole 'fragment)))))))
-     oracle)))
+               (check-equal "path"      (pr-path drip) (pr-path whole))
+               (check-equal "rooted"    (pr-rooted drip) (pr-rooted whole))
+               (check-equal "verdict"   (pr-verdict drip) (pr-verdict whole))
+               (check-equal "query"     (pr-span drip 'query) (pr-span whole 'query))
+               (check-equal "fragment"  (pr-span drip 'fragment) (pr-span whole 'fragment)))))))
+     ;; both the modes-1/2 oracle and the mode-3 rows
+     (append oracle (map (lambda (r) (list 3 (car r))) mode3-oracle)))))
 
 ;;; --- the grammar declares only names the vocabulary knows ----------------
 (harness-case "every span and error the grammar uses is in the vocabulary"
@@ -221,7 +276,7 @@
     ;; entries (mode-unset/scheme-required/scheme-forbidden/unexpected-eof).
     (for-each (lambda (s) (check (string-append (symbol->string s) " is a span")
                                  (uri-span-name? s)))
-              '(scheme authority path query fragment))
+              '(scheme leading-token authority path query fragment))
     (for-each (lambda (e) (check (string-append (symbol->string e) " is an error code")
                                  (uri-error-code? e)))
               '(mode-unset scheme-required scheme-forbidden unexpected-eof))
@@ -233,7 +288,7 @@
               (append (apply append
                              (map (lambda (s) (list (uri-span-data-callback s)
                                                    (uri-span-complete-callback s)))
-                                  '(scheme authority path query fragment)))
-                      '(on-rooted)))))
+                                  '(scheme leading-token authority path query fragment)))
+                      '(on-rooted on-scheme-confirmed on-segment-confirmed)))))
 
 (harness-finish)

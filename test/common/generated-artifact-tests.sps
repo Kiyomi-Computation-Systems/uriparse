@@ -50,21 +50,24 @@
 ;; The two executors are compared through this, so any divergence surfaces by
 ;; vector rather than as a crash.
 (define (decompose cm mode str)
-  (let ((frags '()) (completes '()) (rooted #f))
+  (let ((frags '()) (completes '()) (rooted #f) (verdict #f))
     (define (data-cb name) (lambda (p c bv from to) (set! frags (cons (cons name (bytes->str bv from to)) frags)) callback-continue))
     (define (done-cb name) (lambda (p c) (set! completes (cons name completes)) callback-continue))
     (define bindings
       (list (list 'on-scheme-data (data-cb 'scheme)) (list 'on-scheme-complete (done-cb 'scheme))
+            (list 'on-leading-token-data (data-cb 'leading-token)) (list 'on-leading-token-complete (done-cb 'leading-token))
             (list 'on-authority-data (data-cb 'authority)) (list 'on-authority-complete (done-cb 'authority))
             (list 'on-path-data (data-cb 'path)) (list 'on-path-complete (done-cb 'path))
             (list 'on-query-data (data-cb 'query)) (list 'on-query-complete (done-cb 'query))
             (list 'on-fragment-data (data-cb 'fragment)) (list 'on-fragment-complete (done-cb 'fragment))
-            (list 'on-rooted (lambda (p c) (set! rooted #t) callback-continue))))
+            (list 'on-rooted (lambda (p c) (set! rooted #t) callback-continue))
+            (list 'on-scheme-confirmed (lambda (p c) (set! verdict 'scheme) callback-continue))
+            (list 'on-segment-confirmed (lambda (p c) (set! verdict 'segment) callback-continue))))
     (let* ((p (make-parser cm bindings #f (list (cons 'mode mode))))
            (bv (string->utf8 str)))
       (parser-feed! p bv 0 (bytevector-length bv))
       (let ((r (parser-finish! p)))
-        (list (parser-result-status r) rooted (reverse frags) (list-sort (lambda (a b) (string<? (symbol->string a) (symbol->string b))) completes)
+        (list (parser-result-status r) rooted verdict (reverse frags) (list-sort (lambda (a b) (string<? (symbol->string a) (symbol->string b))) completes)
               (and (parser-result-error r)
                    (cons (parser-error-code (parser-result-error r)) (parser-error-offset (parser-result-error r)))))))))
 
@@ -82,6 +85,8 @@
     (1 "mailto:fred@example.com") (1 "http://a") (1 "http://a?") (1 "http://a#")
     (1 "http://a/p?q#f") (1 "ldap://[2001:db8::7]/c=GB?objectClass?one")
     (2 "/b/c/d;p?q") (2 "g") (2 "//h/p") (2 "?q") (2 "#f") (2 "") (2 "a/b:c")
+    ;; mode 3: the leading-token verdicts, both ways, and the delimiter forms
+    (3 "g:h") (3 "g/h") (3 "g") (3 "//h/p") (3 "/p") (3 "http://a/b?q#f") (3 "?q") (3 "")
     (1 "foo/bar") (1 "foo") (2 "g:h") (0 "x")))
 
 (harness-begin "determinism.generated-artifact")

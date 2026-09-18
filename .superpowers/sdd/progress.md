@@ -337,3 +337,35 @@ scheme/segment verdict events, decision 0004). Slice ③ -- `(uri collect)` -> t
 five-field uri-components, the property/chunk-invariance lane, the §1.1.2
 example-URIs parse-through. Then the merge gate. The authority sub-split and host
 grammar are core milestones (M4/M5), no longer M2 scanner work.
+
+SLICE ② COMPLETE (2026-09-18). Mode 3 (uri-reference). The scheme and the first
+path segment share a prefix decided only by the delimiter, so the scanner opens
+the neutral `leading-token` span, closes it at the delimiter, and fires a
+zero-width verdict -- `on-scheme-confirmed` (a `:` closed it) or
+`on-segment-confirmed` (a `/`/`?`/`#`/EOF did); the verdict comes AFTER the close
+because the verifier refuses a callback reachable with a span open (fact 2). The
+three routes converge on the shared continuation the other modes already use:
+scheme-verdict rejoins at `eat-colon`/`hier` (mode-1-style), segment-verdict at
+`path-open`, and a leading `/`/`?`/`#`/EOF is a relative reference with no leading
+token that goes straight there. `(uri collect)` reads the verdict: the scheme is
+the leading token, or the path is the leading token stitched onto the path span.
+
+VALIDATED: `unit.grammar` now 83 cases / 549 checks, adding a twelve-row mode-3
+group (both verdicts, the delimiter forms, the empty reference) and mode-3
+chunk-invariance byte-at-a-time; the determinism differential runs eight mode-3
+vectors through the committed artifact against the interpreter. The EOF-verdict
+spike (design §9 item 1) is now exercised as a lane: `g` and `` reach
+`eof-target -> span-end -> callback -> finish`, the shape the spike proved.
+
+TWO MUTATION WITNESSES, and they land on OPPOSITE sides of the read-the-failure
+rule. Rerouting the leading token's `:` to the segment close makes
+`lt-close-scheme`/`say-scheme` unreachable, so the VERIFIER refuses it
+(`unreachable-node`) -- a structural guarantee, not a test witness. Swapping
+which event each verdict node fires keeps the machine verifiable and is caught
+BEHAVIOURALLY: `g:h` reads verdict=segment, scheme=#f, path="gh", every one red.
+
+Evidence: release 47/47, no-scheme 11/11 (no lanes added -- mode 3 grew the
+existing grammar and determinism lanes); artifact 22620 -> 28766 bytes, ABI 9,
+`make parser-refresh` idempotent. The scanner now splits all three modes into the
+five coarse components; only `(uri collect)` and the property/example instrument
+remain before the merge gate.

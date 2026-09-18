@@ -6,11 +6,13 @@
 ;;; graph)` (the builder) and `(uri vocabulary)` (the agreed integers), and it is
 ;;; never on the shipped runtime path.
 ;;;
-;;; SCOPE (modes 1 & 2, delimiter-only): the scanner splits the five coarse RFC
-;;; 3986 components. It opens `scheme`, `authority`, `path`, `query`, `fragment`
-;;; and fires `on-rooted`. The `authority` span is the whole authority between
+;;; SCOPE (modes 1, 2 and 3, delimiter-only): the scanner splits the five coarse
+;;; RFC 3986 components. It opens `scheme`, `leading-token`, `authority`, `path`,
+;;; `query`, `fragment` and fires `on-rooted`, `on-scheme-confirmed`,
+;;; `on-segment-confirmed`. The `authority` span is the whole authority between
 ;;; `//` and the path; userinfo/host/port are the CORE's, split from its bytes
-;;; (decision 0019). Mode 3 and the `leading-token` span are Slice ②.
+;;; (decision 0019). Mode 3 (uri-reference) opens `leading-token` for the
+;;; scheme/first-segment ambiguity and names the verdict with an event.
 ;;;
 ;;; THE `//` IMPOSSIBILITY AND `on-rooted` (decision 0018). A leading `/` after a
 ;;; scheme is a delimiter in `//h` but path content in `/p`, and byte-machine
@@ -62,9 +64,14 @@
            (make-callback-declaration 'on-query-complete   'span-complete #f '() #f #f)
            (make-callback-declaration 'on-fragment-data    'span-data     #f '() #f #f)
            (make-callback-declaration 'on-fragment-complete 'span-complete #f '() #f #f)
-           (make-callback-declaration 'on-rooted           'event         #f '() #f #f))
-     ;; spans (Slice ① subset): each carries both callbacks (decision 0008 item 5)
+           (make-callback-declaration 'on-leading-token-data 'span-data   #f '() #f #f)
+           (make-callback-declaration 'on-leading-token-complete 'span-complete #f '() #f #f)
+           (make-callback-declaration 'on-rooted           'event         #f '() #f #f)
+           (make-callback-declaration 'on-scheme-confirmed  'event        #f '() #f #f)
+           (make-callback-declaration 'on-segment-confirmed 'event        #f '() #f #f))
+     ;; spans: each carries both callbacks (decision 0008 item 5)
      (list (make-span-declaration 'scheme   'on-scheme-data   'on-scheme-complete   #f)
+           (make-span-declaration 'leading-token 'on-leading-token-data 'on-leading-token-complete #f)
            (make-span-declaration 'authority 'on-authority-data 'on-authority-complete #f)
            (make-span-declaration 'path     'on-path-data     'on-path-complete     #f)
            (make-span-declaration 'query    'on-query-data    'on-query-complete    #f)
@@ -80,10 +87,36 @@
       (make-field-branch-node 'm-dispatch 'equal (list 'mode (uri-mode-value 'uri))
                               'uri-scheme-open 'm-try2 #f)
       (make-field-branch-node 'm-try2 'equal (list 'mode (uri-mode-value 'relative-ref))
-                              'hier2 'e-mode-unset #f)
-      ;; mode 0 (unset), 3 (uri-reference; Slice ②) and any other value fall to
-      ;; e-mode-unset here. Slice ② replaces m-try2's false arm with the mode-3
-      ;; leading-token scanner.
+                              'hier2 'm-try3 #f)
+      (make-field-branch-node 'm-try3 'equal (list 'mode (uri-mode-value 'uri-reference))
+                              'uriref-start 'e-mode-unset #f)
+      ;; mode 0 (unset) and any value above 3 fall to e-mode-unset.
+
+      ;; --- mode 3: the leading-token scanner (decisions 0004, design §4) ---
+      ;; The scheme and the first path segment share a prefix language, decided
+      ;; only by the delimiter. A neutral `leading-token` span opens over the
+      ;; ambiguous prefix; at the delimiter it closes and a zero-width verdict
+      ;; fires -- `on-scheme-confirmed` (a `:` closed it) or `on-segment-confirmed`
+      ;; (a `/`/`?`/`#`/EOF did). Fact 2 (verify.sls:1798) is why the verdict comes
+      ;; AFTER the close; the three routes converge because all have closed the
+      ;; span. `(uri collect)` reads the verdict: scheme = the leading token, or
+      ;; path = the leading token stitched onto the path span. A leading `/`,
+      ;; `?`, `#` or EOF is a relative reference with no leading token, and joins
+      ;; the shared continuation directly.
+      (make-byte-dispatch-node 'uriref-start
+        (list (kase (one SLASH) (adv 'hier-slash1))
+              (kase (one QUESTION) (rex 'path-open))
+              (kase (one HASH) (rex 'path-open)))
+        (rex 'lt-open) 'path-open #f)
+      (make-span-start-node 'lt-open 'leading-token 'lt-scan #f)
+      (make-byte-dispatch-node 'lt-scan
+        (list (kase (one COLON) (rex 'lt-close-scheme))
+              (kase (set* SLASH QUESTION HASH) (rex 'lt-close-seg)))
+        (adv 'lt-scan) 'lt-close-seg #f)
+      (make-span-end-node 'lt-close-scheme 'leading-token 'say-scheme #f)
+      (make-callback-node 'say-scheme 'on-scheme-confirmed 'eat-colon '() 'eat-colon #f)
+      (make-span-end-node 'lt-close-seg 'leading-token 'say-segment #f)
+      (make-callback-node 'say-segment 'on-segment-confirmed 'path-open '() 'path-open #f)
 
       ;; --- mode 1: the scheme ---------------------------------------------
       (make-span-start-node 'uri-scheme-open 'scheme 'scheme-scan #f)
