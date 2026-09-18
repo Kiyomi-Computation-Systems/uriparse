@@ -1,0 +1,15 @@
+* uriparse
+
+(CI badge goes here)
+
+RFC 3986 compliant URI parser in pure R6RS Scheme.
+
+#+begin_quote
+✨ *AI Disclosure:* LLMs are used extensively in the planning and development of this project.
+#+end_quote
+
+
+* License
+
+© [[https://kiyomicomputation.systems/][Kiyomi Computation Systems LLC]]. Licensed under BSD 3-Clause — see
+[[file:LICENSE][LICENSE]].
