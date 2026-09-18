@@ -904,3 +904,43 @@ Evidence after fixes: unit.resolve 16 cases / 16 checks (was 12/12),
 conformance.resolution 47 cases / 94 checks (was 45/92); release 61/61, no-scheme
 11/11. The §5.4 gate still stands at 42/42. The review found the CODE sound to
 merge; the fixes were coverage, one record, and doc reconciliation.
+
+M6 MERGED (2026-09-18). PR #4 squash-merged to main as b0939d8; local main
+fast-forwarded; feat/m6-resolution deleted local and remote. Merged on a RED
+linux-amd64 check, confirmed as the documented Actions billing refusal (decision
+0017 — a completed/failure run at 3.0s, the 0-step shape M2 and M5 also merged
+over), not a test result — local evidence stands in its place (release 61/61,
+no-scheme 11/11, §5.4 42/42). The maintainer authorised the closing ritual
+explicitly.
+
+REFLECTION. M6 was the milestone with a real normative corpus, and it reached
+"all of §5.4 or not done" (decision 0011): 42/42. Three things shaped it. First,
+the recompose-at-M6 boundary (decision 0021): §5.2.2 ends by recomposing per
+§5.3, and M1's comparator is string-in/string-out, so recompose HAD to ship with
+resolve — and choosing recompose-and-compare-strings over reparse-the-target kept
+the §5.4 corpus a pure string oracle instead of relitigating the RFC's strings
+through this project's own parser. Second, the oracle-from-RFC discipline held
+one more time and paid off: a derive-then-refute survey confirmed §5.2.2/§5.2.3/
+§5.2.4/§5.3 (zero disputes) BEFORE a line was graded, and remove-dot-segments was
+checked step-for-step against the RFC's worked traces, not just their end
+results. Third — the milestone's most valuable catch — the merge-gate
+verification found a coverage theme the per-slice reviews structurally could not:
+because every resolve test used the §5.4 base (non-empty path, dot-free
+scheme/authority refs), THREE resolve paths were unobserved and deletable while
+every lane stayed green (remove-dot-segments in §5.2.2 branches A and B, the
+merge authority-flag wiring). Same failure family as M2's copy-discipline and
+M5's empty-authority gap: a test green for the wrong reason, invisible until a
+cross-cutting dimension looked. All three are now pinned and witnessed, and the
+normalize-before-resolve security property was pinned end to end, closing the
+loop M5's merge-gate opened. The pattern across M2/M5/M6 is settled: the
+per-slice review catches within-library bugs, the merge-gate verification catches
+the coverage a single library cannot see.
+
+NEXT (M7 — the round-trip property). Decision 0021 already moved §5.3 recompose
+into M6, so M7 is NOT recompose-from-scratch — it is the ROUND-TRIP PROPERTY the
+brief names: parse -> normalize (§6) -> recompose (§5.3) -> parse reaches a fixed
+point, and the second parse's spans equal the first's. It rides the existing
+`(uri recompose)` and the generated/example corpora (design §7, decision 0012's
+abnfgen if it exists yet; §1.1.2 example URIs otherwise), and it is the last
+implementation milestone before M8 (release v0.1). No M6 debt carried forward —
+the tree is clean on main at b0939d8.
