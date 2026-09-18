@@ -441,5 +441,29 @@ Evidence after fixes: grammar 84/553, collect 42/105, determinism 34/38, release
 49/49, no-scheme 11/11; committed artifact unchanged (comments are not emitted).
 The review found the CODE sound to merge; only records and tests needed touch-ups.
 
-NEXT: the merge gate is passed on the review; awaiting the maintainer's word on
-the PR / closing ritual (ask first).
+M2 CLOSED (2026-09-18). PR #2 squash-merged to main as 798a60b; local main
+fast-forwarded; feat/m2-generic-split deleted local and remote. Merged on a RED
+linux-amd64 check, named as the documented Actions billing refusal (a 0-step,
+~3s run) per decision 0017, NOT a test result -- the local evidence stands in
+its place (release 49/49, no-scheme 11/11). The maintainer authorised the
+closing ritual explicitly.
+
+REFLECTION. M2 turned an empty src/ into a working splitter and met its exit
+criterion: chez-http-server can route on the path and read the raw query. Two
+moves shaped the milestone. First, the byte-machine fit question (raised by the
+maintainer mid-build) forced decision 0019, the rebalance -- the most
+consequential move here: it kept the forward-only, no-backtracking scanner
+honest by handing the authority sub-split and the host grammar to the pure
+core, where M4's IPv6 becomes a small function rather than a fight with the
+machine. Second, both adversarial passes earned their keep on the SAME failure
+mode -- a test green for the wrong reason. The per-slice review caught the copy
+discipline shipping green with the copy removed (slices of one immutable buffer
+never tell a copy from a retained reference); the ultra review caught an
+empty-authority gap pinned only before `/`, and decision/comment drift after
+0019 -- no code defects, but each would have misled the next reader. The
+oracle-from-ABNF discipline held throughout: grammar and test never shared a bug.
+
+NEXT (M3+). The scanner/core seam is set and the core owns the authority, so
+M4 adds the host grammar (userinfo/host/port, IPv6) as pure functions over the
+authority bytevector with no scanner change; the §5.4 resolution ratchet is
+M6's (0011). No M2 debt carried forward -- the tree is clean on main at 798a60b.
