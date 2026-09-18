@@ -1,0 +1,78 @@
+RFC 3986 (STD 66) -- Uniform Resource Identifier (URI): Generic Syntax
+T. Berners-Lee, R. Fielding, L. Masinter. January 2005.
+
+SOURCE
+  https://www.rfc-editor.org/rfc/rfc3986.txt
+  vendored verbatim at test/vendor/rfc3986.txt
+  sha256 3102dae4b68cebe40337730312fcb612297b8928547267e8b3d1ee6002b2d683
+
+Nothing in this directory is authored. Every file beside this one is DERIVED
+from the text above by cmake/UriCorpus.cmake; `make corpus-refresh` rewrites
+them and the lane uri.harness.corpus-provenance re-derives and compares, so a
+hand edit to a vector reddens rather than surviving (decision 0005 item 2).
+
+WHAT IS TAKEN, AND FROM WHERE
+
+  resolution.scm    section 5.4 -- Reference Resolution Examples.
+                    23 rows from 5.4.1 "Normal Examples" and 19 from 5.4.2
+                    "Abnormal Examples", all against the base section 5.4
+                    declares: http://a/b/c/d;p?q
+                    This is the only normative vector set this project has,
+                    and M6 is gated on all 42 rows passing (decision 0011
+                    item 3).
+
+  dot-segments.scm  section 5.2.4 -- remove_dot_segments, worked by hand on
+                    two inputs. Taken as STEP TRACES, 8 rows and 5, not only
+                    as the two end results: the end result of the first is
+                    reachable by several wrong algorithms and the trace is
+                    not.
+
+  example-uris.scm  section 1.1.2 -- eight example URIs across ftp, http,
+                    ldap, mailto, news, tel, telnet and urn. These carry no
+                    expected decomposition; the RFC gives them as
+                    illustrations, so the only thing a lane may assert over
+                    them is that they parse (decision 0005 item 3).
+
+  rfc3986.abnf      Appendix A -- the Collected ABNF, 36 rules over 60 lines.
+                    Not a vector set: this is the GRAMMAR, and decision 0012
+                    makes it the source of the generated positive corpus, on
+                    the observation that an ABNF is not only an acceptor but a
+                    generator. Only the three-space indent and the page
+                    furniture are removed; a continuation line keeps its
+                    remaining indent, because that is what makes it a
+                    continuation.
+
+                    It is NOT self-contained. RFC 3986 leaves ALPHA, DIGIT and
+                    HEXDIG to RFC 5234 Appendix B, so a generator needs those
+                    three core rules alongside it. They are not restated here:
+                    restating them would make this something other than what
+                    the RFC says.
+
+ERRATA
+
+  Two errata are VERIFIED against RFC 3986 and neither touches this corpus:
+  2525 (section 3.1, a reference update) and 7590 (section 5.2.4, a stray
+  hyperlink).
+
+  Erratum 4547 would rewrite two rows of section 5.4.2 -- "../../../g" and
+  "../../../../g" -- from http://a/g to http://a/../g and http://a/../../g.
+  It is "Held for Document Update", which is not normative text, and decision
+  0015 item 2 rejects it: section 5.2.4 step 2C removes the last segment "and
+  its preceding '/' (if any)", and section 5.4.2's own prose warns about
+  exactly this case. The rows here are as published.
+
+  Erratum 5428 claims the ABNF excludes "/" as a valid URI reference.
+  path-absolute = "/" [ segment-nz *( "/" segment ) ] makes everything after
+  the slash optional, so it does not. Decision 0015 item 3.
+
+  Four further errata are open against sections this project will implement
+  (4789 and 2933 on merge, 2033 on path-empty, 4942 on reg-name) and are
+  adjudicated at their milestone, before the code they concern is written.
+
+WHAT IS NOT HERE
+
+  Vectors this project writes itself are a separate set, separately labelled,
+  and are never counted in the same number as these (decision 0005 item 3).
+  Generated corpora -- abnfgen over Appendix A, and its mutations -- are
+  decision 0012's, and WPT's input-only corpus is decision 0013's. Provenance
+  that is averaged is provenance destroyed.
