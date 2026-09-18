@@ -658,3 +658,249 @@ NEXT (M6). Reference resolution (§5.2), gated on the §5.4 corpus at 100% (0011
 It consumes NORMALIZED components (0020's ordering note) and adds `(uri path)`
 (§5.2.4 remove_dot_segments, §5.2.3 merge) and `(uri resolve)` (§5.2.2). No M5
 debt carried forward — the tree is clean on main at 8f94515.
+
+---
+
+M6 — DOT SEGMENTS AND REFERENCE RESOLUTION. Branch feat/m6-resolution.
+
+Plan: .plans/2026-09-18-chez-uri-design.md §5 (the core library table: `(uri
+path)` M6, `(uri resolve)` M6, `(uri recompose)` M7 — pulled to M6, see decision
+0021), §2 (the layer split), §3.2 (absent ≠ empty, which §5.2.2/§5.3 branch on).
+Brief: .plans/2026-09-18-chez-uri-project-brief.md "M6 — dot segments and
+reference resolution". Decisions in force: 0005 (RFC 3986's own vectors are the
+anchor; §5.4 is the only normative corpus), 0007 (pure R6RS src), 0008 (absent ≠
+empty — §5.2.2 and §5.3 branch on *defined*, not nonempty), 0010 (bytevectors
+throughout), 0011 item 3 (M6 is gated on all 42 §5.4 rows passing, 100% or not
+done), 0015 (erratum 4547 rejected — `../../../g` and `../../../../g` resolve to
+`http://a/g` as published, NOT `http://a/../g`), 0020 (M6 consumes NORMALIZED
+components; the M5→M6 dot-segment ordering hazard — `pct-normalize` decodes
+`%2E`→`.`, so a resolver must run over a normalized path or encoded traversal
+survives), and NEW 0021 (recompose lands at M6).
+
+Base at start: 07842f5 (local main == origin/main; M5 merged as 8f94515, its
+close-out 07842f5). Measured environment (2026-09-18, Darwin arm64): Chez 10.4.1
+(tarm64osx), CMake/CTest 4.3.3. Baseline on the branch before any slice: release
+53/53, no-scheme 11/11.
+
+WHAT M6 SHIPS (design §5 library table): three pure-core libraries — `(uri path)`
+(§5.2.4 `remove_dot_segments` + §5.2.3 `merge`, over path bytevectors), `(uri
+resolve)` (§5.2.2 strict `transform-references`, over `uri-components`), and `(uri
+recompose)` (§5.3 component recomposition, `uri-components` → bytevector). All
+total functions over bytevectors and components (0010), each callable with a
+literal and compared to a constant. No scanner, no byte-machine — M6 operates on
+the components `(uri collect)` produces.
+
+DECISION 0021 (recompose at M6, written at milestone seed). The brief pencils
+§5.3 recompose at M7, but two facts force it into M6: (1) §5.2.2's OWN pseudocode
+ends "return T" by recomposing per §5.3 — resolution's output is a string; (2)
+M1's comparator `compare-target` is string-in / string-out, so the §5.4 lane
+needs a resolved *string* per row. The alternative — reparse the expected target
+into components and compare component-wise — would put M2's parser into the
+oracle path (a resolve bug and a parse bug could cancel) and relitigate the RFC's
+string oracle through my own code. So M6 recomposes the resolved components and
+compares BYTE-EXACT to the published §5.4 target, keeping the corpus a pure
+string oracle. §5.3 recompose lands here; M7 keeps the round-trip PROPERTY
+(parse→normalize→recompose→parse fixed point over generated corpora) and any
+recompose hardening. This is the M6 analog of 0020, recorded before Slice ⓪.
+
+SCOPE, and what M6 does NOT do: no charset validation (M3/v0.2); no host grammar
+(M4/v0.2). Resolution operates on the coarse five-field components M2 splits,
+treating the path as opaque bytes — segmentation is a total function of the path
+bytes (design §3.1) done inside `(uri path)`, not a scanner span. Resolution
+itself does NOT normalize (§6 is a separate operation); the §5.4 corpus is pure
+resolution with no normalization applied, and decision 0015 keeps the two
+excess-dot-segment rows as published. The normalize-before-resolve composition
+(0020's ordering note) is a PUBLIC-API property — documented in `(uri resolve)`
+and recorded — not something the raw §5.4 rows exercise.
+
+EXIT CRITERION: all 42 §5.4 rows resolve correctly (100% or not done, 0011 item
+3); `remove_dot_segments` reproduces both committed §5.2.4 step traces; `merge`
+and `recompose` graded against RFC-derived vectors. The two-way ratchet
+(test/conformance/ratchet.txt) flips not-yet→passing for all 42 and NOTHING else
+moves — a not-yet that passes is as much a violation as a passing that fails.
+
+SLICE PLAN (cadence: drive to gates — stop after Slice ⓪ and at the merge gate;
+subagents for the RFC-derived resolution oracle and per-slice adversarial
+review):
+
+  ⓪  `(uri path)` — the mechanics. `remove-dot-segments` (§5.2.4, the 2A–2E
+     loop, popping previously-emitted segments) graded against the committed
+     13-row step traces (dot-segments.scm); `merge` (§5.2.3, the two branches
+     with the rightmost-`/` semantics and the authority+empty-path case) graded
+     against RFC-derived vectors. Pure `(rnrs)` over bytevectors; source+aot
+     lane; TDD with mutation witnesses. — GATE.
+  ①  `(uri resolve)` (§5.2.2 strict transform-references over components) + `(uri
+     recompose)` (§5.3, defined-guarded emission) + decision 0021; the §5.4
+     resolution lane — parse base + reference via `(uri collect)`, resolve,
+     recompose, compare byte-exact against the 42 published targets; ratchet.txt
+     flipped not-yet→passing. Judged against the normative corpus. Mutation
+     witnesses. — merge gate.
+  CLOSE — merge gate + closing ritual (ask first) + reflection.
+
+SLICE ⓪ OPEN (2026-09-18): ledger seeded; branch cut from 07842f5; the RFC
+§5.2/§5.3 resolution oracle survey commissioned (derive-then-refute over the
+vendored text test/vendor/rfc3986.txt, each derivation cross-checked against the
+committed §5.4 and §5.2.4 corpora), so `(uri path)` / `(uri resolve)` / `(uri
+recompose)` are graded against the RFC independently of the code — the M2/M5
+oracle discipline, restated for the one milestone whose corpus IS normative.
+
+THE ORACLE SURVEY CAME BACK, ALL FOUR SECTIONS CONFIRMED (2026-09-18). A
+derive-then-refute workflow (8 agents: one deriver + one adversary per section,
+grounded in the vendored RFC and cross-checked against the committed corpora)
+returned §5.2.4, §5.2.3, §5.2.2 and §5.3 each with verdict **confirmed**, zero
+disputes, zero corrected vectors. The §5.2.4 case table (A→B→C→D→E, the
+"complete path segment" qualifier on 2B/2C, 2C's tolerance of an empty output
+buffer, 2A-vs-2D) and the §5.2.3 two-branch merge (rightmost-`/` kept, the
+authority+empty-path branch (a), the no-slash edge) both matched the
+implementation as authored. Its derived stress and merge vectors are the Slice ⓪
+oracle beyond the committed traces; its §5.2.2 hand-traces and §5.3 recompose
+vectors are held for Slice ①. Saved to scratchpad/m6-oracle.txt.
+
+SLICE ⓪ COMPLETE (2026-09-18). Landed: `(uri path)` — `remove-dot-segments`
+(§5.2.4), `remove-dot-segments-trace` (the same run as a per-step trace), and
+`merge` (§5.2.3) — plus its source+aot lane. Evidence: release 55/55 (was 53),
+no-scheme 11/11. Darwin arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3.
+
+`(uri path)` (12 cases / 66 checks) is two pure `(rnrs)` functions over path
+bytevectors (decision 0010) — no scanner, no components (design §3.1): `/` is not
+in `pchar`, so segmentation is a total function of the path bytes and lives in
+the core. `remove-dot-segments` runs §5.2.4's two-buffer loop; the "/./"→"/" and
+"/../"→"/" rewrites are a 2- and 3-byte drop (the prefix's trailing `/` becomes
+the result's leading one), 2C pops the output's last segment (tolerating an empty
+buffer per the RFC's "(if any)"), and the "complete path segment" qualifier is
+enforced by matching `/.`/`/..` only as the whole input. `merge` is §5.2.3's two
+branches: authority+empty-base-path → `/`++ref, else the base up to and including
+its rightmost `/` (or "" with no `/`) ++ ref. Both are TOTAL (decision 0011): no
+input raises, and every branch strictly shrinks the input so the loop terminates.
+
+VALIDATED TWO WAYS (decision 0005 discipline). `remove-dot-segments` is graded
+step-for-step against the committed §5.2.4 corpus (dot-segments.scm): the test
+reads each trace's path from the corpus's own step-1 row, runs
+`remove-dot-segments-trace`, and asserts every `(label output input)` triple
+equals the corpus row — so a wrong algorithm that reaches the right end result by
+the wrong 2A/2B/2C/2D/2E sequence still reddens (the RFC gives these as traces,
+not just end results, exactly for this reason). Its result is separately pinned
+on six RFC-derived stress vectors that press distinctions the two traces do not
+reach (`/../`, `/.`, `..`, `/.foo`, `../g`, `..g`). `merge` is pinned on the six
+RFC-derived branch vectors (both branches, the empty-base authority case, the
+no-slash edge).
+
+NINE MUTATION WITNESSES, each watched red then reverted: 2C's output pop dropped
+(both traces + `/a/..` red); 2B's complete-segment qualifier loosened to a prefix
+(`/.foo` red); 2C's likewise (`/..bar` red); 2A's `./` drop shortened to one byte
+(`./g`→`/g`); 2D's whole-input match loosened to a prefix (`..g`→empty); a 2B step
+MISLABELLED 2E (trace step-label check red — proving the trace grades labels, not
+only buffers); merge branch (a) skipped (`http://a`+`g`→`g` not `/g`); merge's
+rightmost-`/` dropped (`/b/c/`→`/b/c`, every branch-(b) merge corrupted); merge's
+no-slash edge appending the base (`mid`+`g`→`midg`).
+
+ADVERSARIAL REVIEW (subagent, at the slice gate): no code defects. It traced the
+implementation against §5.2.4/§5.2.3, the committed corpus and the RFC-derived
+oracle, and confirmed totality (no input raises; every branch strictly shrinks
+the input, so the loop terminates — including on high bytes and a NUL). One
+should-fix and two nits, all TEST coverage, closed here and re-witnessed:
+  - should-fix: the trace grades step LABELS, but the two committed traces only
+    fire "1"/"2E"/"2B"/"2C" — 2A and 2D labels were unpinned, so a mislabel of
+    those cases would survive. Closed with label-sequence checks over BOTH
+    spellings of each (`../g` and `./g` for 2A; `.` and `..` for 2D); the first
+    fix caught only `../` and was itself witnessed incomplete when a mislabel of
+    the `./` branch survived, then widened until mislabelling EITHER 2A branch
+    reddens.
+  - nit: `merge` with a defined authority over a slashless NON-empty base path
+    (branch (b), authority irrelevant) had no test — added (`mid`+`g`→`g`).
+  - nit: totality on non-ASCII/NUL bytes was verified by inspection but unpinned
+    — added (`/<NUL>/..`→`/`, and a 0xFF-led segment moved verbatim).
+Evidence after fixes: 14 cases / 73 checks; release 55/55, no-scheme 11/11.
+
+SLICE ⓪ GATE (2026-09-18): decision 0021 (recompose lands at M6) presented and
+APPROVED by the maintainer ("Yes, 0021 sits right — proceed into Slice ①").
+
+SLICE ① COMPLETE (2026-09-18). Landed: `(uri resolve)` (§5.2.2 strict) and `(uri
+recompose)` (§5.3), the §5.4 conformance lane, and the ratchet flipped
+not-yet→passing for all 42. **THE M6 GATE IS MET: all 42 §5.4 rows resolve to
+their published targets.** Evidence: release 61/61 (was 55), no-scheme 11/11.
+Darwin arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3.
+
+`(uri recompose)` (10 cases / 13 checks) is §5.3, guarded on DEFINED not nonempty
+(decision 0008): an empty-but-present authority still emits `//`, an
+empty-but-present query still emits `?`, the path is emitted unconditionally, and
+an ABSENT authority (`#f`) suppresses the `//` — the `http:g` vs `http://g` flip.
+Pure over `(uri components)`. `(uri resolve)` is §5.2.2's pseudocode arm for arm,
+STRICT (the non-strict `undefine(R.scheme)` shortcut is never taken, so `http:g`
+→ `http:g` not `http://a/b/c/g` — decision 0015/0001; the corpus's `(note ...)`
+records the loophole and this implements the strict row). It imports `(uri path)`
+for merge + remove-dot-segments and is pure over components; resolution does NOT
+normalize (§6 is separate), and the normalize-before-resolve ordering (0020/0021)
+is documented on the library as a caller obligation, not baked in.
+
+THE §5.4 GATE, END TO END (decision 0021's recompose-and-compare-strings).
+`conformance.resolution` (45 cases / 92 checks) drives the whole stack per row:
+`(uri collect)` parses the base (mode `uri`) and the reference (mode
+`uri-reference`), `(uri resolve)` transforms, `(uri recompose)` renders, and the
+bytes are compared BYTE-EXACT to the RFC's published target via `compare-target`
+— so the corpus stays a pure string oracle, no parser in the grading path for the
+expected value. A base-sanity case pins that `http://a/b/c/d;p?q` splits as §5.4
+assumes (else 42 rows would redden as one resolver bug). The two-way ratchet is
+enforced IN the lane: `ratchet-violations` must be empty over all 42 marked
+`passing`, so a regression AND an unrecorded pass both fail. `(uri resolve)` is
+ALSO judged in isolation — `unit.resolve` (12 cases) checks the §5.2.2 branch
+tree at the COMPONENT level against the RFC-derived hand-traces (so a resolve bug
+cannot hide behind a parse or recompose bug), pinning the absent/empty
+distinctions the corpus does not reach: an empty-but-present R.query is taken
+(not the base's), an empty-but-present R.authority is taken.
+
+NINE MUTATION WITNESSES, each watched red then reverted. Recompose: empty
+authority no longer emitting `//` (`http://`→`http:`); empty query no longer
+emitting `?`; the scheme's `:` dropped (43 conformance rows red — every
+scheme-bearing target). Resolve: the empty-path branch ignoring a defined R.query
+(`?y` takes base's `q`); a relative path treated as rooted so it skips merge
+(`g`→`http://ag`); the merged path not dot-segment-removed (`../../g`→
+`http://a/b/c/../../g`); the relative branch dropping the base authority
+(`g`→`http:/b/c/g`); the scheme branch merging its path (strict broken:
+`http:g`→`http:/b/c/g`). Ratchet: a row flipped back to not-yet while it passes —
+the conformance lane reddens with "recorded not-yet, but it passed", proving the
+two-way gate is live in the lane, not only in unit.corpus.
+
+DECISION 0021, README.org and CHANGELOG.md all landed with this slice: the
+milestone status is refreshed to "M6 — reference resolution, and the §5.4 corpus
+at 100%", the strict-resolution and normalize-before-resolve caveats are stated
+so the deliverable does not over-claim, and the ratchet.txt header note now
+records that M6 flipped the rows (the two-way gate keeps it from drifting).
+
+M6 MERGE-GATE VERIFICATION (2026-09-18, at the merge gate). A five-dimension
+multi-agent adversarial pass — resolution-correctness, oracle-non-vacuity,
+decision-fidelity, build-lanes, completeness — each finding adversarially
+adjudicated (find → re-verify against the RFC/code/corpus). No code DEFECT: the
+resolution algorithm was re-derived arm for arm and matched, and totality holds.
+The valuable catch was a coverage theme invisible to the per-slice reviews (each
+saw one library): the resolve unit tests all used the §5.4 base (non-empty path,
+dot-free scheme/authority refs), so THREE resolve paths were unobserved and each
+could be DELETED with every lane staying green —
+
+  - remove-dot-segments in §5.2.2 branch A (a scheme-bearing ref's path),
+  - remove-dot-segments in branch B (a network-path ref's path),
+  - the base-authority flag resolve threads into merge (branch (a) wiring).
+
+All three closed with component-level resolve cases (`g:a/b/../c`→`g:a/c`;
+`//g/a/../b`→`http://g/b`; `http://a`+`g`→`http://a/g`) and each witnessed red by
+deleting exactly that call. Also closed: branch C keeps Base.path RAW (a nit case
+added); the design §5 library table still filed `(uri recompose)` under M7 —
+amended in place to M6 with a 0021 pointer (matching how 0008/0019 were amended);
+recompose's "emitted unconditionally" docstring reconciled with its `#f`-tolerant
+guard, noting the resolve/recompose totality asymmetry; a resolve path
+precondition documented. And — the security-relevant one — the normalize-before-
+resolve property (0020/0021) was asserted but UNPINNED: added a live
+composition check that `/a/%2E%2E/b` normalized-then-resolved collapses to `/b`
+(the encoded `../` applied) while resolved RAW stays `/a/%2E%2E/b` (inert). That
+closes the loop the M5 merge-gate opened — M5 pinned the normalize half, this
+pins the resolve half. Two nits left deliberately: the ratchet header's informal
+"deferred" (the file's established word for the not-yet token throughout) and the
+conformance lane's `unit` label (consistent with the M1 `uri.unit.corpus` lane
+and required for preset selection). Two findings were review artifacts, not
+defects — a finder saw source files change mid-review because the mutation
+witnesses were running; the tree is quiescent and correct.
+
+Evidence after fixes: unit.resolve 16 cases / 16 checks (was 12/12),
+conformance.resolution 47 cases / 94 checks (was 45/92); release 61/61, no-scheme
+11/11. The §5.4 gate still stands at 42/42. The review found the CODE sound to
+merge; the fixes were coverage, one record, and doc reconciliation.

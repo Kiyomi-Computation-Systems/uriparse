@@ -278,7 +278,13 @@ edge, as a convenience. Decision 0010.
 | `(uri normalize)` | core — §6, including the hand-written ASCII fold | M5 |
 | `(uri path)` | core — §5.2.4 `remove_dot_segments`, §5.2.3 `merge` | M6 |
 | `(uri resolve)` | core — §5.2.2 | M6 |
-| `(uri recompose)` | core — §5.3 | M7 |
+| `(uri recompose)` | core — §5.3 | M6 (was M7 — decision 0021) |
+
+**Amendment (decision 0021).** `(uri recompose)` moved to M6, not M7: §5.2.2
+reference resolution ends by recomposing the target per §5.3, and the §5.4 gate
+needs a resolved *string* to compare, so recompose ships with resolve. M7 keeps
+the round-trip *property* (parse → normalize → recompose → parse = fixed point),
+which is a stronger claim than the renderer itself.
 
 `(uri vocabulary)` importing nothing is the same argument chez-httparse's
 decision 0021 item 4 makes for `(httparse modes)`: three parties must agree on

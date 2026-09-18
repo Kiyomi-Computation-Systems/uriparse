@@ -921,6 +921,99 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
+# --- (uri path): §5.2.4 remove-dot-segments + §5.2.3 merge (M6 Slice 0) ------
+#
+# The mechanics `(uri resolve)` (§5.2.2) is built on: two pure functions over
+# path bytevectors, no scanner and no components (design §3.1, decision 0010).
+# remove-dot-segments is graded step-for-step against the committed §5.2.4
+# corpus (dot-segments.scm), so the lane imports `(uri test corpus)` and needs
+# URI_CORPUS_DIR on its environment -- the same wiring the M1 corpus lane uses.
+# Pure `(rnrs)`; source and aot like every other Scheme lane.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.path.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/path-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_CORPUS_LIB}
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/path.sls"
+            "${CMAKE_CURRENT_LIST_DIR}/common/path-tests.sps"
+    ENVIRONMENT "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+    TIMEOUT 120
+    LABELS unit)
+endforeach()
+
+# --- (uri recompose): §5.3 component recomposition (M6 Slice 1) -------------
+#
+# Components back to a URI-reference bytevector, guarded on DEFINED not nonempty
+# (decision 0008). Pure `(rnrs)` over `(uri components)`; the sharp cases are the
+# absent-vs-present-empty pairs the §5.4 corpus never reaches. Recompose lands at
+# M6 with resolve, not M7, because §5.2.2 ends by recomposing (decision 0021).
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.recompose.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/recompose-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/components.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/recompose.sls"
+            "${CMAKE_CURRENT_LIST_DIR}/common/recompose-tests.sps"
+    TIMEOUT 120
+    LABELS unit)
+endforeach()
+
+# --- (uri resolve): §5.2.2 transform references (M6 Slice 1) ----------------
+#
+# The strict §5.2.2 decision tree over components, using `(uri path)` for merge
+# and remove-dot-segments. Judged at the COMPONENT level, isolated from the
+# parser and recomposer, against the RFC-derived §5.2.2 hand-traces; the corpus
+# lane drives the same code end to end.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.resolve.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/resolve-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/components.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/path.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/resolve.sls"
+            "${CMAKE_CURRENT_LIST_DIR}/common/resolve-tests.sps"
+    TIMEOUT 120
+    LABELS unit)
+endforeach()
+
+# --- conformance.resolution: RFC 3986 §5.4, the M6 GATE ---------------------
+#
+# The one normative corpus (decision 0005), gated at 100% (decision 0011 item 3).
+# Each of the 42 rows is resolved end to end -- `(uri collect)` parses the base
+# and the reference, `(uri resolve)` transforms per §5.2.2, `(uri recompose)`
+# renders per §5.3 -- and compared BYTE-EXACT to the RFC's published target
+# (decision 0021). The two-way ratchet (all 42 `passing`) makes both a
+# regression and an unrecorded pass a failure, so this lane needs the scanner,
+# the whole core, and both the corpus and ratchet harness libraries.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.conformance.resolution.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/resolution-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
+            ${URI_COLLECT}
+            ${URI_GENERATED_PARSER}
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/path.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/percent.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/normalize.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/resolve.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/recompose.sls"
+            ${URI_CORPUS_LIB}
+            ${URI_RATCHET_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/resolution-tests.sps"
+    ENVIRONMENT "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+                "URI_RATCHET_FILE=${URI_RATCHET_FILE}"
+    TIMEOUT 180
+    LABELS unit)
+endforeach()
+
 # The corpus is DERIVED from the vendored RFC text (decision 0005). This lane
 # re-derives it and compares, so a hand edit to a vector -- the one thing that
 # would make a green lane meaningless -- reddens instead. It runs the same
