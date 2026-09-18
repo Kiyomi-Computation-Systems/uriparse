@@ -467,3 +467,112 @@ NEXT (M3+). The scanner/core seam is set and the core owns the authority, so
 M4 adds the host grammar (userinfo/host/port, IPv6) as pure functions over the
 authority bytevector with no scanner change; the §5.4 resolution ratchet is
 M6's (0011). No M2 debt carried forward -- the tree is clean on main at 798a60b.
+
+---
+
+M5 — THE PURE CORE: PERCENT CODING AND NORMALIZATION. Branch
+feat/m5-percent-normalization.
+
+Plan: .plans/2026-09-18-chez-uri-design.md §5 (the core; decision 0010,
+bytevectors throughout), §6 (v0.1 is resolution-first). Brief:
+.plans/2026-09-18-chez-uri-project-brief.md "M5 — the core: percent coding and
+normalization". Decisions in force: 0007 (pure R6RS src), 0008 (absent ≠ empty),
+0010 (bytevectors throughout; `(rnrs unicode)` is structurally unreachable
+because its case fold is length-changing and Unicode — KELVIN SIGN → ASCII k),
+0011 (v0.1 is resolution-first AND a splitter with a complete core, NOT a
+validator: it accepts bytes the ABNF rejects, e.g. `%ZZ`).
+
+WHY M5 AND NOT M3. The user chose M5 at the milestone gate: decision 0011
+reorders v0.1 to M1 → M2 → M5 → M6 → M7, deferring M3 (charset) and M4 (host)
+to v0.2, because §5.4 is the only normative corpus and resolution rides it.
+
+Base at start: 87aff01 (local main == origin/main; M2 merged as 798a60b, its
+close-out 87aff01). Measured environment (2026-09-18, Darwin arm64): Chez 10.4.1
+(tarm64osx), CMake/CTest 4.3.3. Baseline on the branch before any slice: release
+49/49, no-scheme 11/11.
+
+WHAT M5 SHIPS (design §5 library table): two pure-core libraries — `(uri
+percent)` (percent decode/encode over bytevectors) and `(uri normalize)` (§6
+syntax-based normalization, with the hand-written ASCII fold 0010 requires).
+Both are total functions over bytevectors and `uri-components`; each is callable
+with a literal and compared to a constant. No scanner, no byte-machine, no
+emitter — M5 touches none of the M2 machinery, it operates on the components M2
+produces.
+
+SCOPE, AND WHAT v0.1 NORMALIZATION DOES NOT DO (decision 0020, written in Slice
+①): v0.1 applies §6.2.2.1 case normalization for the SCHEME (lowercase) and
+§6.2.2.2 percent-encoding normalization (uppercase the hex of every valid `%XX`;
+decode `%XX` whose octet is unreserved). It does NOT normalize HOST case — that
+needs the host isolated within the authority, and userinfo is case-sensitive; the
+host split is M4/v0.2. It does NOT remove dot-segments (§6.2.2.3 = §5.2.4 = M6).
+It does NOT do scheme-based normalization (§6.2.3: default ports, empty-path→"/")
+— scheme-specific, out of scope (brief "out of scope"). This keeps 0011's
+promise: v0.1 has a complete core, not a validator.
+
+EXIT CRITERION: the pure core can percent-decode/encode a bytevector and
+syntax-normalize a `uri-components` per the in-scope §6 rules, tested against an
+RFC-3986-derived oracle (the §6.2.2 worked example and a per-rule vector table).
+This does NOT move the §5.4 resolution ratchet — that is gated at M6 (0011).
+
+SLICE PLAN (cadence: drive to gates — stop after Slice ⓪ and at the merge gate;
+subagents for the RFC-derived normalization oracle and per-slice adversarial
+review):
+
+  ⓪  `(uri percent)` — the mechanics. `pct-decode` (decode every valid `%XX`;
+     leave a malformed `%` byte-for-byte, per 0011's non-validating stance),
+     `pct-encode` (encode by a caller-supplied `safe?` predicate, UPPERCASE hex),
+     `unreserved-byte?` (§2.3), and the hex helpers `(uri normalize)` will reuse.
+     Pure `(rnrs)`; source+aot lane; TDD with mutation witnesses. — GATE.
+  ①  `(uri normalize)` — the §6 policy + decision 0020. The hand-written ASCII
+     scheme fold, `pct-normalize` (§6.2.2.1 hex-casing + §6.2.2.2 unreserved
+     decode), `normalize-components` (scheme→lowercase; percent-normalize the
+     components that carry pct-encoding; host-case DEFERRED). Judged against the
+     RFC-derived oracle. Mutation witnesses.
+  CLOSE — merge gate + closing ritual (ask first) + reflection.
+
+SLICE ⓪ OPEN (2026-09-18): ledger seeded; branch cut from 87aff01; the RFC
+§6.2.2 normalization oracle survey commissioned — derived from RFC 3986
+independently of the implementation, so `(uri normalize)`'s tests are graded
+against the RFC, not against my own code (the M2 oracle discipline, restated for
+a milestone whose §5.4 corpus does not reach it).
+
+SLICE ⓪ COMPLETE (2026-09-18). Landed: `(uri percent)` — the percent mechanics —
+and its source+aot lane. Evidence: release 51/51 (was 49), no-scheme 11/11.
+Darwin arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3.
+
+`(uri percent)` (21 cases / 169 checks) is `pct-decode` (decode every valid
+`%XX`, case-insensitive hex in; a malformed `%` left byte-for-byte — total, per
+0011's non-validating stance), `pct-encode` (copy the bytes a caller's `safe?`
+predicate keeps, escape the rest as `%` + UPPERCASE hex, §2.1), `unreserved-byte?`
+(§2.3 exactly: ALPHA / DIGIT / - . _ ~, and `+` is NOT a mark), and the two hex
+primitives `hex-digit-value` / `nibble->hex-digit` that `(uri normalize)` reuses
+so the §6 policy does not re-derive the hex. Pure `(rnrs)`, bytevectors
+throughout (0010); the import-audit (a no-scheme lane) confirms `#!r6rs` and no
+`(chezscheme)`.
+
+VALIDATED: seven mutation witnesses, each watched red then reverted — the §2.3
+set (a stray `+` admitted), hex-input case-insensitivity (the a-f clause
+dropped), uppercase output (`nibble->hex-digit` lowercased), decode totality (a
+malformed `%` dropped instead of emitted), decode octet assembly (`16·hi+lo` →
+`hi+lo`), the encode predicate (ignored, everything left literal), and the range
+boundary (UP-A lowered by one to admit `@`). The last was added AFTER the review
+flagged it: the non-hex cases pinned only the far side of each hex range, so a
+widened lower bound would have slipped.
+
+ADVERSARIAL REVIEW (subagent, at the slice gate): no code defects. It traced the
+decode index guard `(fx<? (fx+ i 2) n)` at every tail position (`%` at
+n-1 / n-2 / n-3) and found it exactly right, confirmed `pct-encode` correct
+across all 256 octets, that nothing raises (totality holds), and that
+`unreserved-byte?` is exactly §2.3. Four nits, all closed here: the round-trip
+comment oversold a necessary-not-sufficient property (reworded to say so);
+`%3A == %3a` pinned neither side to the octet (both now pinned to 0x3A); the
+hex-boundary coverage gap (closed and witnessed, above); and the four §2.3 marks
+were magic numbers against the file's own naming convention (now
+HYPHEN / DOT / UNDERSCORE / TILDE). Its one un-realizable doubt — fixnum overflow
+on a bytevector whose length sits within 3 of most-positive-fixnum — cannot occur
+on the 64-bit shipping cells and cannot be constructed on 32-bit (a ~500 MB
+bytevector cannot coexist with a length that near the ceiling).
+
+GATE. Stopping here per the drive-to-gates cadence. Slice ① — `(uri normalize)`
+plus decision 0020 (the v0.1 normalization scope: scheme-case + percent-norm,
+host-case deferred) — awaits the maintainer's go-ahead.

@@ -879,6 +879,26 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
+# --- (uri percent): the pure percent mechanics (M5 Slice 0) ----------------
+#
+# The first M5 core library (design §5): percent decode/encode over bytevectors,
+# the §2.3 unreserved set, and the two hex primitives `(uri normalize)` reuses.
+# A pure `(rnrs)` library under src/, so the src library root the lane already
+# passes resolves it, and it runs in source and aot like every other Scheme
+# lane. No scanner and no generator are imported: it operates on bytevectors,
+# not on a parse, which is the whole point of the core/shell split (design §2).
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.percent.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/percent-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/percent.sls"
+            "${CMAKE_CURRENT_LIST_DIR}/common/percent-tests.sps"
+    TIMEOUT 120
+    LABELS unit)
+endforeach()
+
 # The corpus is DERIVED from the vendored RFC text (decision 0005). This lane
 # re-derives it and compares, so a hand edit to a vector -- the one thing that
 # would make a green lane meaningless -- reddens instead. It runs the same
