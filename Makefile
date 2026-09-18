@@ -18,7 +18,7 @@ CTEST_FLAGS ?= --output-on-failure --no-tests=error
 # Bare 'make' prints the target list rather than building; 'make all' still builds.
 .DEFAULT_GOAL := help
 
-.PHONY: all help doctor configure build dev test test-all no-scheme prod clean corpus-refresh
+.PHONY: all help doctor configure build dev test test-all no-scheme prod clean corpus-refresh parser-refresh
 
 all: build   ## build the development preset
 
@@ -71,6 +71,12 @@ prod:   ## configure and build the release preset
 # refresh cannot drift from the check that guards it.
 corpus-refresh:   ## re-derive the RFC 3986 corpus from the vendored text
 	$(CMAKE) -P cmake/UriCorpusRefresh.cmake
+
+# src/generated/uri-scanner.sls is DERIVED from src/uri/grammar.sls by one
+# emitter (decision 0002 item 4). This runs that emitter; the determinism lane
+# runs the same one and compares, so a grammar edit without a refresh reddens.
+parser-refresh:   ## re-emit the committed URI scanner from the grammar
+	$(CMAKE) -P cmake/UriParserRefresh.cmake
 
 clean:   ## remove all build trees
 	$(CMAKE) -E rm -rf build

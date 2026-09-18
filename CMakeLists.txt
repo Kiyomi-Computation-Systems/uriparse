@@ -34,9 +34,10 @@ if(URI_REQUIRE_CHEZ)
   uri_chez_discover()
 endif()
 
-# NOTE: there is no parser-refresh target yet. The byte-machine submodule and
-# the emitter land at M2 (decision 0002 item 2): nothing here invokes an
-# emitter, and an unused pin only rots.
+# The byte-machine submodule and the emitter landed at M2 (decision 0002 item 2).
+# `make parser-refresh` (cmake/UriParserRefresh.cmake) re-emits the committed
+# scanner from src/uri/grammar.sls; the determinism lane runs the same emitter
+# and compares, so a grammar edit without a refresh reddens.
 
 if(URI_BUILD_TESTS)
   enable_testing()
