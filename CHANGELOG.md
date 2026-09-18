@@ -5,6 +5,24 @@ been released; everything below is unreleased work toward v0.1.
 
 ## [Unreleased]
 
+### M5 — the core: percent coding and normalization
+
+- **`(uri percent)`** — percent decode/encode over bytevectors: `pct-decode`
+  (decode every valid `%XX`, leave a malformed `%` byte-for-byte — v0.1 is
+  non-validating), `pct-encode` (escape by a caller-supplied predicate, uppercase
+  hex), the §2.3 `unreserved-byte?` test, and the hex primitives the normalizer
+  reuses.
+- **`(uri normalize)`** — RFC 3986 §6.2.2 syntax-based normalization over the
+  five-field components: the scheme case fold, hex-digit uppercasing, and
+  decoding of percent-encoded *unreserved* octets. Host-case normalization is
+  **deferred** to the host grammar (v0.2) — the authority is not sub-parsed yet
+  and userinfo is case-sensitive — and dot-segment removal is reference
+  resolution (M6). Recorded as decision 0020 and pinned by tests, so the
+  deferrals cannot silently change.
+- Both libraries are pure R6RS over bytevectors (decision 0010), graded against
+  an oracle derived from RFC 3986 independently of the code, with mutation
+  witnesses watched red then reverted.
+
 ### M2 — the generic split, and the mode decision
 
 - **The scanner.** A byte-machine grammar that splits a URI reference into five

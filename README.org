@@ -12,11 +12,15 @@ An RFC 3986 URI parser for Chez Scheme, in portable R6RS.
 ✨ *AI Disclosure:* LLMs are used extensively in the planning and development of this project.
 #+end_quote
 
-** Status: M1 — the instrument, with no parser
+** Status: M5 — the split, and the core's percent + normalization
 
-*There is no parser yet.* What exists is the thing a parser will be measured
-with: the RFC's own vectors, the loader that reads them, the comparator, the
-two-way ratchet, and the harness and build layer around all of it.
+The scanner splits a URI reference into five components — scheme, authority,
+path, query, fragment — for all three modes (M2), and ~(uri collect)~ assembles
+them; the pure core now percent decodes/encodes and applies RFC 3986 §6.2.2
+syntax-based normalization (M5). Reference resolution and the §5.4 corpus are M6;
+the host grammar is v0.2. Standing behind it all (M1): the RFC's own vectors, the
+loader that reads them, the comparator, the two-way ratchet, and the harness and
+build layer.
 
 What this project will *not* claim until it is measured:
 
@@ -25,6 +29,11 @@ What this project will *not* claim until it is measured:
   ([[file:.plans/decisions/0011-v01-is-resolution-first.md][decision 0011]]).
   It will accept bytes the ABNF rejects, and says so here rather than in a
   footnote.
+- Not a full §6.2.2 normalizer. v0.1 normalizes the *scheme* case and
+  percent-encoding (uppercase hex, decode unreserved), but not *host* case —
+  that needs the host grammar (v0.2) — and it does not remove dot-segments until
+  reference resolution (M6)
+  ([[file:.plans/decisions/0020-v01-normalizes-scheme-and-percent-and-defers-host-case.md][decision 0020]]).
 - Not "portable". The source is R6RS and imports only ~(rnrs)~,
   ~(byte-machine ...)~ and its own libraries — asserted by a lane, not trusted
   — but no second implementation is in CI, and a property is measured or it is
@@ -64,7 +73,7 @@ M6 is gated on all 42 of its rows passing.
 ** Layout
 
 | ~.plans/~           | plans, and ~decisions/~ — the record of every choice a reader would otherwise reverse-engineer |
-| ~src/~              | the shipped libraries. Pure R6RS; empty until M2                                               |
+| ~src/~              | the shipped libraries, pure R6RS: the scanner, the seam, the shell, and the percent / normalize core |
 | ~test/conformance/~ | the derived corpus and the ratchet                                                             |
 | ~test/support/~     | the harness and the build-layer specifications                                                 |
 | ~docs/~             | user-facing documentation only                                                                 |
