@@ -168,6 +168,32 @@ and it is part of the scanner's public API — it is what the ratchet pins.
 **An error names the ABNF production that failed.** The offset comes free from
 `parser-error-offset`. Decision 0009 sets the rule and the v0.1 set.
 
+### 3.5 Three rules the spike turned up
+
+Each of these was found by watching something fail, not by reading the
+reference. They are cheap to obey and expensive to discover at M4.
+
+1. **Every success terminal in this grammar is a `finish`, never a `stop`.** A
+   `stop` node an EOF walk can reach is refused `eof-reachable-stop`
+   (`verify.sls`, pass-eof-execution). A URI may legally end at almost any
+   component boundary, so every one of those boundaries is on an EOF route, and
+   a `stop` anywhere among them fails verification. The spike's first draft used
+   `stop` after the verdict and drew four diagnostics.
+
+2. **Every delimiter edge is `reexecute`, never `advance`.** A span-end emits
+   `[mark, cursor)`. An `advance` on the delimiter moves the cursor past it
+   *before* the span closes, putting the delimiter inside the span. The spike's
+   first draft advanced on `:` and reported `foo:` as a **four**-byte scheme.
+   The delimiter is consumed by the node after the span-end, not by the edge
+   into it.
+
+3. **An empty fragment carries emptiness, not a position.** When a span closes
+   at `parser-finish!` the mark is re-anchored to 0 (byte-machine decision 0042
+   item 4), so `?` with an empty query reports `(0 0)` — not `(1 1)`. A
+   feed-boundary flush suppresses empty fragments, so the delivery happens at
+   the span-end. `(uri collect)` must read `from == to` as *present and empty*
+   and must never treat an empty fragment's `from` as an offset.
+
 ---
 
 ## 4. The scheme / first-segment ambiguity
@@ -306,12 +332,16 @@ R6RS.
 
 ## 8. Open questions carried forward
 
-1. **Does a callback node verify on an EOF route?** Mode 3's
-   `on-segment-confirmed` must fire when the input ends on the leading token
-   (`foo` alone). The route is `eof-target → span-end(leading-token) →
-   callback → finish`; `eof-step` follows zero-width continuations and
-   `span-active-at-exit` is satisfied by the close. Expected to verify; **check
-   it first at M2**, because the mode-3 design depends on it.
+1. ~~**Does a callback node verify on an EOF route?**~~ **Answered 2026-09-18 —
+   yes.** A spike built the exact shape (`eof-target → span-end → callback →
+   finish`) against byte-machine v0.6.0: it verifies, and feeding `foo` then
+   `parser-finish!` fires `on-token-data (0 3)`, `on-token-complete`,
+   `on-segment-confirmed`, reaching `finished`. Decision 0004's mode 3 holds as
+   written. The same spike witnessed decision 0008 item 4: `?` reports an empty
+   data fragment plus a completion, `a` reports nothing at all. It becomes a
+   lane at M2 rather than staying a loose file. Three constraints it turned up
+   are recorded in §3.5.
+
 2. **Is there an allocation lane?** It needs `statistics` / `sstats-bytes` and
    is Chez-only by construction. Decide at M1; if yes, say so where it is
    defined.
