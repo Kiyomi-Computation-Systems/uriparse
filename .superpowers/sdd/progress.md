@@ -631,5 +631,30 @@ independent of the code, each decision watched failing. v0.1 is a splitter with 
 complete-enough core, not a validator, and it says so (0011, 0020). The §5.4
 resolution ratchet does not move here — that is M6's (0011).
 
-GATE. The M5 branch (feat/m5-percent-normalization) is committed and green; push
-+ PR + the closing ritual are the maintainer's call (ask first).
+M5 MERGED (2026-09-18). PR #3 squash-merged to main as 8f94515; local main
+fast-forwarded; feat/m5-percent-normalization deleted local and remote. Merged on
+a RED linux-amd64 check, named as the documented Actions billing refusal (decision
+0017), not a test result — local evidence stands in its place (release 53/53,
+no-scheme 11/11). The maintainer authorised the closing ritual explicitly.
+
+REFLECTION. M5 was a pure-core milestone with a different risk profile from M2:
+no scanner, no byte-machine, no scaffolding — the risk was SCOPE correctness, and
+the milestone's shape was decided by what v0.1 can honestly do. Three things
+stand out. First, the maintainer's own question — "was deferring M3/M4 right,
+considering normalization?" — sharpened the scope: M3 (charset) is orthogonal to
+normalization, and only M4 (host) touches it, costing exactly ONE of §6.2.2's
+three transforms (host case), which is off the consumer's critical path, safer
+omitted than faked, and cleanly recoverable at M4. Decision 0020 records that.
+Second, the oracle-from-RFC discipline held again: the normalizer was graded
+against §6.2.2 derived independently of the code. Third — the milestone's most
+valuable catch — the merge-gate verification surfaced the M5→M6 ordering hazard:
+`pct-normalize` decodes `%2E` to a literal `.`, so M5 MANUFACTURES dot-segments,
+making normalize-before-resolve a security-relevant invariant. It was invisible
+to both per-slice reviews (each saw one library); only the cross-cutting
+completeness dimension found it. It is now in 0020, pinned by a test, and in the
+docstring, so M6's author cannot miss it.
+
+NEXT (M6). Reference resolution (§5.2), gated on the §5.4 corpus at 100% (0011).
+It consumes NORMALIZED components (0020's ordering note) and adds `(uri path)`
+(§5.2.4 remove_dot_segments, §5.2.3 merge) and `(uri resolve)` (§5.2.2). No M5
+debt carried forward — the tree is clean on main at 8f94515.
