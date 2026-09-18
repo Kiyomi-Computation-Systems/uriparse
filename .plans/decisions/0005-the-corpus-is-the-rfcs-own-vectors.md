@@ -2,6 +2,9 @@
 
 Date: 2026-09-18
 Status: accepted
+Amended by: [0012](0012-the-corpus-instruments-abnfgen-and-mutation.md) (item 4),
+[0013](0013-wpt-url-test-data-is-an-input-only-corpus.md) (a second input-only corpus),
+[0015](0015-errata-4547-and-5428-are-adjudicated-against-the-abnf.md) (two disputed vectors)
 Plan: [the brief](../2026-09-18-chez-uri-project-brief.md), M1
 
 ## Context

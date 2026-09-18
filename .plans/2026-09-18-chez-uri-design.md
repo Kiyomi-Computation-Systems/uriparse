@@ -3,7 +3,7 @@
 Date: 2026-09-18
 Status: accepted — supersedes nothing; realises
 [the project brief](2026-09-18-chez-uri-project-brief.md)
-Decisions: [0001 through 0011](decisions/)
+Decisions: [0001 through 0015](decisions/)
 
 The brief says what to build and why it is its own repository. This document
 says what the thing *is*: the constraints the generator actually imposes, the
@@ -314,7 +314,29 @@ fallback.
 
 ---
 
-## 7. Portability
+## 7. The instrument (decisions 0005, 0012, 0013, 0014, 0015)
+
+There is no RFC 3986 conformance corpus with provenance — nothing plays the role
+llhttp played for `chez-httparse`. Five instruments replace it, each with one
+job, and naming the jobs separately is what stops the fifth quietly becoming an
+oracle.
+
+| instrument | job | provenance | gates a milestone? |
+|---|---|---|---|
+| RFC §5.4 / §5.2.4 / §1.1.2 vectors | is resolution **correct** | normative | **yes** — M6 is 100% or not done |
+| abnfgen over Appendix A | every valid shape parses | the normative grammar | yes, under per-production floors |
+| charset-aware mutation of the above | every invalid shape is rejected, **at the right offset** | ours, derived | yes |
+| WPT `urltestdata.json`, inputs only | robustness | adversarial, BSD-3-Clause | no pass count, by design |
+| uriparser, local + opt-in | **finds work for the other four** | none — not an authority | **no** |
+
+The first four carry v0.1 on their own. The fifth is a search heuristic over an
+input space nothing else can survey, and decision 0014 item 3 is what keeps it
+one: the lane fails on an *unclassified* disagreement, never on a disagreement.
+
+Two errata land on the first row and are rejected against the ABNF before
+transcription, not after a lane goes red — decision 0015.
+
+## 8. Portability
 
 Decision 0007. `src/` imports `(rnrs)`, `(byte-machine …)` and this project's
 own libraries, asserted by a lane rather than trusted.
@@ -330,7 +352,7 @@ R6RS.
 
 ---
 
-## 8. Open questions carried forward
+## 9. Open questions carried forward
 
 1. ~~**Does a callback node verify on an EOF route?**~~ **Answered 2026-09-18 —
    yes.** A spike built the exact shape (`eof-target → span-end → callback →
