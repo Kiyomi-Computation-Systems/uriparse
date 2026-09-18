@@ -214,6 +214,14 @@
       (lambda ()
         (check-equal "///p authority empty"  (pr-span (parse 1 "http:///p") 'authority) "")
         (check-equal "/p   authority absent" (pr-span (parse 1 "http:/p")   'authority) #f)))
+    ;; The authority fires empty however it terminates -- a "/", EOF, "?" or "#"
+    ;; after "//" all leave an empty (present) authority, not an absent one.
+    (harness-case "an empty authority is empty at EOF and before ?/# too"
+      (lambda ()
+        (check-equal "http:// (eof)"   (pr-span (parse 1 "http://")   'authority) "")
+        (check-equal "// (eof, mode 2)" (pr-span (parse 2 "//")        'authority) "")
+        (check-equal "http://?q"       (pr-span (parse 1 "http://?q") 'authority) "")
+        (check-equal "http://#f"       (pr-span (parse 1 "http://#f") 'authority) "")))
     (harness-case "empty query is not absent query"
       (lambda ()
         (check-equal "a? query empty" (pr-span (parse 1 "http://a?") 'query) "")

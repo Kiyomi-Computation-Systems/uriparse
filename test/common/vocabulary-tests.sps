@@ -60,7 +60,7 @@
 
     (harness-case "every span names both a data and a completion callback"
       (lambda ()
-        ;; Decision 0008 item 5. Both, and distinct, for all eight.
+        ;; Decision 0008 item 5. Both, and distinct, for all six.
         (for-each
          (lambda (span)
            (let ((d (uri-span-data-callback span))
@@ -99,7 +99,7 @@
     ;; The whole vocabulary, pinned by identity, not just by count and shape.
     ;; The grammar, the harness and an embedder all bind these exact names, so a
     ;; row mistyped to a self-consistent but wrong name (still a symbol, still
-    ;; distinct, count still 18) is caught here.
+    ;; distinct, count still 15) is caught here.
     (harness-case "every callback name is the one the span dictates, in order"
       (lambda ()
         (check-equal "names" uri-callback-names

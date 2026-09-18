@@ -411,4 +411,35 @@ assembles the five-field components. Two forced design decisions along the way:
 0018 (`on-rooted` recovers a path-absolute's slash) and 0019 (the rebalance --
 the scanner does the coarse split, the core owns the authority sub-split and the
 host grammar). The §5.4 resolution ratchet does NOT move here -- it is M6's
-(decision 0011). NEXT: the merge gate, then the closing ritual (ask first).
+(decision 0011).
+
+M2 ULTRA REVIEW (2026-09-18, at the merge gate). A six-dimension multi-agent
+adversarial pass -- scanner, collect+components, decision fidelity, test quality,
+byte-machine ABI/emitter, build/lanes -- each non-nit finding then VERIFIED by an
+adversary re-running the code. Nine findings raised; **no code defects**. The
+scanner, collect, ABI and build dimensions surfaced no real code bug (a claimed
+fingerprint-manifest over-claim was refuted on verification). Two should-fix,
+both DECISION-RECORD / COMMENT fidelity, plus worthwhile nits, all closed here:
+
+  - 0009 now carries an in-place amendment note (its item 6 still listed
+    invalid-ip-literal as a scanner error; 0019 moved it to the core) -- matching
+    how 0008 was amended, so a reader of 0009 is no longer misled on the scanner's
+    v0.1 error vocabulary.
+  - grammar.sls no longer files invalid-ip-literal to the cancelled Slice ①b (it
+    is the core's, 0019 item 5); its callbacks comment now says six spans / three
+    verdict events, not five / one.
+  - vocabulary-tests comments corrected (six / 15, not eight / 18); the
+    determinism import-hygiene check now names all four forbidden upstream
+    libraries (verify and interpret were missing); the top-level CMakeLists NOTE
+    that claimed there is no emitter is rewritten.
+  - A real coverage gap closed: an empty authority was pinned only when a `/`
+    followed (`http:///p`); it is now pinned at EOF and before `?`/`#` too
+    (`http://`, `//`, `http://?q`, `http://#f`) in the grammar and collect suites
+    -- the review verified the code already handled these; the tests were silent.
+
+Evidence after fixes: grammar 84/553, collect 42/105, determinism 34/38, release
+49/49, no-scheme 11/11; committed artifact unchanged (comments are not emitted).
+The review found the CODE sound to merge; only records and tests needed touch-ups.
+
+NEXT: the merge gate is passed on the review; awaiting the maintainer's word on
+the PR / closing ritual (ask first).

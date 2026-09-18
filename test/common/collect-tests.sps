@@ -115,7 +115,9 @@
     (harness-case "empty authority is #vu8(), absent authority is #f"
       (lambda ()
         (check "///p empty"  (uri-component-empty?  (auth "http:///p" 'uri)))
-        (check "/p absent"   (uri-component-absent? (auth "http:/p"   'uri)))))
+        (check "/p absent"   (uri-component-absent? (auth "http:/p"   'uri)))
+        (check "http:// empty (eof)"        (uri-component-empty? (auth "http://" 'uri)))
+        (check "// empty (eof, rel)"        (uri-component-empty? (auth "//" 'relative-ref)))))
     (harness-case "empty query is #vu8(), absent query is #f"
       (lambda ()
         (check "a? empty"    (uri-component-empty?  (query "http://a?")))

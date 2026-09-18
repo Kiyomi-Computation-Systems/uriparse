@@ -108,9 +108,11 @@
 (harness-case "the committed artifact imports the runtime and nothing above it"
   (lambda ()
     (let ((text (utf8->string committed-bytes)))
-      (check "imports runtime" (find-substring text "(byte-machine runtime)"))
-      (check "not the compiler" (not (find-substring text "(byte-machine compile)")))
-      (check "not the builder"  (not (find-substring text "(byte-machine graph)"))))))
+      (check "imports runtime"   (find-substring text "(byte-machine runtime)"))
+      (check "not the compiler"  (not (find-substring text "(byte-machine compile)")))
+      (check "not the builder"   (not (find-substring text "(byte-machine graph)")))
+      (check "not the verifier"  (not (find-substring text "(byte-machine verify)")))
+      (check "not the interpreter" (not (find-substring text "(byte-machine interpret)"))))))
 
 ;; THE GATE READS THE ARTIFACT. uri-scanner-machine is the committed library's
 ;; own compiled machine; running it and the interpreter through `decompose` and

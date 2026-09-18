@@ -53,7 +53,8 @@
      'uri-scanner 'm-dispatch
      ;; fields: the mode selector (decision 0004), width from the vocabulary
      (list (make-uint-field 'mode uri-mode-width 0 #t #f))
-     ;; callbacks: five spans' data+complete, and the rooted verdict event
+     ;; callbacks: six spans' data+complete, and three verdict events
+     ;; (on-rooted, and the two mode-3 scheme/segment confirmations)
      (list (make-callback-declaration 'on-scheme-data     'span-data     #f '() #f #f)
            (make-callback-declaration 'on-scheme-complete  'span-complete #f '() #f #f)
            (make-callback-declaration 'on-authority-data   'span-data     #f '() #f #f)
@@ -76,8 +77,10 @@
            (make-span-declaration 'path     'on-path-data     'on-path-complete     #f)
            (make-span-declaration 'query    'on-query-data    'on-query-complete    #f)
            (make-span-declaration 'fragment 'on-fragment-data 'on-fragment-complete #f))
-     ;; errors: the Slice ① reachable set (decision 0009). invalid-ip-literal is
-     ;; Slice ①b's; unexpected-eof is the mandatory machine default.
+     ;; errors: the scanner's four structural codes (decisions 0009, 0019).
+     ;; invalid-ip-literal and the other host/charset codes are the CORE's, not
+     ;; the scanner's (0019 item 5); unexpected-eof is the mandatory machine
+     ;; default.
      (list (make-error-declaration 'e-mode-unset      'mode-unset      "no parse mode was chosen" #f)
            (make-error-declaration 'e-scheme-required 'scheme-required "expected a scheme terminated by \":\"" #f)
            (make-error-declaration 'e-scheme-forbidden 'scheme-forbidden "a \":\" in the first segment of a relative reference" #f)

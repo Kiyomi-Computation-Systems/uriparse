@@ -1,9 +1,17 @@
 # 0009: an error names the ABNF production that failed
 
 Date: 2026-09-18
-Status: accepted
+Status: accepted, then **amended in part by [0019](0019-the-scanner-splits-five-coarse-components-and-the-core-owns-the-authority.md)**
 Plan: [the design](../2026-09-18-chez-uri-design.md) §3.4
 References: `chez-httparse` decision 0013 (the shape this replaces)
+
+> **Amendment (0019).** Item 6 lists `invalid-ip-literal` in v0.1's structural
+> set, but 0019 moved the host grammar into the core, so `invalid-ip-literal` is
+> now a CORE error, not a scanner one. The SCANNER's error vocabulary is the four
+> structural codes -- `mode-unset`, `scheme-required`, `scheme-forbidden`,
+> `unexpected-eof`. The rule (an error names the production; the offset is not
+> part of the identity; structural and charset failures are distinct codes) is
+> unchanged and now governs both the scanner's four codes and the core's set.
 
 ## Context
 
