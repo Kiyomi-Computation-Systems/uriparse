@@ -5,6 +5,39 @@ been released; everything below is unreleased work toward v0.1.
 
 ## [Unreleased]
 
+### M2 — the generic split, and the mode decision
+
+- **The scanner.** A byte-machine grammar that splits a URI reference into five
+  coarse components — scheme, authority, path, query, fragment — for all three
+  modes (URI, relative-ref, uri-reference), on delimiters only, judged against an
+  oracle derived independently from RFC 3986's ABNF. It ships as a committed,
+  reviewable `(generated uri-scanner)` artifact (generated ABI 9) with a
+  determinism lane that re-emits, reads the ABI back out, and runs the artifact
+  itself against the reference interpreter.
+- **The five libraries the design named**: `(uri vocabulary)` (the agreed span,
+  callback and error names, and the mode integers), `(uri grammar)` (the source
+  machine), `(generated uri-scanner)`, `(uri components)` (the five-field seam
+  type, where absent `#f` is never conflated with present-empty `#vu8()`), and
+  `(uri collect)` (the shell that assembles components, streaming or one-shot).
+- **byte-machine lands as a submodule** pinned to v0.6.0, with `tools/emit-machine.ss`,
+  two ABI-9 assertion lanes and the determinism lane (decision 0002), plus a
+  src import-audit lane that keeps `src/` pure R6RS (decision 0007).
+- **Two forced design decisions.** byte-machine's forward-only model cannot keep
+  a leading `/` both as the delimiter of `//`-authority and as path content, so a
+  path-absolute's dropped `/` is recovered by an `on-rooted` event (decision
+  0018); and, rather than fight the machine to sub-split the authority, the
+  scanner emits the five coarse components and the core owns userinfo/host/port
+  and the host grammar (decision 0019, redrawing the functional-core line).
+- **The scheme / first-segment ambiguity** (mode 3) is resolved with a neutral
+  `leading-token` span closed at the delimiter, then a zero-width verdict —
+  `on-scheme-confirmed` or `on-segment-confirmed` (decision 0004).
+- **Mutation witnesses throughout**, including the two that pin the hardest
+  properties: a path-absolute's `on-rooted` recovery (caught in the grammar and
+  the determinism artifact at once) and collect's copy discipline (a non-copying
+  shell fails only the buffer-reuse case).
+- The RFC §5.4 resolution ratchet does **not** move here — resolution is M6, and
+  v0.1 is resolution-first (decision 0011).
+
 ### M1 — the instrument, with no parser
 
 - **The design and decisions 0001–0015.** The layer split, the scanner's span

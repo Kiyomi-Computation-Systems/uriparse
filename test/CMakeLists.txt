@@ -853,6 +853,32 @@ uri_add_scheme_lane(
   TIMEOUT 180
   LABELS determinism)
 
+# --- (uri collect): the shell (M2 Slice ③) ---------------------------------
+#
+# The imperative shell: it feeds bytes to the committed scanner and assembles a
+# five-field uri-components, reading the on-rooted and verdict signals. Judged on
+# the assembly (the scanner is judged in unit.grammar), plus the section 1.1.2
+# example URIs parsing through it from the derived corpus.
+set(URI_COLLECT ${URI_VOCABULARY}
+                "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/components.sls"
+                "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/collect.sls")
+
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.collect.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/collect-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
+            ${URI_COLLECT}
+            ${URI_GENERATED_PARSER}
+            ${URI_CORPUS_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/collect-tests.sps"
+    ENVIRONMENT "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+    TIMEOUT 180
+    LABELS unit)
+endforeach()
+
 # The corpus is DERIVED from the vendored RFC text (decision 0005). This lane
 # re-derives it and compares, so a hand edit to a vector -- the one thing that
 # would make a green lane meaningless -- reddens instead. It runs the same

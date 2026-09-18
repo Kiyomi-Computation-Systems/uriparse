@@ -369,3 +369,46 @@ existing grammar and determinism lanes); artifact 22620 -> 28766 bytes, ABI 9,
 `make parser-refresh` idempotent. The scanner now splits all three modes into the
 five coarse components; only `(uri collect)` and the property/example instrument
 remain before the merge gate.
+
+SLICE ③ COMPLETE (2026-09-18). `(uri collect)`, the imperative shell -- the last
+of the design's five M2 libraries. It feeds bytes to the committed scanner,
+COPIES each delivered fragment (valid only for the callback's dynamic extent),
+and assembles the five-field `uri-components`, reading the out-of-band signals:
+`on-rooted` prepends a path-absolute's dropped `/`, and the mode-3 verdict says
+whether the leading token is the scheme or the first path segment (path =
+leading-token stitched onto the path span). It offers a streaming interface
+(make-uri-collector / uri-collect-feed! / uri-collect-finish!) with `uri-parse`
+as a one-shot convenience. This meets the M2 exit criterion: chez-http-server can
+route on `(uri-components-path ...)` and read `(uri-components-query ...)`.
+
+VALIDATED: `unit.collect` (42 cases / 103 checks) judges the ASSEMBLY, the
+scanner being judged in unit.grammar. It covers the components across modes 1/2/3
+(verdict-based scheme and path stitching, the rooted slash), the absent-vs-empty
+distinction carried into the fields, the errors surfacing with `#f` components,
+chunk-invariance at the collect level (fed one byte at a time through the
+streaming interface, so multi-fragment spans are exercised), and the §1.1.2
+example URIs parsing through from the DERIVED corpus. The property lane the
+design asks for is now covered three ways: scanner chunk-invariance (grammar),
+collect chunk-invariance, and the committed-artifact differential (determinism).
+
+ADVERSARIAL REVIEW: no code blockers -- the assembly is correct and honours every
+decision, and a six-mutation battery confirmed the suite catches every assembly
+bug. It found ONE test gap: the COPY discipline (design §2, 0018 item 4) shipped
+green even with the copy removed, because feeding slices of one immutable buffer
+never distinguishes a copy from a retained reference. Closed with a buffer-REUSE
+case that refills the same buffer between feeds; witnessed cleanly by a
+deferred-slice mutation that fails ONLY that case while the other 41 pass. Two
+nits also closed (an empty-fragment pair; the scheme-required error's offset and
+absent components; the bad-mode raise). Evidence: release 49/49, no-scheme 11/11.
+
+M2 SHIPPED (pending the merge gate). The generic split: five libraries -- `(uri
+vocabulary)`, `(uri grammar)`, the committed `(generated uri-scanner)` (ABI 9),
+`(uri components)`, `(uri collect)`. The byte-machine submodule pinned at v0.6.0
+with the emitter, the two ABI lanes and the determinism lane. The scanner splits
+scheme / authority / path / query / fragment (+ the mode-3 leading token) for all
+three modes, delimiter-only, judged against an ABNF-derived oracle; collect
+assembles the five-field components. Two forced design decisions along the way:
+0018 (`on-rooted` recovers a path-absolute's slash) and 0019 (the rebalance --
+the scanner does the coarse split, the core owns the authority sub-split and the
+host grammar). The §5.4 resolution ratchet does NOT move here -- it is M6's
+(decision 0011). NEXT: the merge gate, then the closing ritual (ask first).
