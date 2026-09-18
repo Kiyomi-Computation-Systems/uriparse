@@ -31,7 +31,9 @@ been released; everything below is unreleased work toward v0.1.
   byte-machine and is measured there; the one thing this project allocates,
   `(uri collect)`, allocates on purpose.
 - **CI**: one Linux amd64 cell plus the no-Scheme build layer, Chez built from
-  source and cached.
+  source and cached — **configured and committed, but never run.** The billed
+  minutes for the month are exhausted, so M1's evidence is macOS arm64 locally
+  and nothing else. Deferred means not run, not passing: decision 0017.
 - **The build layer**, ported from chez-httparse under decision 0001's rename
   map: CMake presets, the Makefile, Chez discovery, the source and
   ahead-of-time lanes, and the harness.
