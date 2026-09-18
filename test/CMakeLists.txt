@@ -158,6 +158,35 @@ file(MAKE_DIRECTORY "${URI_HARNESS_OBJECT_GUARD_DIR}")
 # parser slice lands; the lane machinery requires the directory to exist.
 set(URI_SRC_CHEZ_LIBRARY_ROOT "${CMAKE_SOURCE_DIR}/src")
 
+# --- The generator (decision 0002) -----------------------------------------
+#
+# byte-machine is a submodule pinned by gitlink at vendor/byte-machine. Its src
+# is the library root for `(byte-machine ...)`; the collection under it is where
+# the .sls files live. Setting this root is what puts the generator on every
+# Chez lane's library path (uri_scheme_lane_command adds it when set) and turns
+# the aot generator object-dir on. It arrives now, in the first slice that
+# invokes the emitter -- an unexercised root rots exactly as an unexercised pin
+# does (decision 0002 item 2). A set-but-missing root is a checkout mistake the
+# lane machinery reports; the submodule is committed, so `git submodule update
+# --init` is the fix.
+set(URI_GENERATOR_CHEZ_LIBRARY_ROOT "${CMAKE_SOURCE_DIR}/vendor/byte-machine/src")
+set(URI_GENERATOR_COLLECTION
+    "${CMAKE_SOURCE_DIR}/vendor/byte-machine/src/byte-machine")
+# The generator libraries a lane executes, in dependency order -- the order is
+# load-bearing because the fingerprint combine is order-sensitive. Named
+# explicitly rather than globbed: the fingerprint must describe exactly the text
+# the pin carries, and a glob would silently absorb a file the pin added.
+set(URI_GENERATOR_SOURCES
+    "${URI_GENERATOR_COLLECTION}/private/conditions.sls"
+    "${URI_GENERATOR_COLLECTION}/private/names.sls"
+    "${URI_GENERATOR_COLLECTION}/private/ir.sls"
+    "${URI_GENERATOR_COLLECTION}/private/normal-ir.sls"
+    "${URI_GENERATOR_COLLECTION}/runtime.sls"
+    "${URI_GENERATOR_COLLECTION}/graph.sls"
+    "${URI_GENERATOR_COLLECTION}/verify.sls"
+    "${URI_GENERATOR_COLLECTION}/interpret.sls"
+    "${URI_GENERATOR_COLLECTION}/compile.sls")
+
 # The sources every harness lane executes -- the two libraries; each lane
 # appends its own program. Named once: a lane that listed them itself would
 # drift, and a manifest that drifts is one that quietly stops describing the
@@ -723,6 +752,53 @@ foreach(mode source aot)
     TIMEOUT 120
     LABELS unit)
 endforeach()
+
+# --- The M2 pure seam ------------------------------------------------------
+#
+# The first product code (decision 0008, 0004, 0009): the vocabulary the
+# grammar, the harness and an embedder agree on, and the components type the
+# scanner fills and the core reads. Both are pure `(rnrs)` libraries under src/,
+# so the src library root the lane already passes resolves them, and both run in
+# source and aot modes like every other Scheme lane. No grammar and no
+# generator are imported here -- these are the parts of M2 that stand alone.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.vocabulary.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/vocabulary-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/vocabulary.sls"
+            "${CMAKE_CURRENT_LIST_DIR}/common/vocabulary-tests.sps"
+    TIMEOUT 120
+    LABELS unit)
+
+  uri_add_scheme_lane(
+    NAME uri.unit.components.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/components-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/components.sls"
+            "${CMAKE_CURRENT_LIST_DIR}/common/components-tests.sps"
+    TIMEOUT 120
+    LABELS unit)
+endforeach()
+
+# The generator ABI (decision 0002 item 3), the first of the two lanes it asks
+# for. This one reads the ABI out of a FRESHLY emitted smoke machine; the second
+# reads it out of the committed artifact and arrives with the grammar. Source
+# only: the lane asks "is the pin wired and speaking ABI 9", which is the same
+# question in both modes, and an aot twin would compile the whole generator per
+# lane to re-answer it. The source/aot pair returns with the first real grammar,
+# where it has something to prove.
+uri_add_scheme_lane(
+  NAME uri.unit.generator-abi.chez.source
+  BACKEND chez
+  PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/generator-abi-tests.sps"
+  SOURCES ${URI_HARNESS_MANIFEST}
+          ${URI_GENERATOR_SOURCES}
+          "${CMAKE_CURRENT_LIST_DIR}/common/generator-abi-tests.sps"
+  TIMEOUT 180
+  LABELS unit)
 
 # The corpus is DERIVED from the vendored RFC text (decision 0005). This lane
 # re-derives it and compares, so a hand edit to a vector -- the one thing that
