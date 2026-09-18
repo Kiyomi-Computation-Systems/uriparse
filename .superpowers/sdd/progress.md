@@ -305,3 +305,35 @@ sequence already carries; the dropped `/` is genuinely new information the
 sequence cannot carry). Ambiguity 2 (userinfo/host/port) is the same family and
 may want the same event/neutral-span pattern. Holding both for one consolidated
 design checkpoint rather than interrupting twice.
+
+REBALANCE (2026-09-18, decision 0019) -- the newest beat, after Slice ① merged
+and the `@` research came back. Presenting ambiguity 2, the maintainer asked the
+load-bearing question: is byte-machine the right kind of parser here at all,
+given two forward-only impossibilities in the FIRST parsing slice? For the
+structured parts, no. With the bytes in hand both splits are trivial (RFC 3986's
+own Appendix B is one regex; the authority sub-split is find-`@`/find-`:`/slice);
+what makes them hard is byte-machine's no-lookahead/no-rewind model, and a URI is
+small and bounded, so the streaming thesis is thin. The real error was WHERE the
+functional-core line was drawn. Chosen from three options ("rebalance to the
+core"): the SCANNER splits the five coarse components (scheme, authority, path,
+query, fragment) plus the mode-3 leading-token; userinfo/host/port and the whole
+host grammar (the brief's feared 150-250-node IPv6) become pure CORE functions
+over the `authority` field -- addable anytime with no scanner-ABI churn, which
+also dissolves the breaking-change worry that drove 0008's eight-spans-at-M2.
+A rebalance, not a replacement: byte-machine keeps the streaming coarse split.
+
+LANDED: decision 0019; 0008 (span model) and the design (§3.1, §5, §6) amended
+in place with pointers; the `host` span renamed `authority` and re-emitted;
+`(uri vocabulary)` narrowed to SIX scanner spans, fifteen callbacks, four scanner
+errors (`invalid-ip-literal` moves to the core with the host grammar); every
+test updated. **Slice ①b (a scanner sub-split) is CANCELLED** -- the sub-split
+is core work at M4/M5. `uri-components` needed no change (0008 item 7 already had
+five fields with `authority` as one; the stack now agrees with it). Evidence:
+release 47/47, no-scheme 11/11 (a rename + vocabulary narrowing, no lanes moved);
+grammar 59/350, determinism 26, vocabulary 18/71, all green.
+
+REVISED REMAINING PLAN: Slice ② -- mode 3 (the leading-token scanner + the
+scheme/segment verdict events, decision 0004). Slice ③ -- `(uri collect)` -> the
+five-field uri-components, the property/chunk-invariance lane, the §1.1.2
+example-URIs parse-through. Then the merge gate. The authority sub-split and host
+grammar are core milestones (M4/M5), no longer M2 scanner work.

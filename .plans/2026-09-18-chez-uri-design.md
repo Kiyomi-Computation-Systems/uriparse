@@ -3,7 +3,19 @@
 Date: 2026-09-18
 Status: accepted — supersedes nothing; realises
 [the project brief](2026-09-18-chez-uri-project-brief.md)
-Decisions: [0001 through 0016](decisions/)
+Decisions: [0001 through 0019](decisions/)
+
+> **Amended by the forward-only findings of M2 (decisions 0018, 0019).** §3.1's
+> eight-span scanner is superseded: byte-machine's forward-only model cannot
+> split `//`-authority from a `/` path-absolute, nor userinfo from host, without
+> workarounds — so the SCANNER splits the five coarse components (scheme,
+> authority, path, query, fragment) plus the mode-3 `leading-token`, and
+> userinfo/host/port and the whole host grammar (§6's M4) move into the pure
+> core as functions over the `authority` field. A path-absolute's dropped leading
+> `/` is recovered by the `on-rooted` event (0018). §5's library table and §6's
+> milestone sizing shift accordingly. The rest of this document — the layer
+> thesis (§2), the modes (§3.3), the errors' shape (§3.4), the core (§5), v0.1's
+> stopping point (§6) — stands.
 
 The brief says what to build and why it is its own repository. This document
 says what the thing *is*: the constraints the generator actually imposes, the

@@ -6,20 +6,21 @@
 ;;; graph)` (the builder) and `(uri vocabulary)` (the agreed integers), and it is
 ;;; never on the shipped runtime path.
 ;;;
-;;; SLICE ① scope: modes 1 (URI) and 2 (relative-ref), delimiter-only. It opens
-;;; five spans -- scheme, host, path, query, fragment -- and fires the `on-rooted`
-;;; verdict event. The `host` span is the WHOLE authority (userinfo/host/port are
-;;; not sub-split until Slice ①b); this is exact wherever an authority is just a
-;;; host. Mode 3 (uri-reference) and the leading-token span are Slice ②.
+;;; SCOPE (modes 1 & 2, delimiter-only): the scanner splits the five coarse RFC
+;;; 3986 components. It opens `scheme`, `authority`, `path`, `query`, `fragment`
+;;; and fires `on-rooted`. The `authority` span is the whole authority between
+;;; `//` and the path; userinfo/host/port are the CORE's, split from its bytes
+;;; (decision 0019). Mode 3 and the `leading-token` span are Slice ②.
 ;;;
 ;;; THE `//` IMPOSSIBILITY AND `on-rooted` (decision 0018). A leading `/` after a
 ;;; scheme is a delimiter in `//h` but path content in `/p`, and byte-machine
 ;;; cannot keep it both ways (forward-only, no rewind, the span mark is the
-;;; cursor at open). So the host span carries authority presence byte-perfectly
-;;; and a path-absolute's leading `/` is dropped from the path span and recovered
-;;; by the zero-width `on-rooted` event, which `(uri collect)` reads to prepend
-;;; the `/`. Verified in the session's verdict-spike; the pre-open alternative
-;;; fires a phantom `//` path fragment on every authority case and is worse.
+;;; cursor at open). So the authority span carries authority presence
+;;; byte-perfectly and a path-absolute's leading `/` is dropped from the path
+;;; span and recovered by the zero-width `on-rooted` event, which `(uri collect)`
+;;; reads to prepend the `/`. Verified in the session's verdict-spike; the
+;;; pre-open alternative fires a phantom `//` path fragment on every authority
+;;; case and is worse.
 ;;;
 ;;; GRAMMAR-AUTHOR RULE (verify.sls, non-eof-into-finish): a byte edge may not
 ;;; target `finish`; only an EOF transition may. Every arm reaches `done` through
@@ -53,8 +54,8 @@
      ;; callbacks: five spans' data+complete, and the rooted verdict event
      (list (make-callback-declaration 'on-scheme-data     'span-data     #f '() #f #f)
            (make-callback-declaration 'on-scheme-complete  'span-complete #f '() #f #f)
-           (make-callback-declaration 'on-host-data        'span-data     #f '() #f #f)
-           (make-callback-declaration 'on-host-complete    'span-complete #f '() #f #f)
+           (make-callback-declaration 'on-authority-data   'span-data     #f '() #f #f)
+           (make-callback-declaration 'on-authority-complete 'span-complete #f '() #f #f)
            (make-callback-declaration 'on-path-data        'span-data     #f '() #f #f)
            (make-callback-declaration 'on-path-complete    'span-complete #f '() #f #f)
            (make-callback-declaration 'on-query-data       'span-data     #f '() #f #f)
@@ -64,7 +65,7 @@
            (make-callback-declaration 'on-rooted           'event         #f '() #f #f))
      ;; spans (Slice ① subset): each carries both callbacks (decision 0008 item 5)
      (list (make-span-declaration 'scheme   'on-scheme-data   'on-scheme-complete   #f)
-           (make-span-declaration 'host     'on-host-data     'on-host-complete     #f)
+           (make-span-declaration 'authority 'on-authority-data 'on-authority-complete #f)
            (make-span-declaration 'path     'on-path-data     'on-path-complete     #f)
            (make-span-declaration 'query    'on-query-data    'on-query-complete    #f)
            (make-span-declaration 'fragment 'on-fragment-data 'on-fragment-complete #f))
@@ -111,10 +112,12 @@
       ;; the dropped leading "/" is announced here, then path opens past it
       (make-callback-node 'say-rooted 'on-rooted 'path-open '() 'path-open #f)
 
-      ;; --- the authority as one host span (Slice ①) ------------------------
-      (make-span-start-node 'auth-open 'host 'host-scan #f)
-      (scan 'host-scan (list (kase (set* SLASH QUESTION HASH) (rex 'host-close))) 'host-close)
-      (make-span-end-node 'host-close 'host 'path-open #f)
+      ;; --- the authority as one coarse span (decision 0019) ----------------
+      ;; The whole authority between "//" and the path; userinfo/host/port are
+      ;; the core's, split from this span's bytes.
+      (make-span-start-node 'auth-open 'authority 'auth-scan #f)
+      (scan 'auth-scan (list (kase (set* SLASH QUESTION HASH) (rex 'auth-close))) 'auth-close)
+      (make-span-end-node 'auth-close 'authority 'path-open #f)
 
       ;; --- the path (shared; ":" is a legal pchar) -------------------------
       (make-span-start-node 'path-open 'path 'path-scan #f)

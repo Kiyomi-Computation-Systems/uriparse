@@ -55,7 +55,7 @@
     (define (done-cb name) (lambda (p c) (set! completes (cons name completes)) callback-continue))
     (define bindings
       (list (list 'on-scheme-data (data-cb 'scheme)) (list 'on-scheme-complete (done-cb 'scheme))
-            (list 'on-host-data (data-cb 'host)) (list 'on-host-complete (done-cb 'host))
+            (list 'on-authority-data (data-cb 'authority)) (list 'on-authority-complete (done-cb 'authority))
             (list 'on-path-data (data-cb 'path)) (list 'on-path-complete (done-cb 'path))
             (list 'on-query-data (data-cb 'query)) (list 'on-query-complete (done-cb 'query))
             (list 'on-fragment-data (data-cb 'fragment)) (list 'on-fragment-complete (done-cb 'fragment))

@@ -42,17 +42,21 @@
 
 (harness-group "spans"
   (lambda ()
-    (harness-case "eight spans, all declared, in decision 0008's order"
+    (harness-case "six scanner spans, in decision 0019's order"
       (lambda ()
-        (check-equal "count" (length uri-span-names) 8)
+        (check-equal "count" (length uri-span-names) 6)
         (check-equal "names" uri-span-names
-                     '(scheme leading-token userinfo host port path query fragment))))
+                     '(scheme leading-token authority path query fragment))))
 
-    (harness-case "there is no authority span"
+    (harness-case "authority is one coarse span; userinfo/host/port are the core's"
       (lambda ()
-        ;; Decision 0008 item 3: the presence of `host` is the presence of the
-        ;; authority. An `authority` span would nest, which the verifier refuses.
-        (check "authority is not a span" (not (uri-span-name? 'authority)))))
+        ;; Decision 0019 revised 0008 item 3: the scanner emits ONE authority
+        ;; span, and userinfo/host/port are pure core functions over it, not
+        ;; scanner spans.
+        (check "authority is a span"    (uri-span-name? 'authority))
+        (check "userinfo is not a span" (not (uri-span-name? 'userinfo)))
+        (check "host is not a span"     (not (uri-span-name? 'host)))
+        (check "port is not a span"     (not (uri-span-name? 'port)))))
 
     (harness-case "every span names both a data and a completion callback"
       (lambda ()
@@ -72,13 +76,14 @@
       (lambda ()
         (check-equal "scheme data"     (uri-span-data-callback 'scheme) 'on-scheme-data)
         (check-equal "scheme complete" (uri-span-complete-callback 'scheme) 'on-scheme-complete)
-        (check-equal "host data"       (uri-span-data-callback 'host) 'on-host-data)
+        (check-equal "authority data"  (uri-span-data-callback 'authority) 'on-authority-data)
         (check-equal "path complete"   (uri-span-complete-callback 'path) 'on-path-complete)))
 
     (harness-case "an unknown span is refused"
       (lambda ()
+        ;; `host` is a core concept, not a scanner span (decision 0019).
         (check-raises "no such span" uri-vocabulary-error?
-                      (lambda () (uri-span-data-callback 'authority)))))))
+                      (lambda () (uri-span-data-callback 'host)))))))
 
 (harness-group "callbacks"
   (lambda ()
@@ -87,9 +92,9 @@
         (check-equal "events" uri-event-callback-names
                      '(on-scheme-confirmed on-segment-confirmed on-rooted))))
 
-    (harness-case "the full callback list is 8 spans x 2 plus 3 events"
+    (harness-case "the full callback list is 6 spans x 2 plus 3 events"
       (lambda ()
-        (check-equal "count" (length uri-callback-names) 19)))
+        (check-equal "count" (length uri-callback-names) 15)))
 
     ;; The whole vocabulary, pinned by identity, not just by count and shape.
     ;; The grammar, the harness and an embedder all bind these exact names, so a
@@ -100,9 +105,7 @@
         (check-equal "names" uri-callback-names
                      '(on-scheme-data        on-scheme-complete
                        on-leading-token-data on-leading-token-complete
-                       on-userinfo-data      on-userinfo-complete
-                       on-host-data          on-host-complete
-                       on-port-data          on-port-complete
+                       on-authority-data     on-authority-complete
                        on-path-data          on-path-complete
                        on-query-data         on-query-complete
                        on-fragment-data      on-fragment-complete
@@ -132,28 +135,28 @@
 
 (harness-group "errors"
   (lambda ()
-    (harness-case "the M2 split-only error set is exactly these five"
+    (harness-case "the scanner error set is exactly these four"
       (lambda ()
-        ;; Decision 0009 item 6. Order is not asserted -- membership is the API.
-        (check-equal "count" (length uri-error-codes) 5)
+        ;; Decision 0009 item 6 as narrowed by 0019. Order is not asserted --
+        ;; membership is the API.
+        (check-equal "count" (length uri-error-codes) 4)
         (for-each (lambda (code)
                     (check (string-append (symbol->string code) " present")
                            (uri-error-code? code)))
-                  '(mode-unset scheme-required scheme-forbidden
-                    invalid-ip-literal unexpected-eof))))
+                  '(mode-unset scheme-required scheme-forbidden unexpected-eof))))
 
-    ;; THE NEGATIVE ASSERTION. Charset codes belong to M3 and must NOT be
-    ;; declared at M2 (decision 0009 item 6, 0011): a declared error no
-    ;; reachable path raises is a promise the parser does not keep. This case
-    ;; reddens the day someone adds one early.
-    (harness-case "no charset code is declared at M2"
+    ;; THE NEGATIVE ASSERTION. Charset codes (M3) and the host/authority codes
+    ;; (the core's, decision 0019) must NOT be in the SCANNER set: a declared
+    ;; error no reachable scanner path raises is a promise the scanner does not
+    ;; keep. `invalid-ip-literal` is here now -- it moved to the core.
+    (harness-case "no charset or host code is in the scanner set"
       (lambda ()
         (for-each
          (lambda (code)
-           (check (string-append (symbol->string code) " is not M2")
+           (check (string-append (symbol->string code) " is not a scanner code")
                   (not (uri-error-code? code))))
-         '(invalid-pct-encoded invalid-scheme invalid-reg-name
-           invalid-dec-octet invalid-userinfo invalid-port))))
+         '(invalid-pct-encoded invalid-scheme invalid-reg-name invalid-dec-octet
+           invalid-ip-literal invalid-userinfo invalid-port))))
 
     (harness-case "the two non-production codes are present"
       (lambda ()

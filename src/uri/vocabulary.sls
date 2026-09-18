@@ -15,10 +15,10 @@
 ;;; The names here are declarations, not the grammar. A span named here is not
 ;;; opened until a grammar node opens it, and an error code named here is not a
 ;;; promise until a reachable path raises it (decision 0009 item 6). This table
-;;; carries the M2 vocabulary: the eight spans in full (decision 0008 item 2 --
-;;; spans cannot be refined later, so the whole vocabulary is declared at M2),
-;;; and the split-only error set (decision 0009 item 6). Charset codes arrive
-;;; with the charset lanes at M3 and are deliberately absent here.
+;;; is the SCANNER's vocabulary: the six coarse spans (decision 0019 -- the five
+;;; RFC 3986 components plus the mode-3 `leading-token`) and the four structural
+;;; error codes. userinfo/host/port and the host/charset errors are the core's,
+;;; not the scanner's, and live with the core.
 (library (uri vocabulary)
   (export
     ;; modes (decision 0004)
@@ -74,20 +74,25 @@
                                (symbol->string name))))
       (cadr row)))
 
-  ;; --- spans and their callbacks (decision 0008) --------------------------
+  ;; --- spans and their callbacks (decisions 0008, 0019) -------------------
   ;;
-  ;; Eight spans, all declared at M2. Each COMPONENT span declares BOTH a data
-  ;; and a completion callback (decision 0008 item 5): the completion is the one
-  ;; signal that arrives exactly once per present component, because an empty
-  ;; final fragment is suppressed across a feed boundary. `leading-token` is the
-  ;; mode-3 neutral span (decision 0004 item 4); it carries both callbacks like
-  ;; any other span, and the verdict is a separate event.
+  ;; SIX scanner spans -- the FIVE coarse RFC 3986 components plus the mode-3
+  ;; neutral `leading-token`. Decision 0019 draws the functional-core line here:
+  ;; the scanner splits the coarse components (essentially Appendix B), and
+  ;; userinfo/host/port -- which the forward-only machine cannot split cleanly --
+  ;; are pure CORE functions over the `authority` bytevector, not scanner spans.
+  ;; So there IS an `authority` span (revising 0008 item 3); its presence carries
+  ;; the authority's presence, empty for `http:///p`, absent for `http:/p`.
+  ;;
+  ;; Each span declares BOTH a data and a completion callback (decision 0008 item
+  ;; 5): the completion is the one signal that arrives exactly once per present
+  ;; component, because an empty final fragment is suppressed across a feed
+  ;; boundary. `leading-token` is the mode-3 neutral span (decision 0004 item 4);
+  ;; it carries both callbacks like any other span, and the verdict is an event.
   (define uri-span-callbacks
     '((scheme        on-scheme-data        on-scheme-complete)
       (leading-token on-leading-token-data on-leading-token-complete)
-      (userinfo      on-userinfo-data      on-userinfo-complete)
-      (host          on-host-data          on-host-complete)
-      (port          on-port-data          on-port-complete)
+      (authority     on-authority-data     on-authority-complete)
       (path          on-path-data          on-path-complete)
       (query         on-query-data         on-query-complete)
       (fragment      on-fragment-data      on-fragment-complete)))
@@ -130,19 +135,20 @@
 
   (define (uri-callback-name? x) (and (memq x uri-callback-names) #t))
 
-  ;; --- errors (decision 0009) ---------------------------------------------
+  ;; --- errors (decisions 0009, 0019) --------------------------------------
   ;;
-  ;; An error names the ABNF production that failed, in the RFC's own spelling
-  ;; (decision 0009 item 1). Two name no production and are the only such codes
-  ;; (item 5): `mode-unset` and `unexpected-eof`. This is the M2 split-only set
-  ;; (item 6); the charset codes (`invalid-pct-encoded`, `invalid-scheme`, ...)
-  ;; arrive at M3, not here -- a declared error no reachable path raises is a
-  ;; promise the parser does not keep.
+  ;; The SCANNER's error codes. An error names the ABNF production that failed,
+  ;; in the RFC's own spelling (decision 0009 item 1); two name no production and
+  ;; are the only such codes (item 5): `mode-unset` and `unexpected-eof`. Host and
+  ;; charset errors (`invalid-ip-literal`, `invalid-dec-octet`,
+  ;; `invalid-pct-encoded`, ...) are the CORE's, raised where the core validates
+  ;; the authority and the charsets (decision 0019 item 5), and belong to a core
+  ;; error vocabulary, not this one -- a declared error no reachable scanner path
+  ;; raises is a promise the scanner does not keep.
   (define uri-error-codes
     '(mode-unset          ; no mode was chosen (0004 item 2)
       scheme-required     ; mode 1 reached a delimiter with no `:`
       scheme-forbidden    ; mode 2 found a `:` in the first segment
-      invalid-ip-literal  ; an unclosed `[` in the host
       unexpected-eof))    ; input ended inside an unsatisfiable production
 
   (define (uri-error-code? x) (and (memq x uri-error-codes) #t)))

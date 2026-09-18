@@ -5,11 +5,11 @@
 ;;; this grammar (the M2 split oracle), so a bug shared between grammar and test
 ;;; cannot hide.
 ;;;
-;;; SLICE ① reads the whole authority as one `host` span (userinfo/host/port are
-;;; Slice ①b), so `host` here is the authority substring. A path-absolute's
-;;; leading `/` is dropped from the `path` span and recovered by `on-rooted`
-;;; (decision 0018): the path COMPONENT is `(if rooted "/" "") ++ path-span`, and
-;;; both the raw span and that reconstruction are asserted.
+;;; The scanner emits the five coarse components; the `authority` span is the
+;;; whole authority (userinfo/host/port are the core's, decision 0019). A
+;;; path-absolute's leading `/` is dropped from the `path` span and recovered by
+;;; `on-rooted` (decision 0018): the path COMPONENT is `(if rooted "/" "") ++
+;;; path-span`, and both the raw span and that reconstruction are asserted.
 (import (rnrs)
         (uri test harness)
         (uri grammar)
@@ -40,7 +40,7 @@
       (lambda (p c) (set! completes (cons name completes)) callback-continue))
     (define bindings
       (list (list 'on-scheme-data (data-cb 'scheme))   (list 'on-scheme-complete (done-cb 'scheme))
-            (list 'on-host-data (data-cb 'host))        (list 'on-host-complete (done-cb 'host))
+            (list 'on-authority-data (data-cb 'authority)) (list 'on-authority-complete (done-cb 'authority))
             (list 'on-path-data (data-cb 'path))        (list 'on-path-complete (done-cb 'path))
             (list 'on-query-data (data-cb 'query))      (list 'on-query-complete (done-cb 'query))
             (list 'on-fragment-data (data-cb 'fragment)) (list 'on-fragment-complete (done-cb 'fragment))
@@ -102,7 +102,7 @@
 
 ;;; --- the split oracle: modes 1 & 2, every span ---------------------------
 ;;;
-;;; Each row: (mode uri  scheme host path query fragment rooted?). A field is a
+;;; Each row: (mode uri  scheme authority path query fragment rooted?). A field is a
 ;;; string (present, "" = empty) or #f (absent). `path` is the COMPONENT (with
 ;;; the leading slash restored); `rooted?` pins the raw verdict beneath it.
 (define oracle
@@ -140,7 +140,7 @@
     (for-each
      (lambda (row)
        (let ((mode (list-ref row 0)) (uri (list-ref row 1))
-             (e-scheme (list-ref row 2)) (e-host (list-ref row 3))
+             (e-scheme (list-ref row 2)) (e-auth (list-ref row 3))
              (e-path (list-ref row 4)) (e-query (list-ref row 5))
              (e-frag (list-ref row 6)) (e-rooted (list-ref row 7)))
          (harness-case uri
@@ -148,7 +148,7 @@
              (let ((r (parse mode uri)))
                (check-equal "status"   (pr-status r) 'finished)
                (check-equal "scheme"   (pr-span r 'scheme) e-scheme)
-               (check-equal "host"     (pr-span r 'host) e-host)
+               (check-equal "authority" (pr-span r 'authority) e-auth)
                (check-equal "path"     (pr-path r) e-path)
                (check-equal "rooted"   (pr-rooted r) e-rooted)
                (check-equal "query"    (pr-span r 'query) e-query)
@@ -158,10 +158,10 @@
 ;;; --- absent is not empty (decision 0008), the load-bearing pairs ---------
 (harness-group "absent-is-not-empty"
   (lambda ()
-    (harness-case "empty authority (host \"\") is not no authority (host #f)"
+    (harness-case "empty authority (\"\") is not no authority (#f)"
       (lambda ()
-        (check-equal "///p host empty"  (pr-span (parse 1 "http:///p") 'host) "")
-        (check-equal "/p   host absent" (pr-span (parse 1 "http:/p")   'host) #f)))
+        (check-equal "///p authority empty"  (pr-span (parse 1 "http:///p") 'authority) "")
+        (check-equal "/p   authority absent" (pr-span (parse 1 "http:/p")   'authority) #f)))
     (harness-case "empty query is not absent query"
       (lambda ()
         (check-equal "a? query empty" (pr-span (parse 1 "http://a?") 'query) "")
@@ -206,7 +206,7 @@
            (lambda ()
              (let ((whole (parse mode uri)) (drip (parse mode uri #t)))
                (check-equal "scheme"   (pr-span drip 'scheme) (pr-span whole 'scheme))
-               (check-equal "host"     (pr-span drip 'host) (pr-span whole 'host))
+               (check-equal "authority" (pr-span drip 'authority) (pr-span whole 'authority))
                (check-equal "path"     (pr-path drip) (pr-path whole))
                (check-equal "rooted"   (pr-rooted drip) (pr-rooted whole))
                (check-equal "query"    (pr-span drip 'query) (pr-span whole 'query))
@@ -221,7 +221,7 @@
     ;; entries (mode-unset/scheme-required/scheme-forbidden/unexpected-eof).
     (for-each (lambda (s) (check (string-append (symbol->string s) " is a span")
                                  (uri-span-name? s)))
-              '(scheme host path query fragment))
+              '(scheme authority path query fragment))
     (for-each (lambda (e) (check (string-append (symbol->string e) " is an error code")
                                  (uri-error-code? e)))
               '(mode-unset scheme-required scheme-forbidden unexpected-eof))
@@ -233,7 +233,7 @@
               (append (apply append
                              (map (lambda (s) (list (uri-span-data-callback s)
                                                    (uri-span-complete-callback s)))
-                                  '(scheme host path query fragment)))
+                                  '(scheme authority path query fragment)))
                       '(on-rooted)))))
 
 (harness-finish)

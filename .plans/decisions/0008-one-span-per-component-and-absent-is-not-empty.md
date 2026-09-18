@@ -1,9 +1,19 @@
 # 0008: one span per component, both callbacks, and absent is not empty
 
 Date: 2026-09-18
-Status: accepted
+Status: accepted, then **amended in part by [0019](0019-the-scanner-splits-five-coarse-components-and-the-core-owns-the-authority.md)**
 Plan: [the design](../2026-09-18-chez-uri-design.md) §3
 Milestone: M2 — the span vocabulary is declared in full here
+
+> **Amendment (0019).** Item 1's eight spans and item 3's "no authority span" are
+> superseded: byte-machine's forward-only model cannot split userinfo from host,
+> so the SCANNER emits ONE `authority` span (there IS one now) and
+> userinfo/host/port are pure CORE functions over its bytes. Six scanner spans
+> remain — scheme, authority, path, query, fragment, leading-token. Everything
+> below about **absent vs empty** (items 4, 7) and **both callbacks** (item 5)
+> stands unchanged and now governs the `authority` span; item 6 (path is one
+> span) stands. Read this record for the absent/empty mechanism; read 0019 for
+> which spans the scanner actually opens.
 
 ## Context
 
