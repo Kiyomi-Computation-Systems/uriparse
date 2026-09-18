@@ -10,9 +10,11 @@
 # The third is what keeps the first two honest: without it, deleting a row is
 # a way to make either of the others disappear quietly.
 #
-# Every row is deferred at M1 by construction. M1 is the instrument and there
-# is no resolver to ask; M6 is gated on all 42 rows reading passing (decision
-# 0011 item 3), and on nothing else moving.
+# Every row was deferred at M1 by construction (the instrument, with no resolver
+# to ask). M6 built the resolver -- (uri path) + (uri resolve) + (uri recompose)
+# -- and flipped all 42 to passing (decision 0011 item 3). The two-way gate keeps
+# it honest from here: a passing row that regresses AND a row that starts passing
+# unrecorded are both violations, so this file cannot silently drift.
 #
 # id = <section>/<reference>, derived from the vector rather than written
 # twice. Section 5.4.1's empty reference is therefore the row `5.4.1/`.
@@ -20,45 +22,45 @@
 # Format: <status><whitespace><id>. An id may contain anything but whitespace,
 # which is what keeps `5.4.2/g;x=1/../y` in one piece.
 
-not-yet  5.4.1/g:h
-not-yet  5.4.1/g
-not-yet  5.4.1/./g
-not-yet  5.4.1/g/
-not-yet  5.4.1//g
-not-yet  5.4.1///g
-not-yet  5.4.1/?y
-not-yet  5.4.1/g?y
-not-yet  5.4.1/#s
-not-yet  5.4.1/g#s
-not-yet  5.4.1/g?y#s
-not-yet  5.4.1/;x
-not-yet  5.4.1/g;x
-not-yet  5.4.1/g;x?y#s
-not-yet  5.4.1/
-not-yet  5.4.1/.
-not-yet  5.4.1/./
-not-yet  5.4.1/..
-not-yet  5.4.1/../
-not-yet  5.4.1/../g
-not-yet  5.4.1/../..
-not-yet  5.4.1/../../
-not-yet  5.4.1/../../g
-not-yet  5.4.2/../../../g
-not-yet  5.4.2/../../../../g
-not-yet  5.4.2//./g
-not-yet  5.4.2//../g
-not-yet  5.4.2/g.
-not-yet  5.4.2/.g
-not-yet  5.4.2/g..
-not-yet  5.4.2/..g
-not-yet  5.4.2/./../g
-not-yet  5.4.2/./g/.
-not-yet  5.4.2/g/./h
-not-yet  5.4.2/g/../h
-not-yet  5.4.2/g;x=1/./y
-not-yet  5.4.2/g;x=1/../y
-not-yet  5.4.2/g?y/./x
-not-yet  5.4.2/g?y/../x
-not-yet  5.4.2/g#s/./x
-not-yet  5.4.2/g#s/../x
-not-yet  5.4.2/http:g
+passing  5.4.1/g:h
+passing  5.4.1/g
+passing  5.4.1/./g
+passing  5.4.1/g/
+passing  5.4.1//g
+passing  5.4.1///g
+passing  5.4.1/?y
+passing  5.4.1/g?y
+passing  5.4.1/#s
+passing  5.4.1/g#s
+passing  5.4.1/g?y#s
+passing  5.4.1/;x
+passing  5.4.1/g;x
+passing  5.4.1/g;x?y#s
+passing  5.4.1/
+passing  5.4.1/.
+passing  5.4.1/./
+passing  5.4.1/..
+passing  5.4.1/../
+passing  5.4.1/../g
+passing  5.4.1/../..
+passing  5.4.1/../../
+passing  5.4.1/../../g
+passing  5.4.2/../../../g
+passing  5.4.2/../../../../g
+passing  5.4.2//./g
+passing  5.4.2//../g
+passing  5.4.2/g.
+passing  5.4.2/.g
+passing  5.4.2/g..
+passing  5.4.2/..g
+passing  5.4.2/./../g
+passing  5.4.2/./g/.
+passing  5.4.2/g/./h
+passing  5.4.2/g/../h
+passing  5.4.2/g;x=1/./y
+passing  5.4.2/g;x=1/../y
+passing  5.4.2/g?y/./x
+passing  5.4.2/g?y/../x
+passing  5.4.2/g#s/./x
+passing  5.4.2/g#s/../x
+passing  5.4.2/http:g

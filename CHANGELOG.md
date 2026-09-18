@@ -5,6 +5,26 @@ been released; everything below is unreleased work toward v0.1.
 
 ## [Unreleased]
 
+### M6 — dot segments and reference resolution
+
+- **`(uri path)`** — the two path routines §5.2 resolution refers to, as pure
+  functions over path bytevectors: `remove-dot-segments` (§5.2.4's two-buffer
+  loop) and `merge` (§5.2.3). `remove-dot-segments` is graded step-for-step
+  against RFC 3986's committed §5.2.4 worked traces, not only their end results.
+- **`(uri resolve)`** — RFC 3986 §5.2.2 strict reference resolution over
+  components: a base URI's components and a reference's in, the target's out.
+  Strict (decision 0015/0001), so `http:g` resolves to `http:g`, never the
+  RFC-1630 `http://a/b/c/g`.
+- **`(uri recompose)`** — §5.3 component recomposition, components back to a URI
+  string, guarded on *defined* not nonempty (an empty-but-present authority still
+  emits `//`). It lands at M6 with resolution because §5.2.2 ends by recomposing
+  (decision 0021); the round-trip property remains M7.
+- **All 42 rows of RFC 3986 §5.4 pass** — the one normative corpus this project
+  has, gated at 100% (decision 0011). The two-way ratchet flips them
+  `not-yet → passing` and makes both a regression and an unrecorded pass a
+  failure. Each library is graded against an oracle derived from RFC 3986
+  independently of the code, with mutation witnesses watched red then reverted.
+
 ### M5 — the core: percent coding and normalization
 
 - **`(uri percent)`** — percent decode/encode over bytevectors: `pct-decode`

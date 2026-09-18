@@ -12,15 +12,18 @@ An RFC 3986 URI parser for Chez Scheme, in portable R6RS.
 ✨ *AI Disclosure:* LLMs are used extensively in the planning and development of this project.
 #+end_quote
 
-** Status: M5 — the split, and the core's percent + normalization
+** Status: M6 — reference resolution, and the §5.4 corpus at 100%
 
 The scanner splits a URI reference into five components — scheme, authority,
 path, query, fragment — for all three modes (M2), and ~(uri collect)~ assembles
-them; the pure core now percent decodes/encodes and applies RFC 3986 §6.2.2
-syntax-based normalization (M5). Reference resolution and the §5.4 corpus are M6;
-the host grammar is v0.2. Standing behind it all (M1): the RFC's own vectors, the
-loader that reads them, the comparator, the two-way ratchet, and the harness and
-build layer.
+them; the pure core percent decodes/encodes and applies RFC 3986 §6.2.2
+syntax-based normalization (M5). Now it *resolves* references: ~(uri path)~
+(§5.2.4 remove-dot-segments, §5.2.3 merge), ~(uri resolve)~ (§5.2.2 strict
+transform-references) and ~(uri recompose)~ (§5.3) turn a base and a reference
+into a target URI — and **all 42 rows of RFC 3986 §5.4 pass**, the one normative
+corpus this project has (M6). The host grammar is v0.2. Standing behind it all
+(M1): the RFC's own vectors, the loader that reads them, the comparator, the
+two-way ratchet, and the harness and build layer.
 
 What this project will *not* claim until it is measured:
 
@@ -31,9 +34,18 @@ What this project will *not* claim until it is measured:
   footnote.
 - Not a full §6.2.2 normalizer. v0.1 normalizes the *scheme* case and
   percent-encoding (uppercase hex, decode unreserved), but not *host* case —
-  that needs the host grammar (v0.2) — and it does not remove dot-segments until
-  reference resolution (M6)
+  that needs the host grammar (v0.2)
   ([[file:.plans/decisions/0020-v01-normalizes-scheme-and-percent-and-defers-host-case.md][decision 0020]]).
+  Dot-segment removal is reference resolution's job (§5.2.4), and lands with it
+  in M6 — ~(uri normalize)~ does not do it.
+- Resolution is *strict* (§5.2.2 with strict = true). ~http:g~ resolved against
+  ~http://a/b/c/d;p?q~ is ~http:g~, not the RFC-1630 backward-compatible
+  ~http://a/b/c/g~ — that partial-URI compatibility is out of scope
+  ([[file:.plans/decisions/0015-errata-4547-and-5428-are-adjudicated-against-the-abnf.md][decision 0015]],
+  [[file:.plans/decisions/0001-the-project-is-chez-uri-and-where-it-stops.md][decision 0001]]).
+  A caller wanting a *normalized* target normalizes before resolving — decoding
+  ~%2E~ to ~.~ manufactures dot-segments that resolution then removes
+  ([[file:.plans/decisions/0021-reference-resolution-recomposes-at-m6.md][decision 0021]]).
 - Not "portable". The source is R6RS and imports only ~(rnrs)~,
   ~(byte-machine ...)~ and its own libraries — asserted by a lane, not trusted
   — but no second implementation is in CI, and a property is measured or it is
@@ -73,7 +85,7 @@ M6 is gated on all 42 of its rows passing.
 ** Layout
 
 | ~.plans/~           | plans, and ~decisions/~ — the record of every choice a reader would otherwise reverse-engineer |
-| ~src/~              | the shipped libraries, pure R6RS: the scanner, the seam, the shell, and the percent / normalize core |
+| ~src/~              | the shipped libraries, pure R6RS: the scanner, the seam, the shell, and the core — percent, normalize, path, resolve, recompose |
 | ~test/conformance/~ | the derived corpus and the ratchet                                                             |
 | ~test/support/~     | the harness and the build-layer specifications                                                 |
 | ~docs/~             | user-facing documentation only                                                                 |
