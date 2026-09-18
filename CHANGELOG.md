@@ -24,6 +24,14 @@ been released; everything below is unreleased work toward v0.1.
 - **The reading machinery**: the loader, the comparator, and a two-way ratchet
   in which a deferred vector that starts passing is as much a violation as a
   claimed vector that breaks.
+- **RFC 3986 Appendix A**, the collected ABNF, derived from the same vendored
+  text. Decision 0012 makes it the source of the generated positive corpus, on
+  the observation that an ABNF is not only an acceptor but a generator.
+- **Decision 0016**: there is no allocation lane. The property belongs to
+  byte-machine and is measured there; the one thing this project allocates,
+  `(uri collect)`, allocates on purpose.
+- **CI**: one Linux amd64 cell plus the no-Scheme build layer, Chez built from
+  source and cached.
 - **The build layer**, ported from chez-httparse under decision 0001's rename
   map: CMake presets, the Makefile, Chez discovery, the source and
   ahead-of-time lanes, and the harness.

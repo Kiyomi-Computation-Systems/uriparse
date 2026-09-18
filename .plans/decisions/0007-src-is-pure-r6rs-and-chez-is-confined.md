@@ -2,6 +2,7 @@
 
 Date: 2026-09-18
 Status: accepted
+Item 5 settled by: [0016](0016-there-is-no-allocation-lane.md) (there is none)
 Plan: [the design](../2026-09-18-chez-uri-design.md) §7
 
 ## Context
@@ -48,6 +49,7 @@ which Chez and Guile also accept, checked in both directions.
    measurement needs `statistics` / `sstats-bytes`, which have no standard
    spelling and no common analogue. Whether chez-uri has an allocation lane at
    all is settled at M1; if it does, it is Chez-only by construction.
+   **Settled: there is none — [0016](0016-there-is-no-allocation-lane.md).**
 
 6. **Portability is not claimed until it is measured here.** `README.org` says
    the source is R6RS. It does not say the library runs on Guile or Racket until

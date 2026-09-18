@@ -34,6 +34,10 @@ include_guard(GLOBAL)
 
 set(URI_CORPUS_SEMI "@URI-SEMI@")
 
+# CMake cannot parse "\f" inside a regex, so the page-break character RFCs
+# separate their pages with is built rather than written.
+string(ASCII 12 URI_CORPUS_FF)
+
 function(_uri_corpus_protect out text)
   string(REPLACE ";" "${URI_CORPUS_SEMI}" protected "${text}")
   set(${out} "${protected}" PARENT_SCOPE)
@@ -120,6 +124,100 @@ ${normal_rows}${abnormal_rows})
 ;;; here. RFC 1630 partial-URI compatibility is out of scope (decision 0001).
 (note (\"5.4.2\" \"http:g\" backward-compatible \"http://a/b/c/g\"))
 " PARENT_SCOPE)
+endfunction()
+
+# uri_corpus_abnf(<rfc-text> <out>)
+#
+# RFC 3986 Appendix A, the collected ABNF, as an .abnf file. This is not a
+# vector set; it is the GRAMMAR, and decision 0012 makes it the source of the
+# generated positive corpus -- the observation that an ABNF is not only an
+# acceptor but a generator, and that a corpus generated from the normative
+# grammar has better provenance than one a parser author wrote.
+#
+# Extracted rather than transcribed for the same reason everything else here
+# is: a grammar retyped by hand is a grammar this project invented.
+#
+# WHAT IS STRIPPED: the six-space page furniture RFCs carry -- the running
+# footer, the running header, the form feed and the blank lines around them --
+# and the four-column indent. Nothing else. The `; 0-9` style comments on
+# dec-octet are ABNF comments and stay.
+function(uri_corpus_abnf rfc out)
+  string(FIND "${rfc}" "Appendix A.  Collected ABNF for URI" a REVERSE)
+  string(FIND "${rfc}" "Appendix B.  Parsing a URI Reference" b REVERSE)
+  if(a LESS 0 OR b LESS 0)
+    message(FATAL_ERROR
+      "uri-corpus: RFC 3986 Appendix A was not found in the vendored text.")
+  endif()
+  math(EXPR len "${b} - ${a}")
+  string(SUBSTRING "${rfc}" ${a} ${len} region)
+  _uri_corpus_protect(region "${region}")
+
+  string(REPLACE "\n" ";" lines "${region}")
+  set(body "")
+  set(kept 0)
+  foreach(line IN LISTS lines)
+    _uri_corpus_restore(line "${line}")
+    # Page furniture and the appendix heading itself.
+    if(line MATCHES "^Berners-Lee" OR line MATCHES "^RFC 3986" OR
+       line MATCHES "^Appendix " OR line STREQUAL "")
+      continue()
+    endif()
+    string(REPLACE "${URI_CORPUS_FF}" "" line "${line}")
+    if(line STREQUAL "")
+      continue()
+    endif()
+    # Every line of Appendix A is indented three spaces, and exactly three have
+    # to come off: a rule definition must start in column 1 (RFC 5234), while a
+    # CONTINUATION line is continuation precisely because it is indented, so
+    # its remaining indent has to survive.
+    #
+    # NOT `string(REGEX REPLACE "^   " "")`. CMake re-anchors `^` after each
+    # match and keeps replacing, so that expression strips three spaces AS MANY
+    # TIMES AS IT CAN: a 17-space continuation came out with 2, not 14, and the
+    # file still looked plausible because 2 spaces is still a continuation.
+    string(SUBSTRING "${line}" 0 3 indent)
+    if(NOT indent STREQUAL "   ")
+      message(FATAL_ERROR
+        "uri-corpus: Appendix A line '${line}' is not indented three spaces. "
+        "The de-indent below assumes it, and a wrong assumption here turns a "
+        "rule definition into a continuation of the rule above it.")
+    endif()
+    string(SUBSTRING "${line}" 3 -1 line)
+    string(REGEX REPLACE "[ \t]+$" "" line "${line}")
+    string(APPEND body "${line}\n")
+    math(EXPR kept "${kept} + 1")
+  endforeach()
+
+  # Appendix A is 60 lines: 36 rule definitions plus their continuation lines. An extractor that found a handful would
+  # produce a grammar that generates almost nothing, and every input drawn
+  # from it would still parse.
+  if(NOT kept EQUAL 60)
+    message(FATAL_ERROR
+      "uri-corpus: expected 60 lines from Appendix A, kept ${kept}. A short "
+      "grammar generates a short corpus, and a lane over it passes while "
+      "exercising almost none of the syntax.")
+  endif()
+
+  set(${out}
+"; RFC 3986 Appendix A -- Collected ABNF for URI.
+;
+; DERIVED from test/vendor/rfc3986.txt by cmake/UriCorpus.cmake. Do not edit.
+;
+; This is the NORMATIVE GRAMMAR, and decision 0012 makes it the source of the
+; generated positive corpus: an ABNF is not only an acceptor, it is a
+; generator, and a corpus generated from this file has the same provenance as
+; the parser's own specification.
+;
+; It is NOT self-contained. RFC 3986 leaves ALPHA, DIGIT and HEXDIG to RFC
+; 5234 Appendix B, so a generator needs those three core rules alongside it;
+; they are not restated here, because restating them would make this file
+; something other than what the RFC says.
+;
+; Appendix B's regular expression is deliberately absent. This project does
+; not implement it, and four of the rejected errata against RFC 3986 are about
+; it (decision 0015 item 5).
+
+${body}" PARENT_SCOPE)
 endfunction()
 
 # uri_corpus_examples(<rfc-text> <out>)

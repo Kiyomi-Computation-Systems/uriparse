@@ -33,6 +33,21 @@ WHAT IS TAKEN, AND FROM WHERE
                     illustrations, so the only thing a lane may assert over
                     them is that they parse (decision 0005 item 3).
 
+  rfc3986.abnf      Appendix A -- the Collected ABNF, 36 rules over 60 lines.
+                    Not a vector set: this is the GRAMMAR, and decision 0012
+                    makes it the source of the generated positive corpus, on
+                    the observation that an ABNF is not only an acceptor but a
+                    generator. Only the three-space indent and the page
+                    furniture are removed; a continuation line keeps its
+                    remaining indent, because that is what makes it a
+                    continuation.
+
+                    It is NOT self-contained. RFC 3986 leaves ALPHA, DIGIT and
+                    HEXDIG to RFC 5234 Appendix B, so a generator needs those
+                    three core rules alongside it. They are not restated here:
+                    restating them would make this something other than what
+                    the RFC says.
+
 ERRATA
 
   Two errata are VERIFIED against RFC 3986 and neither touches this corpus:

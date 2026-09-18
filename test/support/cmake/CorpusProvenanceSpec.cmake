@@ -44,6 +44,7 @@ file(READ "${_cp_rfc}" _cp_text)
 uri_corpus_resolution("${_cp_text}" _cp_resolution)
 uri_corpus_dot_segments("${_cp_text}" _cp_dots)
 uri_corpus_examples("${_cp_text}" _cp_examples)
+uri_corpus_abnf("${_cp_text}" _cp_abnf)
 
 # The digest recorded in PROVENANCE is the claim "this corpus came from THAT
 # text". Checked here, so replacing the vendored RFC without re-recording is a
@@ -90,5 +91,6 @@ endfunction()
 _cp_compare("resolution.scm" "${_cp_resolution}")
 _cp_compare("dot-segments.scm" "${_cp_dots}")
 _cp_compare("example-uris.scm" "${_cp_examples}")
+_cp_compare("rfc3986.abnf" "${_cp_abnf}")
 
-spec_finish("corpus provenance (3 files re-derived, digest pinned)")
+spec_finish("corpus provenance (4 files re-derived, digest pinned)")

@@ -3,7 +3,7 @@
 Date: 2026-09-18
 Status: accepted — supersedes nothing; realises
 [the project brief](2026-09-18-chez-uri-project-brief.md)
-Decisions: [0001 through 0015](decisions/)
+Decisions: [0001 through 0016](decisions/)
 
 The brief says what to build and why it is its own repository. This document
 says what the thing *is*: the constraints the generator actually imposes, the
@@ -364,8 +364,10 @@ R6RS.
    lane at M2 rather than staying a loose file. Three constraints it turned up
    are recorded in §3.5.
 
-2. **Is there an allocation lane?** It needs `statistics` / `sstats-bytes` and
-   is Chez-only by construction. Decide at M1; if yes, say so where it is
-   defined.
+2. ~~**Is there an allocation lane?**~~ **Answered 2026-09-18 — no**, decision
+   0016. The property is byte-machine's and is measured there; the one thing
+   this project allocates, `(uri collect)`, allocates on purpose. A benchmark
+   lane, when there is something to measure, reports rather than asserts.
+
 3. **Should the machine flag "this component contained a `%`"?** It would let
    the core skip a scan. Not v0.1; the core scans.
