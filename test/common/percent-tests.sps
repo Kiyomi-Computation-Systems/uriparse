@@ -134,7 +134,13 @@
     (harness-case "a literal % survives when it is not an escape"
       (lambda ()
         ;; "100% done" has a `%` followed by a space -- not a triple.
-        (check-equal "100% done" (pct-decode (a "100% done")) (a "100% done"))))))
+        (check-equal "100% done" (pct-decode (a "100% done")) (a "100% done"))))
+    ;; Single pass, never recursive (RFC 3986 §2.4: do not decode more than once).
+    ;; %2541: %25 -> `%`, then the literal `41` -- the decoded `%` is NOT
+    ;; recombined with the following bytes into a fresh triple.
+    (harness-case "decoding is single-pass, not recursive (RFC 3986 §2.4)"
+      (lambda ()
+        (check-equal "%2541 -> %41" (pct-decode (a "%2541")) (a "%41"))))))
 
 ;;; --- pct-encode: encode by predicate, UPPERCASE hex out ---------------------
 (harness-group "pct-encode"

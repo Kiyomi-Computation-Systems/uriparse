@@ -72,6 +72,11 @@
   ;; verbatim. Total: a `%` not followed by two hex digits (including at end of
   ;; input) is the literal octet `%` and decoding continues at the next octet.
   ;; The result is never longer than the input.
+  ;;
+  ;; SINGLE PASS, never recursive (RFC 3986 §2.4: "do not decode more than
+  ;; once"). A decoded octet is emitted and the cursor advances past the triple;
+  ;; it is never re-scanned, so `%2541` decodes to `%41`, not to `A`. A
+  ;; decode-to-fixpoint rewrite would silently break this.
   (define (pct-decode bv)
     (let ((n (bytevector-length bv)))
       (call-with-bytevector-output-port

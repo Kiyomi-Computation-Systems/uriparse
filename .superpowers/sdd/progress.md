@@ -500,9 +500,10 @@ emitter — M5 touches none of the M2 machinery, it operates on the components M
 produces.
 
 SCOPE, AND WHAT v0.1 NORMALIZATION DOES NOT DO (decision 0020, written in Slice
-①): v0.1 applies §6.2.2.1 case normalization for the SCHEME (lowercase) and
-§6.2.2.2 percent-encoding normalization (uppercase the hex of every valid `%XX`;
-decode `%XX` whose octet is unreserved). It does NOT normalize HOST case — that
+①): v0.1 applies §6.2.2.1 case normalization (the SCHEME → lowercase, and the
+hex digits of every valid `%XX` → uppercase) and §6.2.2.2 percent-encoding
+normalization (decode `%XX` whose octet is unreserved). It does NOT normalize
+HOST case — that
 needs the host isolated within the authority, and userinfo is case-sensitive; the
 host split is M4/v0.2. It does NOT remove dot-segments (§6.2.2.3 = §5.2.4 = M6).
 It does NOT do scheme-based normalization (§6.2.3: default ports, empty-path→"/")
@@ -573,6 +574,62 @@ on a bytevector whose length sits within 3 of most-positive-fixnum — cannot oc
 on the 64-bit shipping cells and cannot be constructed on 32-bit (a ~500 MB
 bytevector cannot coexist with a length that near the ceiling).
 
-GATE. Stopping here per the drive-to-gates cadence. Slice ① — `(uri normalize)`
-plus decision 0020 (the v0.1 normalization scope: scheme-case + percent-norm,
-host-case deferred) — awaits the maintainer's go-ahead.
+SLICE ⓪ GATE (2026-09-18): stopped for maintainer review; approved to proceed
+into Slice ① with the host-case deferral documented.
+
+SLICE ① COMPLETE (2026-09-18). Landed: `(uri normalize)` — RFC 3986 §6.2.2
+syntax-based normalization over the five-field components — plus decision 0020,
+and its source+aot lane. Evidence: release 53/53 (was 51), no-scheme 11/11.
+Darwin arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3.
+
+`(uri normalize)` (26 cases / 82 checks) is `normalize-scheme` (the §6.2.2.1a
+ASCII lowercase fold, hand-written so `(rnrs unicode)` is never reached — 0010),
+`pct-normalize` (§6.2.2.1b hex-uppercasing + §6.2.2.2 unreserved-decoding,
+single-pass per §2.4, a malformed `%` left byte-for-byte), and
+`normalize-components` (scheme case-folded; authority/path/query/fragment
+percent-normalized; authority CASE left alone — host-case is M4/v0.2; absent and
+empty preserved per field). It imports `(uri percent)` and `(uri components)` and
+re-uses percent's hex primitives. Decision 0020 records the scope and both
+deferrals (host-case → M4; dot-segments → M6); README.org and CHANGELOG.md now
+state it so the deliverable does not over-claim RFC compliance. (The single-pass
+finding also added a case to `(uri percent)`, now 22/170.)
+
+VALIDATED: ten mutation witnesses across `(uri normalize)`, each watched red then
+reverted — the scheme fold; decode-iff-unreserved, in BOTH directions (over- and
+under-decoding); hex-uppercasing on kept triples; malformed totality; the
+host-case deferral being ENFORCED (lowercasing the authority reddens); the
+absent-scheme guard; empty-preservation per field; and — decision 0010 item 5's
+named obligation — the U+212A KELVIN SIGN differential watched FAILING against a
+`string-downcase` fold, which folds it to ASCII `k` (`#vu8(107)`).
+
+ADVERSARIAL REVIEWS. The per-slice `(uri normalize)` review found no code defect;
+its two coverage gaps (the absent-scheme guard, empty-preservation per field) and
+nits were closed and witnessed here. A merge-gate multi-agent verification then
+ran five dimensions — integration, decision-fidelity, oracle-coverage,
+build-lanes, completeness — each finding adversarially adjudicated. Integration,
+oracle-coverage and build-lanes came back CLEAN; no code defect anywhere. Five
+confirmed findings, all closed here:
+  - a forward HAZARD worth recording (should-fix): M5's §6.2.2.2 decoding turns
+    `%2E` into a literal `.`, so `pct-normalize` MANUFACTURES dot-segments
+    (`/a/%2E%2E/b` → `/a/../b`). M5 does not remove them but it creates them, so
+    the M5→M6 order is load-bearing and security-relevant — M6 must resolve a
+    NORMALIZED path or encoded traversal survives. Recorded in 0020, pinned by a
+    test, and noted in `pct-normalize`'s docstring.
+  - the single-pass §2.4 invariant (`%2541`) was unpinned: docstrings + tests
+    added in both libraries.
+  - the U+212A witness 0010 item 5 names was not landed: added and witnessed.
+  - two ledger nits: the §6.2.2.2-vs-§6.2.2.1b attribution (fixed) and the stale
+    Slice ① record (this close-out).
+  One finding was REFUTED on adjudication — a redundant `%40`/`%3A`-in-authority
+  coverage request; the reserved-octet gate is already pinned by `%3A stays`.
+
+M5 CLOSED (pending the merge gate). The pure core now percent-codes and
+normalizes: `(uri percent)` (decode/encode + the §2.3 set + hex primitives) and
+`(uri normalize)` (§6.2.2 scheme-case + percent-normalization). Both are total
+functions over bytevectors (0010), graded against an RFC-3986-derived oracle
+independent of the code, each decision watched failing. v0.1 is a splitter with a
+complete-enough core, not a validator, and it says so (0011, 0020). The §5.4
+resolution ratchet does not move here — that is M6's (0011).
+
+GATE. The M5 branch (feat/m5-percent-normalization) is committed and green; push
++ PR + the closing ritual are the maintainer's call (ask first).
