@@ -2325,3 +2325,83 @@ sibling's next request. The two sibling-repo issues filed this session are both 
 #10 (SP/CTL in the authority) subsumed by M4, #9 (authority-form) shipped by M9 — chez-http-
 server can drop both workarounds and consume v0.2.0 by gitlink. The tree is clean on main at
 f359743, tagged v0.2.0.
+
+(The RFC 3986 CONFORMANCE AUDIT was set up next — decision 0028 + a ledger seed — then PAUSED
+at the maintainer's request to do issue #11 first; that setup is a WIP commit 115764d on
+feat/conformance-audit, to resume after #11 merges.)
+
+---
+
+ISSUE #11 — COLLECTOR REUSE (uri-collector-reset!). Branch feat/collector-reset.
+
+Plan: GitHub issue #11 (a server parses one request-target per request; uri-parse allocates a
+fresh parser + two eq-hashtables per call). Decisions in force: 0002 (byte-machine by gitlink —
+its runtime exports parser-reset!), 0008 (the collector's mutable state a reset must clear),
+0016 (NO standing allocation lane — allocation is byte-machine's measured property; #11's
+"measure" is a one-shot recorded benchmark), and NEW 0029 (a collector resets in place for
+per-connection reuse).
+
+Base at start: dee40d8 (local main == origin/main; v0.2.0 released as f359743, tagged v0.2.0).
+Measured environment (2026-09-19, Darwin arm64): Chez 10.4.1 (tarm64osx), CMake/CTest 4.3.3.
+Baseline: release 73/73, no-scheme 11/11, 0 failures.
+
+THE CORRECTNESS HINGE, RESOLVED FROM BYTE-MACHINE SOURCE. The collector's parser carries the
+MODE as an embedder field-override; a reset that dropped it would leave the parser in `unset`
+mode, refusing at offset 0. But byte-machine's parser-reset! restores the field-VALUES (slot 8)
+from the canonical MERGED initials (slot 17 — declared initials with the embedder overrides
+applied), not the bare declared ones (slot 9): runtime.sls states "an embedder-chosen mode
+survives a reset." So per-connection reuse is sound (decision 0029 context).
+
+DONE (single slice — small, additive). uri-collector-reset! : Collector -> unspecified, on
+(uri collect):
+  - src/uri/collect.sls — a `reset!` message on the collector closure: parser-reset! (mode
+    preserved), hashtable-clear! the span table AND the offset table, set! present '() /
+    rooted? #f / verdict #f. Nothing reallocated. New export uri-collector-reset! (dispatches
+    reset!). uri-parse and the one-shot path UNCHANGED; no scanner/grammar/artifact change.
+  - test/common/collect-tests.sps — a "collector reuse (reset!)" group in unit.collect:
+    reset-and-reparse equals a fresh collector in BOTH components AND offsets, across all three
+    modes and across a ROOTED transition (http:/p → http://a/x) and a VERDICT transition
+    (g:h → a/b); no stale span leaks (query/fragment cleared); the mode survives; reset after
+    an ERROR result then reuse. (No CMake change — same imports, uri-collector-reset! is in
+    URI_COLLECT.)
+  BENCHMARK (decision 0029 item 3, one-shot, NOT a lane per 0016): 200k parses of the short
+  target "example.com:443" (relative-ref) — fresh-collector-per-parse 160 ms vs reset-reuse
+  25 ms, ~6.4x, confirming the issue's "fixed per-call overhead dominates a short parse" (fresh
+  allocates a parser + two hashtables per call; reuse allocates none — the bytes-allocated
+  probe was a post-GC artifact, so the time delta is the reported evidence).
+  MUTATION WITNESSES (watched to fail, reverted): ALL SIX mutable-state resets are observable
+  and witnessed — parser-reset! (reuse diverges), the span-table clear (stale spans corrupt
+  scheme/path), the OFFSET-table clear (stale offsets), present '() (stale query/fragment leak
+  as present-empty), rooted? #f (a stale rooted? prepends a spurious "/" → path //x), and
+  verdict #f. (I FIRST mis-analysed verdict as unobservable — reasoning only about `assemble`,
+  where a stale verdict is masked by the cleared leading-token bytes `lead`=#f — and de-scoped
+  it from witnessing; the merge-gate review refuted that: `assemble-offsets`/`path-offset` also
+  reads verdict, against the OFFSET table, so a stale verdict='segment steers the path offset
+  to the cleared leading-token slot = #f. Witnessed by a new reuse row `uri-reference "g/h" →
+  "/p"` — g/h fires the SEGMENT verdict, /p is a rooted path with NO leading token so it fires
+  none — whose path offset is 0 fresh but #f if the verdict reset is dropped.) GRADED: release
+  73/73, no-scheme 11/11; unit.collect 54 cases / 152 checks. — AT THE MERGE GATE.
+
+ISSUE #11 MERGE-GATE VERIFICATION (2026-09-19). A focused three-dimension adversarial review
+Workflow (Ultracode: parser-lifecycle edge states, reset completeness + an adversarial attack
+on the "verdict unobservable" claim, and record fidelity; each finding default-refuted) — 8
+agents. Result: 5 confirmed findings, 0 refuted, all the SAME issue from three angles, and NO
+code defect (the shipped reset IS correct — it resets verdict). The defect was in MY ANALYSIS
+and the record: the "verdict is unobservable / hygiene, not witnessed" claim was FALSE, because
+`path-offset` reads verdict against the offset seam (the same seam this milestone's offset
+comparison already checks). Fixed: (1) the false ledger claim corrected (above — verdict is
+load-bearing, all six witnessed); (2) a witnessing reuse row added (`g/h → /p`), watched to
+redden when verdict's reset is dropped; (3) the test group's comment corrected (it had
+overclaimed the verdict rows witnessed verdict — they did not, because their second parse
+re-fires a fresh verdict). The lifecycle-edge probing (reset never-fed / mid-parse / double /
+after-error / a long loop, across modes) found no crash, no divergence, no mode loss. GRADED
+after the fixes: release 73/73, no-scheme 11/11; unit.collect 54 cases / 152 checks. — STILL
+AT THE MERGE GATE. Next: the closing ritual (ask first).
+
+THE MERGE-GATE LESSON, AGAIN — and pointed at ME this time. Every milestone the gate catches
+what the slice cannot see about itself; here it was not a code bug but a wrong INVARIANT I
+asserted and then used to de-scope a line from the witness discipline. The review's refutation
+(path-offset reads verdict) turned an unwitnessed, wrongly-rationalised reset into a witnessed
+one. The rule sharpens: "unobservable, so not witnessed" is itself a claim to be adversarially
+refuted, never a rationale to skip the witness — the byte/offset seam is wider than the first
+reading of it.

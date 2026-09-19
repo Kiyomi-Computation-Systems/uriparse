@@ -229,4 +229,69 @@
                     (uri-component-present? (uri-components-path (uri-parse-components r))))))
          uris)))))
 
+;;; --- collector reuse: reset! (issue #11, decision 0029) ------------------
+;;; A collector reset to its just-constructed state must reparse EXACTLY as a
+;;; fresh one -- clearing the span table, the offset table and the verdict flags,
+;;; and preserving the embedder-chosen mode (parser-reset! restores the merged
+;;; field-initials, so a reused collector does not fall back to unset). These are
+;;; the properties a per-connection server depends on.
+(harness-group "collector reuse (reset!)"
+  (lambda ()
+    (define (reuse mode a b)     ; parse a, reset, parse b -> the result of b
+      (let ((c (make-uri-collector mode)) (ba (string->utf8 a)) (bb (string->utf8 b)))
+        (uri-collect-feed! c ba 0 (bytevector-length ba)) (uri-collect-finish! c)
+        (uri-collector-reset! c)
+        (uri-collect-feed! c bb 0 (bytevector-length bb)) (uri-collect-finish! c)))
+    (harness-case "reset-and-reparse equals a fresh collector -- components AND offsets"
+      (lambda ()
+        (define (offsets r)   ; the five component offsets, so a stale offsets table reddens
+          (map (lambda (c) (uri-parse-component-offset r c))
+               '(scheme authority path query fragment)))
+        (for-each
+         (lambda (row)
+           (let* ((mode (car row)) (a (cadr row)) (b (caddr row))
+                  (got (reuse mode a b)) (fresh (parse mode b)))
+             (check (string-append "ok: " b) (uri-parse-ok? got))
+             (check (string-append "reuse==fresh components: " b)
+                    (uri-components=? (uri-parse-components got) (uri-parse-components fresh)))
+             (check (string-append "reuse==fresh offsets: " b)
+                    (equal? (offsets got) (offsets fresh)))))
+         ;; The rooted? and verdict resets are OBSERVABLE THROUGH THE OFFSET SEAM
+         ;; (path-offset reads both), so the offset check above witnesses them:
+         ;;   - http:/p -> http://a/x : a stale rooted? corrupts the second path.
+         ;;   - g/h -> /p : g/h fires the SEGMENT verdict; /p is a rooted path with
+         ;;     NO leading token, so it fires no verdict -- a stale 'segment would
+         ;;     steer path-offset to the cleared leading-token slot (#f) instead of 0.
+         '((uri          "http://a/b?q#f" "http://h/x")
+           (relative-ref "//a/b?q"        "p/q")
+           (uri-reference "g:h"           "//host/path")   ; scheme-verdict then authority
+           (uri          "http:/p"        "http://a/x")    ; ROOTED then non-rooted (rooted? reset)
+           (uri-reference "g/h"           "/p")            ; SEGMENT-verdict then a no-token rooted path (verdict reset)
+           (uri-reference "g:h"           "a/b")))))        ; scheme-verdict then segment-verdict
+    (harness-case "no stale span leaks across a reset (query/fragment cleared)"
+      (lambda ()
+        (let ((got (reuse 'uri "http://a/p?q=1#top" "http://a/x")))   ; had query+fragment; b has neither
+          (check "ok" (uri-parse-ok? got))
+          (check "query absent, not the stale q=1"
+                 (uri-component-absent? (uri-components-query (uri-parse-components got))))
+          (check "fragment absent, not the stale top"
+                 (uri-component-absent? (uri-components-fragment (uri-parse-components got)))))))
+    (harness-case "the embedder-chosen mode survives the reset"
+      (lambda ()
+        (let ((got (reuse 'relative-ref "//h/a" "b/c")))   ; if mode were lost, "b/c" refuses mode-unset
+          (check "ok, not mode-unset" (uri-parse-ok? got))
+          (check "reuse==fresh"
+                 (uri-components=? (uri-parse-components got)
+                                   (uri-parse-components (parse 'relative-ref "b/c")))))))
+    (harness-case "reset after an ERROR result, then reuse"
+      (lambda ()
+        (let ((c (make-uri-collector 'uri)) (bad (string->utf8 "nocolon")) (ok (string->utf8 "http://h/x")))
+          (uri-collect-feed! c bad 0 (bytevector-length bad))
+          (check "the bad parse errors" (not (uri-parse-ok? (uri-collect-finish! c))))
+          (uri-collector-reset! c)
+          (uri-collect-feed! c ok 0 (bytevector-length ok))
+          (check "reuse after error == fresh"
+                 (uri-components=? (uri-parse-components (uri-collect-finish! c))
+                                   (uri-parse-components (parse 'uri "http://h/x")))))))))
+
 (harness-finish)
