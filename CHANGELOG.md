@@ -6,6 +6,69 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-19
+
+Released on macOS arm64 evidence only. The Linux CI cell is configured and committed
+but has **still never run** (decisions 0017, 0027), so every count below is measured
+on macOS arm64 (Chez Scheme 10.4.1, machine-type tarm64osx; CMake/CTest 4.3.3) and
+nowhere else: the complete selection is 73/73 and the no-Scheme layer 11/11, 0
+failures, re-measured on the release commit. v0.2.0 adds **validation**
+(`uri-parse-validate` judges every component's charset and the whole host grammar),
+**completes** RFC 3986 §6.2.2.1 normalization (host case), and parses **RFC 9112
+authority-form** CONNECT targets — over v0.1's lenient splitter, strict resolver, and
+complete pure core. `uri-parse` itself stays lenient by design. It is **not yet** "RFC
+3986 compliant": that blanket claim is a whole-ABNF conformance audit this project has
+not run, so it is earnable but not granted (decision 0027).
+
+### M9 — authority-form for CONNECT targets
+
+- **`uri-parse-authority-form` / `uri-parse-authority-form-validate`** — RFC 9112
+  §3.2.3 authority-form (`host:port`, no scheme, no `//`) parsing on `(uri collect)`,
+  via a `//` splice through relative-ref mode with a −2 offset re-map — no scanner or
+  grammar change, reusing `(uri host)`. The lenient form mirrors `uri-parse` and
+  rejects only a trailing path/query/fragment (`not-authority-form`); the strict form
+  adds, leftmost-first, `userinfo-forbidden` (bracket-aware — an `@` inside an
+  IP-literal is not userinfo), the host grammar, and `port-required` (an empty port
+  `host:` is valid RFC 3986 but not RFC 9112).
+- Graded against a hand-derived §3.2.3 corpus (17 rows, both entry points per row,
+  exact code + absolute offset), with six mutation witnesses; a merge-gate adversarial
+  review surfaced and fixed one code defect (a bracketed-`@` misfire) and one coverage
+  gap (decision 0026).
+
+### M4 — the host grammar, and host-case normalization
+
+- **`(uri host)`** — RFC 3986 §3.2 authority validation as pure functions over the
+  authority bytevector: the bracket-aware userinfo/host/port split, and the host
+  grammar — reg-name, IPv4address, IP-literal → IPv6address (read as a `::`-compression
+  counter, not the nine ABNF alternatives) / IPvFuture, and port. `uri-parse-validate`
+  now judges the authority too. Reachability is exact: a bare dotted quad like
+  `999.1.1.1` is a valid reg-name (§3.2.2 first-match-wins), so `invalid-dec-octet` is
+  reachable only inside `[...]`.
+- **Host-case normalization** — `normalize-components` now folds the *host* to
+  lowercase (§6.2.2.1a), skipping `%XX` triplets so their hex stays uppercase
+  (§6.2.2.1b) and leaving userinfo case-sensitive — completing RFC 3986 §6.2.2.1 and
+  closing v0.1's last deferred transform (decision 0020).
+- Graded three ways (decisions 0024, 0025): the validator agrees with an independent
+  ABNF oracle over a shape battery plus exhaustive dec-octet / h16 / group-count
+  sweeps; a hand-derived negative corpus is rejected with the exact code and absolute
+  offset; the positive corpora are all accepted. Mutation witnesses throughout.
+
+### M3 — charset validation
+
+- **`(uri charset)`** — the coarse-component charset validators (scheme, path, query,
+  fragment) as pure functions over bytevectors, reusing `(uri percent)`'s
+  `unreserved-byte?` and hex primitives so the validator and the codec cannot disagree
+  about a byte, plus a core error vocabulary (`invalid-scheme` / `-pchar` / `-query` /
+  `-fragment` / `-pct-encoded`, decision 0024).
+- **`uri-parse-validate`** — parse leniently, then judge the component charsets in
+  input order (the first error is the leftmost), rebasing the validator's relative
+  index onto the offset seam to an absolute offset. `uri-parse` itself stays lenient —
+  validation is a distinct entry point, not always-on, because the normalization,
+  resolution and round-trip layers depend on the non-validating splitter.
+- Graded three ways: agreement with an independent ABNF oracle over all 256 single
+  bytes × four components plus a pct-encoded battery; a hand-derived negative corpus
+  rejected with the exact code and absolute offset; the positive corpora all accepted.
+
 ## [0.1.0] - 2026-09-19
 
 Released on macOS arm64 evidence only. The Linux CI cell is configured and
@@ -146,5 +209,6 @@ host grammar are v0.2 (decisions 0011, 0023, and the README caveats).
   always agrees, and a ratchet that fails in only one direction, are both
   caught.
 
-[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/releases/tag/v0.1.0

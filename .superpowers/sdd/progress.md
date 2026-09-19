@@ -2228,3 +2228,53 @@ the FIRST FUNDED CI RUN (0017 item 3, still undischarged) and the "RFC 3986 comp
 EARNABLE-pending-audit — now with an even larger validating/normalizing/resolving/authority-
 form surface, but still needing its own audit, not an automatic grant. The tree is clean on
 main at a58e606.
+
+---
+
+THE v0.2 RELEASE — the M8 analog for v0.2. Branch chore/v0.2.0-release.
+
+Plan: the release ACT, its checklist DERIVED (as 0023 derived M8's) against the reconciled
+tree. Decisions in force: 0017 (CI has never run — each release on it needs its own
+amendment), 0023 (the v0.1 release template — tag semantics, structural doc reconciliation,
+the honest claim, the never-run-CI amendment, the re-measure gate, publish steps gated per
+action), 0024/0025/0026 (M3/M4/M9 — what the release now claims), and NEW 0027 (the v0.2
+release amendment: annotated tag v0.2.0, still on never-run CI, does NOT yet claim RFC 3986
+compliance).
+
+Base at start: 1147724 (local main == origin/main; M9 merged as a58e606, its close-out
+1147724). Measured environment (2026-09-19, Darwin arm64): Chez 10.4.1 (tarm64osx),
+CMake/CTest 4.3.3. Baseline on the branch before reconciliation: release 73/73, no-scheme
+11/11, 0 failures.
+
+WHAT THE RELEASE SHIPS (decision 0027): NO algorithm, NO new src/, NO new lane — the
+documentation reconciliation, decision 0027, this close-out, and the annotated tag v0.2.0.
+The shipped src/ is byte-identical to M9's.
+  - CMakeLists.txt VERSION 0.1.0 → 0.2.0 (the libraries stay unversioned — an R6RS version
+    field is a breaking import change, 0023 item 2).
+  - README.org — status → v0.2.0; the summary gains M3 (validation), M4 (host grammar +
+    host-case normalization), M9 (authority-form); the two EARNED caveats are rewritten to
+    state what v0.2 DOES (uri-parse-validate now validates charsets + host grammar;
+    normalize completes §6.2.2.1 host case), while the STILL-TRUE boundaries stay — the
+    CI-not-run quote, strict resolution, the round-trip §4.2/§3.3 boundary, not-portable,
+    and the not-blanket-"RFC 3986 compliant" clause (rewritten: earnable via a whole-ABNF
+    audit, not granted). The parsing section and the src layout gain the new entry points.
+  - CHANGELOG.md — [Unreleased] → [0.2.0] - 2026-09-19 (fresh empty [Unreleased] above),
+    with M3/M4/M9 sections in the measured, mutation-witness voice of the [0.1.0] entry, a
+    preamble disclosing CI-never-ran + the re-measured counts + the deferred compliance
+    claim, and the version link refs updated. The frozen [0.1.0] entry is untouched.
+
+THE HONEST CLAIM (0027 item 4): v0.2 now VALIDATES (uri-parse-validate judges every
+component's charset AND the whole host grammar), COMPLETES §6.2.2.1 normalization (host
+case), and parses RFC 9112 authority-form — over v0.1's lenient splitter + strict resolver +
+complete core. uri-parse itself stays lenient by design. It does NOT claim blanket "RFC 3986
+compliant": that is a whole-ABNF conformance audit not yet run — earnable and nearer, not
+granted. CI has STILL never run (0017 item 3 OPEN, disclosed in the release body, not
+waived); 0027 is the amendment that ratifies releasing v0.2 on macOS-arm64-local evidence,
+the successor to 0023 as 0023 was to 0017.
+
+RE-MEASURE (2026-09-19, on the reconciled tree): release 73/73, no-scheme 11/11, 0 failures
+(Darwin arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3). The doc changes touch no lane. The
+official 0023-item-6 gate re-measures again AT the tag commit after the merge. — AWAITING the
+publish ritual under the maintainer's "Do it" ratification (0027 item 7): push, PR, confirm
+the billing refusal, squash-merge, re-measure at the tag commit, cut + push the annotated
+v0.2.0 tag.

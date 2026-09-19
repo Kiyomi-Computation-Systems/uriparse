@@ -12,7 +12,7 @@ An RFC 3986 URI parser for Chez Scheme, in portable R6RS.
 ✨ *AI Disclosure:* LLMs are used extensively in the planning and development of this project.
 #+end_quote
 
-** Status: v0.1.0 — released 2026-09-19
+** Status: v0.2.0 — released 2026-09-19
 
 The scanner splits a URI reference into five components — scheme, authority,
 path, query, fragment — for all three modes (M2), and ~(uri collect)~ assembles
@@ -23,23 +23,33 @@ transform-references) and ~(uri recompose)~ (§5.3) turn a base and a reference
 into a target URI — and **all 42 rows of RFC 3986 §5.4 pass** (M6). Now the
 round-trip property is *measured* (M7): ~parse → normalize → recompose → parse~
 reaches a fixed point over every committed URI, so the pipeline is internally
-consistent. The host grammar is v0.2. Standing behind it all (M1): the RFC's own
-vectors, the loader that reads them, the comparator, the two-way ratchet, and the
-harness and build layer.
+consistent. It also *validates*: ~uri-parse-validate~ judges every component's
+charset (M3) and the whole authority host grammar — userinfo, host as reg-name /
+IPv4address / IP-literal → IPv6address / IPvFuture, and port (M4); ~(uri normalize)~
+now folds *host* case too, completing RFC 3986 §6.2.2.1 (M4); and
+~uri-parse-authority-form~ parses an RFC 9112 authority-form ~host:port~ CONNECT
+target (M9). ~uri-parse~ itself stays lenient — validation is the separate
+~uri-parse-validate~ pass. Standing behind it all (M1): the RFC's own vectors, the
+loader that reads them, the comparator, the two-way ratchet, and the harness and
+build layer.
 
 What this project will *not* claim until it is measured:
 
-- Not "RFC 3986 compliant". v0.1 splits URIs into components and resolves
-  references; charset and host-grammar validation are v0.2
-  ([[file:.plans/decisions/0011-v01-is-resolution-first.md][decision 0011]]).
-  It will accept bytes the ABNF rejects, and says so here rather than in a
-  footnote.
-- Not a full §6.2.2 normalizer. v0.1 normalizes the *scheme* case and
-  percent-encoding (uppercase hex, decode unreserved), but not *host* case —
-  that needs the host grammar (v0.2)
-  ([[file:.plans/decisions/0020-v01-normalizes-scheme-and-percent-and-defers-host-case.md][decision 0020]]).
-  Dot-segment removal is reference resolution's job (§5.2.4), and lands with it
-  in M6 — ~(uri normalize)~ does not do it.
+- Not yet "RFC 3986 compliant". ~uri-parse-validate~ now validates every
+  component's charset (M3) and the whole host grammar (M4), and ~uri-parse~
+  stays a lenient splitter *by design* — it accepts bytes the ABNF rejects, and
+  that split between the two entry points is the point, not a gap. But
+  "compliant" as a blanket claim is a whole-ABNF conformance audit this project
+  has not yet run, so it is not claimed — earnable and nearer, not granted
+  ([[file:.plans/decisions/0024-charset-validation-is-the-cores-over-the-split-components.md][decision 0024]],
+  [[file:.plans/decisions/0025-the-host-grammar-is-the-cores-over-the-opaque-authority.md][decision 0025]],
+  [[file:.plans/decisions/0027-v02-releases-as-annotated-tag-still-on-never-run-ci-and-defers-the-compliance-claim.md][decision 0027]]).
+- ~(uri normalize)~ does not remove dot-segments. It applies all of RFC 3986
+  §6.2.2.1 — *scheme* case, *host* case (M4), uppercase hex, decode unreserved —
+  but dot-segment removal is reference resolution's job (§5.2.4), and lives in
+  ~(uri resolve)~, not the normalizer
+  ([[file:.plans/decisions/0020-v01-normalizes-scheme-and-percent-and-defers-host-case.md][decision 0020]],
+  [[file:.plans/decisions/0025-the-host-grammar-is-the-cores-over-the-opaque-authority.md][decision 0025]]).
 - Resolution is *strict* (§5.2.2 with strict = true). ~http:g~ resolved against
   ~http://a/b/c/d;p?q~ is ~http:g~, not the RFC-1630 backward-compatible
   ~http://a/b/c/g~ — that partial-URI compatibility is out of scope
@@ -129,8 +139,11 @@ fragment: top
 #+end_example
 
 The mode is ~uri~ (an absolute URI); ~relative-ref~ and ~uri-reference~ are the
-other two. Resolving a reference against a base, normalizing, and recomposing live
-in ~(uri resolve)~, ~(uri normalize)~ and ~(uri recompose)~.
+other two. Validating the component charsets and the host grammar is
+~uri-parse-validate~; parsing a bare ~host:port~ CONNECT target (RFC 9112
+authority-form) is ~uri-parse-authority-form~. Resolving a reference against a
+base, normalizing, and recomposing live in ~(uri resolve)~, ~(uri normalize)~ and
+~(uri recompose)~.
 
 ** The corpus
 
@@ -144,7 +157,7 @@ M6 is gated on all 42 of its rows passing.
 ** Layout
 
 | ~.plans/~           | plans, and ~decisions/~ — the record of every choice a reader would otherwise reverse-engineer |
-| ~src/~              | the shipped libraries, pure R6RS: the scanner, the seam, the shell, and the core — percent, normalize, path, resolve, recompose |
+| ~src/~              | the shipped libraries, pure R6RS: the scanner, the seam, the shell, and the core — percent, charset, host, normalize, path, resolve, recompose |
 | ~test/conformance/~ | the derived corpus and the ratchet                                                             |
 | ~test/support/~     | the harness and the build-layer specifications                                                 |
 | ~docs/~             | user-facing documentation only                                                                 |
