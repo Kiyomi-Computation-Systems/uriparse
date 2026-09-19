@@ -1014,6 +1014,33 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
+# --- property.round-trip: RFC 3986's round-trip property (M7) ---------------
+#
+# The brief's test instrument #2: parse -> normalize (§6.2.2) -> recompose (§5.3)
+# -> parse reaches a fixed point (decision 0022 -- a ONE-STEP identity on the
+# once-normalized components, NOT normalize idempotence). A universal property,
+# not a ratchet. Drives the whole read+core stack, so it needs the scanner, the
+# shell, and the percent/normalize/recompose core; graded over the committed
+# corpora (mode uri), so URI_CORPUS_DIR is on its environment.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.property.round-trip.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/round-trip-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
+            ${URI_COLLECT}
+            ${URI_GENERATED_PARSER}
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/percent.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/normalize.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/recompose.sls"
+            ${URI_CORPUS_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/round-trip-tests.sps"
+    ENVIRONMENT "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+    TIMEOUT 180
+    LABELS unit)
+endforeach()
+
 # The corpus is DERIVED from the vendored RFC text (decision 0005). This lane
 # re-derives it and compares, so a hand edit to a vector -- the one thing that
 # would make a green lane meaningless -- reddens instead. It runs the same

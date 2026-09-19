@@ -944,3 +944,216 @@ point, and the second parse's spans equal the first's. It rides the existing
 abnfgen if it exists yet; §1.1.2 example URIs otherwise), and it is the last
 implementation milestone before M8 (release v0.1). No M6 debt carried forward —
 the tree is clean on main at b0939d8.
+
+---
+
+M7 — THE ROUND-TRIP PROPERTY. Branch feat/m7-round-trip.
+
+Plan: .plans/2026-09-18-chez-uri-project-brief.md "The test instrument comes
+first" (instrument #2: the round-trip property) and "M7 — recomposition and the
+round-trip property"; .plans/2026-09-18-chez-uri-design.md §7 (the instrument
+table) and §5 (recompose landed M6 per 0021). Decisions in force: 0005 (the
+corpora), 0008 (absent ≠ empty, carried through parse↔recompose), 0010
+(bytevectors), 0011 (v0.1 is resolution-first; M7 is the LAST implementation
+milestone before M8 release), 0012 (abnfgen is the v0.2 positive corpus — NOT
+built at v0.1, so M7 rides the COMMITTED corpora + hand vectors), 0020/0021
+(normalize/recompose).
+
+Base at start: f414d90 (local main == origin/main; M6 merged as b0939d8, its
+close-out f414d90). Measured environment (2026-09-18, Darwin arm64): Chez 10.4.1
+(tarm64osx), CMake/CTest 4.3.3. Baseline on the branch before any slice: release
+61/61, no-scheme 11/11.
+
+WHAT M7 SHIPS (provisional, pending the round-trip survey): the ROUND-TRIP
+PROPERTY as a lane — parse → normalize (§6.2.2) → recompose (§5.3) → parse
+reaches a fixed point, and the re-parsed (normalized) components equal the first
+normalized components (`uri-components=?`, keeping absent ≠ empty). §5.3 recompose
+already shipped at M6 (0021), so M7 adds NO new core library by default — it is a
+VERIFICATION milestone (a property lane over the committed corpora + hand
+vectors), plus minimal recompose hardening only if the property surfaces a real
+gap. This is the house rule "a property is measured or it is not claimed" applied
+to the recompose↔parse seam.
+
+THE DESIGN QUESTION (the M7 analog of 0020/0021, to be settled by the survey and
+recorded as a decision). The round trip is NOT total over all components: §5.3
+recompose is faithful for components that came from a parse in a known mode,
+EXCEPT the RFC §4.2 cases —
+  - a RELATIVE reference whose first path segment contains `:` (`{scheme=#f,
+    path="a:b"}` recomposes to `a:b`, which re-parses as `{scheme=a, path=b}`);
+  - a no-authority reference whose path starts with `//` (`{authority=#f,
+    path="//x"}` recomposes to `//x`, re-parsing as `{authority=x, path=""}`).
+§5.3 does NOT add §4.2's disambiguating `./`. The likely scope: the property is
+asserted over ABSOLUTE URIs (with a scheme), which the committed §5.4 targets and
+§1.1.2 examples all are, so the corpora avoid the relative-ref hazards; the §4.2
+boundary is DOCUMENTED (a producer of a relative reference must apply §4.2), not
+faked. The survey confirms the invariant, whether normalize is idempotent, the
+exact failure modes, and the slice plan (1 or 2 slices).
+
+SLICE ⓪ OPEN (2026-09-18): ledger seeded (provisional); branch cut from f414d90;
+the round-trip property survey commissioned (three investigators — the fixed-point
+invariant, the failure modes, the corpus/scope — synthesized adversarially
+against the RFC and the actual parse/normalize/recompose code), so the property's
+statement and its §4.2 boundary are derived before a lane is written.
+
+THE SURVEY CAME BACK AND RESHAPED THE INVARIANT (2026-09-18). Two findings, both
+code-verified, that a naive statement would have gotten WRONG:
+  1. The property is a ONE-STEP parse∘recompose identity on the ONCE-normalized
+     components, NOT a fixed point of normalize. normalize is provably NOT
+     idempotent over v0.1's non-validating domain: `%%341` → `%41` (pass 1: the
+     leading literal `%` is kept, `%34` decodes to `4`) → `A` (pass 2). A
+     `normalize(normalize(x)) == normalize(x)` lane is a false universal that
+     input reddens. The invariant does not need idempotence — the second parse
+     re-splits bytes without re-normalizing.
+  2. The property holds at 100% over ALL parse outputs reparsed IN-MODE (every
+     mode, not just absolute URIs), because the scanner's first-match-wins never
+     emits the §4.2 (colon-first-segment) or §3.3 (`//`-leading path) hazard
+     shapes. Those breaks are inherent to §5.3 over ARBITRARY components,
+     documented not hardened. Recommended plan: TWO slices, decision-first.
+Decision 0022 records the invariant, the non-idempotence boundary, the §4.2/§3.3
+recompose boundary, and the two-provenance corpus rule.
+
+SLICE ⓪ COMPLETE (2026-09-18). Landed: decision 0022 and the round-trip property
+lane over the NORMATIVE corpora, plus a normalize/absent-empty smoke. Evidence:
+release 63/63 (was 61), no-scheme 11/11. Darwin arm64, Chez 10.4.1 tarm64osx,
+CMake/CTest 4.3.3.
+
+`property.round-trip` (10 cases / 58 checks) drives the whole read+core stack per
+input: parse (mode `uri`) → normalize-components (§6.2.2, ONCE) → recompose (§5.3)
+→ parse, asserting `uri-parse-ok?` on both and `uri-components=?(reparse, n0)`
+(absent ≠ empty). No new src library — recompose shipped at M6 (0021); this is a
+verification lane. It grades every committed URI: the 8 §1.1.2 examples and the 42
+§5.4 targets (all absolute, mode `uri`) are fixed points. Because those carry no
+uppercase scheme and no `%`, normalization is the identity on them, so a compact
+smoke puts a real §6.2.2 delta through the loop (scheme fold `HTTP`→`http`;
+`%7E`→`~`; `%2f`→`%2F`; `%2E`→ a literal `.`) and the absent/empty distinction
+through recompose→reparse (`http://` vs `http:`; `http://a?` vs `http://a`).
+
+WHAT THE PROPERTY DOES AND DOES NOT TEST, stated honestly (decision 0022): it
+tests recompose∘parse STABILITY on n0, not normalize CORRECTNESS (that is
+unit.normalize's, M5) — a normalize that did nothing would still round-trip. What
+reddens is a recompose or parse that is not faithful, or a normalization whose
+output does not survive recompose→reparse. Three mutation witnesses, each watched
+red then reverted, prove the teeth: recompose dropping the scheme `:` (`ftp//…`
+reparse fails); recompose dropping `//` for an empty authority (`http://`→`http:`,
+empty authority reparses ABSENT); recompose dropping `?` for an empty query
+(`http://a?`→`http://a`, empty query reparses absent) — the last two pin the
+absent/empty distinction in both directions THROUGH the round trip.
+
+The exhaustive hand-vector battery (the full empty/absent matrix, more normalize
+deltas), the `%%341` non-idempotence pin, and the §4.2/§3.3 expected-non-round-
+trip pins (parsed in mode `uri-reference`) are Slice ①, per the survey's
+epistemic split (normative corpora vs authored vectors on opposite sides of a
+gate, as 0020/0021 were sequenced).
+
+ADVERSARIAL REVIEW (subagent, at the slice gate): no code defect — `round-trip-
+diff` is mechanically correct (normalize applied exactly ONCE, same-mode reparse,
+`uri-parse-ok?` on both parses, the only PASS return is the `uri-components=?`
+equality), the absent/empty half is load-bearing, the ldap `?`-in-query and urn
+colon-in-path examples genuinely round-trip, and the wiring resolves every import.
+One should-fix and two nits, closed here:
+  - should-fix (VACUITY): the four normalize-delta smoke cases were DECORATIVE —
+    the property is inherently blind to a normalize that does nothing (identity
+    output always round-trips), and `%7E`/`%2f`/`%2E` are all boundary-preserving,
+    so `normalize-components := identity` survived the whole lane. The honest fix:
+    the comment now states the property tests recompose∘parse STABILITY not
+    normalize correctness and names the ONE fault it catches (a normalize that
+    decodes a RESERVED octet into a delimiter), and a TEETH case was added —
+    `http://a?x%23y` (an encoded `#` in the query must stay encoded) — witnessed
+    by making `unreserved-byte?` admit 0x23: normalize then decodes `%23`→`#`,
+    recomposes `?x#y`, and the reparse splits a fragment, breaking the round trip.
+  - nit (VACUITY): the corpus groups asserted "all eight"/"all 42" but a
+    for-each over an empty corpus passes vacuously — added `length` = 8 / = 42
+    count checks (the committed files are already guarded by unit.corpus, this
+    pins the lane too).
+  - nit: `check-round-trips` emitted two failures per break (an uninformative
+    "expected a true value" then the diagnostic) — now one `check-fail` with the
+    detail.
+Decision 0022 gained a Sequencing note: a reader must not expect the `%%341` /
+§4.2 / §3.3 / exhaustive-matrix pins in Slice ⓪ — those are Slice ①; Slice ⓪
+ships the machinery, the normative corpora, the absent/empty smoke and the one
+teeth case. Evidence after fixes: property.round-trip 11 cases / 61 checks;
+release 63/63, no-scheme 11/11.
+
+SLICE ⓪ GATE (2026-09-18): decision 0022 presented and ACCEPTED by the maintainer
+("accept 22 and drive slice one"). The maintainer asked for a recommendation
+first; I recommended accepting 0022 (the one-step/not-idempotence call is forced
+by the `%%341` proof; the §4.2/§3.3 documented-not-hardened boundary is correct
+because hardening recompose would corrupt §5.2.2 resolution), documenting the
+recompose-not-total-inverse limitation in the release notes, deferring the
+§4.2-safe relative serializer to v0.2, and proceeding to Slice ①.
+
+SLICE ① COMPLETE (2026-09-18). Landed: the exhaustive round-trip battery on the
+existing `property.round-trip` lane — no new src (M7 adds no core library).
+Evidence: property.round-trip 25 cases / 82 checks (was 11/61); release 63/63,
+no-scheme 11/11. Darwin arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3.
+
+Added, all verified empirically against the live stack before assertion: (1) the
+EXHAUSTIVE empty/absent matrix through recompose→reparse — fragment `http://a#`
+vs `http://a`, the §3.2 case `http:///p` (empty authority, absolute path) vs
+`http:/p` (absent), `http://a?#` (query AND fragment empty), `http:#` (fragment
+empty, no authority); (2) the §6.2.2 delta reaching the AUTHORITY (`%41`→`A`) and
+the FRAGMENT (`%7E`→`~`), not only the path; (3) the NON-IDEMPOTENCE pin — a
+direct check that `pct-normalize %%341` = `%41` and `pct-normalize` of THAT = `A`
+(so N is not idempotent, the reason the invariant is one-step), and the one-step
+round trip HOLDS for `http://h/%%341` (n0 path `/%41` reparses to `/%41`); (4) the
+§4.2/§3.3 RECOMPOSE BOUNDARY over HAND-BUILT components — `{scheme=#f, path="a:b"}`
+recomposes to `a:b` which reparses as `{scheme=a, path=b}` (a break), and
+`{authority=#f, path="//x"}` recomposes to `//x` which reparses with authority
+`x` — each paired with a pin that the PARSER NEVER EMITS the hazard shape
+(`parse[uri-reference] "a:b"` = `{s=a,p=b}`; `"//x"` = `{a=x,p=""}`), so the round
+trip over parse outputs never meets the boundary.
+
+MUTATION WITNESS (Slice ①): the sharpest new case, the §3.2 `http:///p` vs
+`http:/p` distinction, watched red — dropping `//` for an empty authority makes
+`http:///p` recompose to `http:/p`, whose reparse reads the authority ABSENT, so
+the round trip breaks. (The round-trip machinery's other teeth — the scheme colon
+and the empty query — were witnessed at Slice ⓪; the boundary and non-idempotence
+pins assert concrete values verified against the live stack.)
+
+README.org (status → "M7 — the round-trip property", plus a recompose-boundary
+caveat) and CHANGELOG.md landed with this slice.
+
+M7 MERGE-GATE VERIFICATION (2026-09-18, at the merge gate). A three-dimension
+multi-agent adversarial pass — lane correctness/non-vacuity, decision/doc
+fidelity, completeness — each finding adjudicated. No code DEFECT: `round-trip-
+diff` re-verified correct (one normalize, same-mode reparse, `uri-parse-ok?` on
+both, the only PASS is the `uri-components=?` equality) and non-vacuous. Findings
+closed:
+  - should-fix (completeness): decision 0022 item 3 claims the property holds in
+    EVERY mode, but only mode `uri` (all-absolute corpora) was MEASURED —
+    relative refs appeared only in the §4.2/§3.3 break cases. Added a positive
+    relative-reference group (`g`, `g/h`, `../g`, `./g`, `/g`, `?q`, `#f`, ``,
+    `g;x=1/../y`, `a/b?c#d`, `./a:b`), all verified HOLD in mode `uri-reference`
+    against the live stack before assertion — so the "every mode" claim is now
+    measured, and `./a:b` pins the §4.2-SAFE colon form (colon in the second
+    segment) beside the unsafe one.
+  - should-fix (DECISION FIDELITY, the sharpest): decision 0022 (and its copies
+    in CHANGELOG and the test comment) justified not-hardening recompose with
+    "hardening would corrupt §5.2.2 resolution" — WRONG and self-contradictory. A
+    §4.2-faithful guard (scheme-absent) never fires on a resolution target (which
+    always carries a scheme), so it cannot corrupt resolution. The CORRECT reason
+    is RFC fidelity: §5.3 deliberately omits the `./`, and the disambiguation is
+    the reference PRODUCER's job (a v0.2 serializer above recompose). Fixed in all
+    three places, and the §3.3 reasoning sharpened (resolution avoids it because
+    R comes from a parse, which §3.3 forbids from emitting a `//`-leading
+    no-authority path — not merely because targets carry a scheme).
+  - should-fix (stale header): the suite header still said the exhaustive battery
+    and §4.2/§3.3 pins "are Slice ①" as if elsewhere, though Slice ① merged them
+    into this file — rewritten to describe the whole property.
+  - nit: "decision 0015's §5.4.2 loophole note" was a mislabel (0015 is the
+    erratum-4547 adjudication; the §5.4.2 `http:g` loophole is the corpus's note
+    citing 0001) — corrected in 0022 and the test.
+  - nit: the boundary cases dereferenced a `recompose-reparse` result that would
+    be `#f` on a future recompose regression, erroring cryptically — added a
+    `(uri-components? rp)` check first, so a regression names itself.
+  - nit: the reserved-decode teeth were witnessed only for `#` in the query;
+    added a second position — `%2F` in the AUTHORITY must stay encoded — witnessed
+    red (decoding it makes `http://a%2Fb` → `http://a/b`, authority/path resplit).
+Two findings were PARTIAL/non-issues: the round trip is inherently blind to
+scheme-fold/hex-upcase/unreserved-decode (disclosed in the HONEST SCOPE block,
+those are unit.normalize's, M5); scheme-`%` is unreachable and `//`-with-authority
+round-trips (checked, recorded).
+
+Evidence after fixes: property.round-trip 27 cases / 96 checks (was 25/82);
+release 63/63, no-scheme 11/11. The review found the CODE sound; the fixes were
+one measured claim, one corrected justification, and doc reconciliation.
