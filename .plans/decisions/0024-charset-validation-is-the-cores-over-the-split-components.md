@@ -102,14 +102,22 @@ impossibility.
    against `collect-tests`' absolute offsets and the three path shapes before it
    is trusted — the runtime's comment is not a substitute for a measured case.
    This is the single genuine core-side cost, and it is cheaper than a scanner
-   regeneration.
+   regeneration. **Validation is a DISTINCT, opt-in entry, not always-on.**
+   `uri-parse` stays the lenient splitter M5/M6/M7 depend on (M7's round-trip
+   deliberately parses a malformed `%%341` to test normalization; a validating
+   `uri-parse` would reject it and redden the property); a new
+   `uri-parse-validate` parses leniently and then judges the M3 component
+   charsets in input order, so a charset fault surfaces as an error result (the
+   core code plus the absolute offset) exactly as a structural one does, and the
+   splitter is unchanged for the callers that want lenient bytes.
 
 4. **The validator lives in a new pure `(uri charset)`; `(uri percent)` is NOT
-   extended.** `(uri charset)` imports `(uri percent)`'s `unreserved-byte?` and
-   `hex-digit-value` and `(uri components)`, and holds the four component
-   predicates and the `pct-encoded` validating scan, pure over a bytevector,
-   applied uniformly across all three modes (the mode only gates which components
-   are present). `(uri percent)` is deliberately total/non-validating (decision
+   extended.** `(uri charset)` imports only `(uri percent)`'s `unreserved-byte?`
+   and `hex-digit-value` (it dispatches on a component *symbol* over a raw
+   bytevector, so it needs neither `(uri components)` nor the shell), and holds
+   the four component predicates and the `pct-encoded` validating scan, pure over
+   a bytevector, applied uniformly across all three modes (the mode only gates
+   which components are present). `(uri percent)` is deliberately total/non-validating (decision
    0011); folding validation in would breach that. `hex-digit-value` already
    returns `#f` for a non-hex byte, so the validating `%`-then-two-`HEXDIG` scan
    reuses it directly. This mirrors the `(uri normalize)`-imports-`(uri percent)`

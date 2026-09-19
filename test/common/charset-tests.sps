@@ -65,7 +65,20 @@
             '("" "a" "abc" "%" "%A" "%AB" "%ab" "%AG" "%GA" "%%" "%%41" "%4"
               "a%20b" "x%2Fy" "/a/b" ":@" "?" "a b" "a?b" "1a" "+x" "ab_c"
               "a.b-c+d" "urn:x" "c=GB")))
-         '(scheme path query fragment))))))
+         '(scheme path query fragment))))
+    (harness-case "exhaustive pct-encoded: every %XY agrees (the two-HEXDIG path)"
+      (lambda ()
+        ;; The single-byte sweep never reaches the two-HEXDIG path (a lone "%"
+        ;; fails the length guard first), so the validator's hex-digit-value and
+        ;; the oracle's oracle-hexdig? agreeing on all 256 bytes is otherwise
+        ;; unasserted. Sweep every %XY -- one accumulator check, not 65536 harness
+        ;; checks. The pct scan is component-independent, so `path` covers all.
+        (let ((bad '()))
+          (do ((b1 0 (+ b1 1))) ((= b1 256))
+            (do ((b2 0 (+ b2 1))) ((= b2 256))
+              (unless (agree? 'path (u8-list->bytevector (list 37 b1 b2)))
+                (set! bad (cons (list b1 b2) bad)))))
+          (check-equal "no %XY disagreements over 256x256" bad '()))))))
 
 ;; --- the negative corpus: rejected, with the exact code and absolute offset --
 (harness-group "the negative corpus is rejected, exactly"

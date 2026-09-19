@@ -42,6 +42,13 @@
        "0xE9 > 0x7F: a non-ASCII byte must be pct-encoded, so it is not pchar")
   (uri #vu8(104 116 116 112 58 47 47 104 47 9) path invalid-pchar 9
        "0x09 (TAB) is a control byte, not pchar")
+  ;; the offset seam's non-trivial path bases, composed end to end with the
+  ;; validator's index: a rooted path begins one byte before its span (0018), and
+  ;; a mode-3 segment verdict stitches the leading token before the path.
+  (uri "http:/ p" path invalid-pchar 6
+       "rooted no-authority path: the space is at absolute 6 = (path base 5) + 1")
+  (uri-reference "g/ h" path invalid-pchar 2
+       "mode-3 stitched path: the space is at absolute 2 = (leading-token base 0) + 2")
 
   ;; --- pct-encoded = "%" HEXDIG HEXDIG (reported at the "%") ----------------
   (uri "http://h/a%" path invalid-pct-encoded 10
@@ -56,6 +63,14 @@
   ;; --- query = *( pchar / "/" / "?" ) --------------------------------------
   (uri "http://h/p?a b" query invalid-query 12
        "space (0x20) is not in the query set")
+  (uri "http://h/p?%g" query invalid-pct-encoded 11
+       "a malformed pct-encoded routed through the query, not the path")
+
+  ;; --- leftmost wins: a bad scheme is reported before a later bad fragment --
+  ;; This pins the validator's input-order visit (scheme before fragment): the
+  ;; fragment "y z" is also invalid, but the scheme fault at 0 is the one raised.
+  (uri "1a:x#y z" scheme invalid-scheme 0
+       "two faults; the leftmost (the DIGIT-first scheme at 0) is reported")
 
   ;; --- fragment = *( pchar / "/" / "?" ) -----------------------------------
   (uri "http://h/p#a b" fragment invalid-fragment 12

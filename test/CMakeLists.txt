@@ -1080,6 +1080,7 @@ foreach(mode source aot)
     BACKEND chez
     PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/charset-tests.sps"
     SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
             ${URI_COLLECT}
             ${URI_GENERATED_PARSER}
             ${URI_CHARSET_ORACLE_LIB}

@@ -1577,3 +1577,41 @@ admitted) reddened THREE ways at once — the exhaustive byte-agreement (path by
 32), a multi-byte agreement, and the negative corpus (the space no longer
 rejected) — proving both the oracle and the corpus catch a loose validator. Both
 reverted; import-audit green (charset is pure R6RS).
+
+M3 MERGE-GATE VERIFICATION (2026-09-19, at the merge gate). A four-lens adversarial
+pass (validator correctness + oracle independence, the offset seam + shell wiring,
+lane non-vacuity, decision/CMake fidelity) + adjudication. Verdict: READY TO
+MERGE, NO blockers — the validator logic is correct, the oracle is genuinely
+independent, and the offset seam was corroborated. Six findings closed (three
+should-fix, three nits):
+  - should-fix (PROVENANCE GAP): the unit.charset lane executed the byte-machine
+    runtime (via uri-parse-validate → collect → generated scanner) but did NOT
+    fingerprint it — URI_GENERATOR_SOURCES was omitted, the one collect-driving
+    lane that missed it, so a runtime.sls change would perturb its siblings'
+    fingerprints but not this lane's. Added URI_GENERATOR_SOURCES to its SOURCES.
+  - should-fix (LEFTMOST unwitnessed): validate-result visits scheme→path→query→
+    fragment and returns the first error, but every negative row had exactly ONE
+    bad component, so a permuted visit order survived green. Added a two-fault row
+    ("1a:x#y z": bad scheme AND bad fragment) asserting invalid-scheme@0, and
+    mutation-witnessed it — reversing the order reports invalid-fragment@6 instead.
+  - should-fix (0024 SILENT on the lenient split): the record did not say uri-parse
+    stays lenient and validation is the distinct uri-parse-validate entry (the
+    rationale lived only here). Amended 0024 item 3 in place with that choice and
+    its reason (M7 parses a malformed "%").
+  - nit: 0024 item 4 claimed (uri charset) imports (uri components); it imports
+    only (uri percent) (dispatches on a component symbol over a bytevector).
+    Trimmed the record to match the shipped library.
+  - nit (pct hex agreement not exhaustive): single-byte agreement never reaches the
+    two-HEXDIG path, so hex-digit-value vs oracle-hexdig? agreeing on all 256 rested
+    unasserted. Added an exhaustive %XY sweep (256×256, one accumulator check).
+  - nit (offset bases not composed end to end): every path/query/fragment negative
+    was authority-present/non-rooted/non-stitched, so the rooted (-1) and mode-3
+    rebases were witnessed only in isolation. Added a rooted no-authority path
+    ("http:/ p" → invalid-pchar@6) and a mode-3 stitched path ("g/ h" →
+    invalid-pchar@2), plus a pct fault routed through a query.
+One finding was DISMISSED: a "no in-lane floor on the negative corpus" concern —
+the charset-oracle lane already applies per-production floors to the SAME file, so
+any shrink reddens a sibling. The negative corpus grew 15 → 19 rows. Evidence after
+fixes: release 67/67, no-scheme 11/11, 0 failures. The review found the CODE sound;
+the fixes were one provenance gap, one measured claim, one recorded decision, and
+coverage/doc reconciliation.
