@@ -20,12 +20,14 @@
           uri-parse
           uri-parse-result? uri-parse-ok? uri-parse-components
           uri-parse-error-code uri-parse-error-offset
-          uri-parse-component-offset)
+          uri-parse-component-offset
+          uri-parse-validate)
   (import (rnrs)
           (byte-machine runtime)
           (generated uri-scanner)
           (uri components)
-          (uri vocabulary))
+          (uri vocabulary)
+          (uri charset))
 
   (define-record-type uri-parse-result
     (fields (immutable ok? uri-parse-ok?)
@@ -188,4 +190,49 @@
   (define (uri-parse mode-sym bv)
     (let ((c (make-uri-collector mode-sym)))
       (uri-collect-feed! c bv 0 (bytevector-length bv))
-      (uri-collect-finish! c))))
+      (uri-collect-finish! c)))
+
+  ;; --- charset validation (M3, decision 0024) -----------------------------
+  ;;
+  ;; component-bytes : Components Symbol -> (Option Bytevector)
+  ;; The bytes of an M3-validated component (authority is M4's, so it is absent
+  ;; from this map).
+  (define (component-bytes c name)
+    (case name
+      ((scheme)   (uri-components-scheme c))
+      ((path)     (uri-components-path c))
+      ((query)    (uri-components-query c))
+      ((fragment) (uri-components-fragment c))))
+
+  ;; validate-result : uri-parse-result -> (Option uri-parse-result)
+  ;; #f when every present M3 component is charset-valid; else a charset ERROR
+  ;; result (ok? #f, the core code, the ABSOLUTE offset -- the component's start
+  ;; from the offset seam plus the validator's relative index). Components are
+  ;; visited in input order (scheme, path, query, fragment), so the first error
+  ;; is the leftmost; a charset error, like a structural one, does not assemble.
+  (define (validate-result r)
+    (let ((c (uri-parse-components r)))
+      (let loop ((names '(scheme path query fragment)))
+        (if (null? names)
+            #f
+            (let ((bytes (component-bytes c (car names))))
+              (if (not bytes)
+                  (loop (cdr names))
+                  (let-values (((code index) (validate-component (car names) bytes)))
+                    (if code
+                        (make-uri-parse-result
+                         #f #f code
+                         (+ (uri-parse-component-offset r (car names)) index)
+                         #f)
+                        (loop (cdr names))))))))))
+
+  ;; uri-parse-validate : Symbol Bytevector -> uri-parse-result
+  ;; Parse leniently, then JUDGE the component charsets (M3). A structural error
+  ;; passes straight through; an otherwise-valid split whose bytes the ABNF
+  ;; rejects becomes a charset error result. `uri-parse` itself stays the lenient
+  ;; splitter M5/M6/M7 depend on (a malformed "%" is content there, not an error).
+  (define (uri-parse-validate mode-sym bv)
+    (let ((r (uri-parse mode-sym bv)))
+      (if (uri-parse-ok? r)
+          (or (validate-result r) r)
+          r))))

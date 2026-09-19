@@ -1545,3 +1545,35 @@ absent cases + feed-invariance (dripped byte-at-a-time gives the same absolute
 offsets). MUTATION WITNESS: dropping the rooted "-1" reddened three checks
 (rooted path@5→6, rel rooted@0→1, drip rooted@5→6), then reverted. Evidence:
 release 65/65, no-scheme 11/11, 0 failures.
+
+SLICE ② COMPLETE (2026-09-19). The VALIDATOR. (1) (uri charset) — pure R6RS
+importing only (uri percent) (reusing unreserved-byte? and hex-digit-value, so the
+validator and the codec cannot disagree about a byte), written INDEPENDENTLY of
+the oracle: validate-component : Symbol Bytevector -> (values (Option code)
+(Option index)), plus the core error vocabulary (invalid-scheme/-pchar/-query/
+-fragment/-pct-encoded, 0024 item 5). (2) uri-parse-validate wired through the
+shell (uri collect): parse leniently, then judge scheme/path/query/fragment (in
+input order, so the first error is the leftmost), rebasing the validator's
+relative index onto the offset seam to an ABSOLUTE offset; a charset fault becomes
+an error result (ok? #f, the core code, the absolute offset), like a structural
+one. CRUCIALLY, uri-parse ITSELF STAYS LENIENT — validation is a distinct entry,
+not always-on — because M5/M6/M7 depend on the non-validating splitter (M7's
+round-trip deliberately parses a malformed "%%341" to test normalization; making
+uri-parse validating would redden it). (3) the unit.charset lane grades three
+ways: validate-component AGREES with oracle-scan on all 256 single bytes × four
+components + a pct-encoded battery (two independent readings of the ABNF, agreement
+is the check); the negative corpus is rejected with the exact code AND absolute
+offset end to end; and the positive corpora (8 §1.1.2 + 42 §5.4 targets) are all
+ACCEPTED (the reject-everything guard), with a structural error still passing
+through. CMake: URI_COLLECT gained percent + charset (manifest completeness), and
+the now-duplicate explicit percent.sls was dropped from the resolution/round-trip
+lanes. Evidence: release 67/67 (was 65), no-scheme 11/11, 0 failures.
+
+MUTATION WITNESSES (Slice ②): (A) the offset-seam integration — dropping the
+component-offset from the rebase (reporting the relative index) reddened every
+non-zero-offset negative (path space expected 10 got 2, high-byte expected 9 got
+1, …), proving the seam is load-bearing; (B) an over-permissive path (space
+admitted) reddened THREE ways at once — the exhaustive byte-agreement (path byte
+32), a multi-byte agreement, and the negative corpus (the space no longer
+rejected) — proving both the oracle and the corpus catch a loose validator. Both
+reverted; import-audit green (charset is pure R6RS).
