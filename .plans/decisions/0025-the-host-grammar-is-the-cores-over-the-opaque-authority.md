@@ -165,12 +165,21 @@ points that matter most). Superseded and reconciled in place below.
    ONLY — `userinfo` stays case-SENSITIVE and `port` is digits — reusing the
    `ascii-downcase` already written for the scheme (0020 item 2: "no rework, just a
    newly reachable component"). A test pins the host lowercased AND userinfo case
-   preserved (`User:S3cret@Example.COM` → `User:S3cret@example.com`). This discharges
-   0020's honesty obligation: `normalize-components`' doc and README's "will not
-   claim" list drop the "host case deferred" caveat, and v0.2 presents a COMPLETE
-   §6.2.2.1 normalizer (scheme case + host case + percent). `uri-parse` (the lenient
-   splitter) is unchanged; host-case normalization stays on the existing normalize
-   path, distinct from the `uri-parse-validate` validating path.
+   preserved (`User:S3cret@Example.COM` → `User:S3cret@example.com`), and a `%XX`
+   triplet in the host keeps its uppercased hex (§6.2.2.1b), so the fold touches only
+   literal bytes. This discharges 0020's honesty obligation in the CODE now:
+   `normalize-components`' own doc drops the "host case deferred" caveat and the
+   host-case-preserved test flips to host-case-normalized. The USER-FACING claim —
+   `README.org`'s "will not claim" list and the CHANGELOG — is dropped at the **v0.2
+   RELEASE**, not at M4 merge: `README.org` is stamped "Status: v0.1.0 — released" and
+   describes the frozen v0.1.0 (which does NOT normalize host case), and M3 set the
+   precedent by merging charset validation without touching that release-scoped README.
+   Updating the caveat before v0.2 is cut would claim, in the released README, a
+   transform the released tag lacks. So the README/CHANGELOG "complete §6.2.2.1
+   normalizer" claim rides with the v0.2 release milestone (alongside M3's charset
+   claim), keeping the released README honest. `uri-parse` (the lenient splitter) is
+   unchanged; host-case normalization stays on the existing normalize path, distinct
+   from the `uri-parse-validate` validating path.
 
 ## Consequences
 

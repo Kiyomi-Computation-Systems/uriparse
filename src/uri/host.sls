@@ -25,7 +25,8 @@
 ;;; validate-authority returns a component-RELATIVE index; the shell ((uri collect))
 ;;; rebases it onto the authority's absolute start (already captured since M3).
 (library (uri host)
-  (export uri-host-error-codes uri-host-error-code? validate-authority)
+  (export uri-host-error-codes uri-host-error-code? validate-authority
+          authority-host-span)
   (import (rnrs) (uri percent))
 
   ;; The CORE host error vocabulary (decision 0025 item 6): each the RFC's own ABNF
@@ -218,4 +219,26 @@
                  (if colon
                      (let-values (((hc hi) (validate-reg-name bv hp colon)))
                        (if hc (values hc hi) (validate-port bv (fx+ colon 1) n)))
-                     (validate-reg-name bv hp n))))))))))
+                     (validate-reg-name bv hp n)))))))))
+
+  ;; authority-host-span : Bytevector -> (values Nat Nat)
+  ;;
+  ;; The [start, end) of the HOST within an authority, by the SAME bracket-aware
+  ;; split as validate-authority (decision 0025 item 4): the host begins after the
+  ;; single "@" (or at 0), and ends at the closing "]" for an IP-literal (brackets
+  ;; included) or the port ":" for a reg-name/IPv4, else the end. Used by
+  ;; (uri normalize) to case-fold only the host (§6.2.2.1a) -- userinfo is
+  ;; case-sensitive and port is digits. Structural and total (v0.1 is lenient), so
+  ;; an unterminated "[" yields the span to the end.
+  (define (authority-host-span bv)
+    (define n (bytevector-length bv))
+    (let* ((at (find-byte bv 0 n AT))
+           (hp (if at (fx+ at 1) 0)))
+      (cond
+        ((fx>=? hp n) (values hp hp))                     ; empty host
+        ((fx=? (u8 bv hp) LBRK)
+         (let ((close (find-byte bv (fx+ hp 1) n RBRK)))
+           (if close (values hp (fx+ close 1)) (values hp n))))
+        (else
+         (let ((colon (find-byte bv hp n COLON)))
+           (values hp (or colon n))))))))

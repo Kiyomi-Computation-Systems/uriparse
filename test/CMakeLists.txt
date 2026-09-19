@@ -952,12 +952,12 @@ endforeach()
 
 # --- (uri normalize): §6.2.2 syntax-based normalization (M5 Slice 1) --------
 #
-# The §6 POLICY over `(uri percent)`'s mechanics: the §6.2.2.1a scheme case fold,
-# the §6.2.2.1b hex-uppercasing and §6.2.2.2 unreserved-decoding, and the two
-# deferrals decision 0020 documents -- host case (M4) and dot-segments (M6) --
-# pinned here as tests. It imports `(uri percent)` and `(uri components)`, so a
-# lane needs both on its path. Pure `(rnrs)`; source and aot like every other
-# Scheme lane.
+# The §6 POLICY over `(uri percent)`'s mechanics: the §6.2.2.1a scheme AND HOST
+# case fold (host case is M4/decision 0025, closing decision 0020's deferral), the
+# §6.2.2.1b hex-uppercasing and §6.2.2.2 unreserved-decoding, with dot-segments
+# (§6.2.2.3/M6) still deferred -- pinned here as tests. It imports `(uri percent)`,
+# `(uri components)` and now `(uri host)` (for the host span), so a lane needs all
+# three on its path. Pure `(rnrs)`; source and aot like every other Scheme lane.
 foreach(mode source aot)
   uri_add_scheme_lane(
     NAME uri.unit.normalize.chez.${mode}
@@ -966,6 +966,7 @@ foreach(mode source aot)
     SOURCES ${URI_HARNESS_MANIFEST}
             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/percent.sls"
             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/components.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/host.sls"
             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/normalize.sls"
             "${CMAKE_CURRENT_LIST_DIR}/common/normalize-tests.sps"
     TIMEOUT 120

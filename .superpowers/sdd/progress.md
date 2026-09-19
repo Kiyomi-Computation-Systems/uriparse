@@ -1894,3 +1894,40 @@ the validator or the shell).
   the oracle header — accurate as of Slice ⓪ authorship. GRADED after the fixes: release
   71/71, no-scheme 11/11. — STILL AT THE MERGE GATE. Next: Slice ③ (host-case
   normalization, decision 0025 item 8), then the closing ritual (ask first).
+
+SLICE ③ COMPLETE (2026-09-19). Host-case normalization — decision 0025 item 8,
+CLOSING decision 0020's last deferred §6.2.2.1 transform. The last M4 slice.
+  - src/uri/host.sls — new export `authority-host-span : Bytevector -> (values Nat
+    Nat)`, the host [start,end) by the SAME bracket-aware split as validate-authority
+    (host after "@"; ends at "]" for an IP-literal, else the port ":", else the end).
+  - src/uri/normalize.sls — imports (uri host); `downcase-host` folds ONLY the host
+    span's LITERAL bytes to lowercase, SKIPPING each "%XX" triplet so its hex stays
+    uppercase (§6.2.2.1b) — userinfo stays case-sensitive, port is digits.
+    `normalize-authority` = pct-normalize THEN downcase-host (percent first, so a
+    reserved-decoding %XX never synthesizes a delimiter that moves the host span);
+    normalize-components' authority field uses it. Docs updated (the "host case
+    deferred" caveat dropped; ascii-downcase now feeds the host fold too).
+  - test/common/normalize-tests.sps — the decision-0020 host-case-PRESERVED pin
+    FLIPPED to host-case-NORMALIZED: `HTTP User:S3cret@Example.COM` → `http
+    User:S3cret@example.com` (host folded, userinfo preserved); added an IPv6 host
+    fold (`[2001:DB8::Ab]:80` → `[2001:db8::ab]:80`) and the pct-interaction pin
+    (`Us%7Er@H%2Fx` → `Us~r@h%2Fx`: host literal folds, %2F hex stays upper, userinfo
+    Us~r preserved). Header + the unit.normalize CMake comment updated.
+  - test/CMakeLists.txt — host.sls added to the unit.normalize lane's source list
+    (the resolution + round-trip lanes already carry it via URI_COLLECT).
+  MUTATION WITNESSES: (1) fold from authority index 0 instead of the host start →
+  userinfo reddens (byte 85 "U"→117 "u", 83 "S"→115 "s"): starting at the host span
+  is what protects case-sensitive userinfo (decision 0020's whole point); (2) the
+  "%XX" skip removed (advance 1 not 3) → `%2F`→`%2f` (70 "F"→102 "f"): the triplet
+  skip preserves §6.2.2.1b's uppercase hex.
+  HONESTY OBLIGATION: discharged IN THE CODE (normalize.sls doc + the flipped test);
+  the USER-FACING README/CHANGELOG claim-drop rides with the v0.2 RELEASE, not M4
+  merge — README.org is stamped "v0.1.0 — released" and describes the frozen tag
+  (which does not normalize host case), and M3 set the precedent (charset validation
+  merged without touching the release-scoped README). Decision 0025 item 8 amended to
+  record this timing.
+  GRADED: release 71/71, no-scheme 11/11. Round-trip + resolution stay green (their
+  corpora have lowercase hosts, so host-case is a no-op there; the property is
+  idempotent under the added fold). — M4 IS FEATURE-COMPLETE (⓪①②③): the validating
+  surface AND decision 0020's last normalization gap are closed. AT THE CLOSING-RITUAL
+  GATE (AGENTS.md: ALWAYS ask before running the closing ritual).
