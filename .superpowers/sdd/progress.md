@@ -1615,3 +1615,60 @@ any shrink reddens a sibling. The negative corpus grew 15 → 19 rows. Evidence 
 fixes: release 67/67, no-scheme 11/11, 0 failures. The review found the CODE sound;
 the fixes were one provenance gap, one measured claim, one recorded decision, and
 coverage/doc reconciliation.
+
+M3 MERGED (2026-09-19). PR #8 squash-merged to main as 3686dc6; local main
+fast-forwarded (ecfa4a0..3686dc6); feat/m3-charset-validation deleted local and
+remote. Merged over a RED linux-amd64 check, confirmed the documented Actions
+billing refusal (decision 0017 — a completed/failure run at ~6s with 0 steps, per
+`gh run view`), not a test result; local macOS-arm64 evidence stands (release
+67/67, no-scheme 11/11, import-audit green). The maintainer authorised the closing
+ritual explicitly. Pushes went over HTTPS via `gh auth git-credential` (the SSH
+agent stayed broken this session); the API merge and branch-delete were unaffected.
+
+REFLECTION. M3 was v0.2's first milestone and the first real CODE since M7, and
+its shape was decided by the code, not the plan. The forcing question — validate
+in the grammar (design §6) or the core (0019) — looked open until the survey found
+that `vocabulary-tests.sps` ALREADY pinned the charset codes out of the scanner
+set with a green, mutation-witnessed test: the code enforced core-placement, so
+design §6's grammar-side note was the stale prose the project keeps warning about
+(the byte-machine memory: the prose lags the code on the points that matter).
+Placement was not a close call once the code was read. Three things then carried
+the milestone. First, the oracle discipline scaled to a whole validating surface:
+the product `(uri charset)` and a test-side `oracle-scan` are two INDEPENDENT
+readings of the same ABNF, and the lane grades them into agreement on all 256
+bytes × four components plus an exhaustive %XY sweep — two implementations of one
+property that agree on every byte, which is the check M1 built the project to make.
+The negative corpus was independently refuted against the ABNF before it was
+trusted. Second, the one genuine engineering risk was the offset seam, and the
+survey was right to say "witness, don't assume": the formula (stream-offset minus
+the fragment width, at the first fragment) and its path-shape adjustments (a rooted
+path begins one byte before its span; a mode-3 verdict rebases onto the leading
+token) were PROBED against nine hand-counted inputs before a test asserted them,
+then pinned and mutation-witnessed. Third — the milestone's sharpest catch, and the
+recurring one — the merge-gate found what the per-slice work structurally could
+not: the leftmost-error visit order was UNTESTED because every negative row had
+exactly one bad component, so a permuted order survived green (M2's copy-discipline,
+M5's empty-authority, M6's three resolve paths, M7's decorative smoke, and now this,
+all the same family: a test green whether the code is right or wrong); and the new
+lane executed the byte-machine runtime without fingerprinting it, a manifest-drift
+gap. Both are now closed and witnessed. The one design call worth its own line —
+`uri-parse` STAYS LENIENT, validation is the distinct `uri-parse-validate` entry —
+was forced by M7 (its round-trip parses a malformed `%`), and the merge-gate caught
+that 0024 hadn't recorded it. The settled pattern holds into v0.2: the per-slice
+review catches within-slice bugs, and the merge-gate catches the coverage — and the
+decision record — that a single slice cannot see about itself.
+
+NEXT (M4 — the host grammar). The last milestone of the v0.2 validating surface:
+sub-split the authority into userinfo/host/port and validate them — `reg-name`,
+`IPv4address`, `IP-literal` → `IPv6address` / `IPvFuture`, and `port` (`*DIGIT`),
+which M3 explicitly deferred (decision 0024 item 2). It unblocks the deferred half
+of decision 0020 (host-case normalization) and finally lets the `port`/host charset
+errors M3 named-but-left-to-M4 have a reachable path (0009 item 6). Design §6's M4
+note (measure the `IPv6address` node count before committing; do NOT reserve the
+`decision`-callback fallback) is the estimate to check against. Whether the split
+is scanner-side or core-side is M4's forcing question, the analog of M3's — 0019
+put the authority split in the core, so the likely answer is core, but read the
+code first. Standing debts carried forward: the FIRST FUNDED CI RUN (0017 item 3,
+still undischarged) and, only after M4 completes the validating surface, the
+"RFC 3986 compliant" claim v0.1/v0.2 have not yet earned. The tree is clean on main
+at 3686dc6.
