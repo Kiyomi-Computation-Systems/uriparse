@@ -1214,3 +1214,125 @@ host grammar and charset validation are v0.2 per decision 0011). The one standin
 external fact to carry in: CI has still never run (decision 0017), so v0.1's
 evidence is macOS arm64 local — the release notes must say so in the body, not a
 footnote. No M7 debt carried forward — the tree is clean on main at 05aa2d8.
+
+---
+
+M8 — RELEASE v0.1. Branch feat/m8-release.
+
+Plan: .plans/2026-09-18-chez-uri-project-brief.md "M8 — release v0.1" (a heading
+only — the brief intentionally leaves the release checklist to be DERIVED) and
+.plans/2026-09-18-chez-uri-design.md §6 ("What v0.1 therefore is, and what it
+must not claim"). Decisions in force: 0003 (RFC 3986 is the normative reference;
+disagreement adjudicated against the ABNF), 0011 (v0.1 is resolution-first; M3
+charset / M4 host grammar are v0.2), 0017 (CI has never run; v0.1's evidence is
+macOS arm64 LOCAL — a disclosure, not a footnote), 0020/0021/0022 (the core's
+scope boundaries the release notes must state honestly).
+
+Base at start: aced550 (local main == origin/main; M7 merged as 05aa2d8, its
+close-out aced550). Measured environment (2026-09-18, Darwin arm64): Chez 10.4.1
+(machine-type tarm64osx), CMake/CTest 4.3.3. Baseline on the branch before any
+slice, RE-MEASURED on this tree (not carried forward): release preset 63/63
+(0 failures), no-scheme preset 11/11 (0 failures) — read from
+build/{dev,no-scheme}/test-results/*.xml.
+
+WHAT M8 SHIPS (provisional, pending the release-readiness survey): a v0.1 release
+with NO new algorithm and (expected) no new src library — the milestone's work is
+release mechanics (a SemVer tag on a release commit), doc reconciliation (the
+CHANGELOG's single [Unreleased] into a dated section; README.org's status/caveats
+into a released state), the honest v0.1 CLAIM stated from the decisions not
+improvised (a non-validating splitter + strict §5.2.2 resolver + complete pure
+core; §5.4 at 42/42; round-trip measured; NOT "RFC 3986 compliant"; host grammar
+and charset are v0.2), and the mandatory 0017 CI disclosure. CMakeLists.txt
+already declares PROJECT_VERSION 0.1.0; there are no git tags yet; docs/ is empty.
+
+THE RELEASE QUESTIONS (the M8 analog of 0020/0021/0022, to be settled by the
+survey and recorded as decision 0023): the exact tag semantics (v0.1.0 annotated,
+on which commit) and whether a pushed tag / GitHub Release are in scope — both are
+OUTWARD-FACING PUBLISH actions that must be maintainer-approved at the gate, never
+assumed; the CHANGELOG reconciliation shape (Keep-a-Changelog); whether a v0.1
+library release needs a minimal user-facing docs/ quickstart or README suffices;
+the release-verification evidence (which suites must be green at the tagged
+commit, re-measured and platform-stamped); and the meta-call of releasing on
+never-run CI (0017 authorizes shipping-with-disclosure, but the maintainer
+ratifies it).
+
+SLICE ⓪ OPEN (2026-09-18): ledger seeded (provisional); branch cut from aced550;
+baseline re-measured (release 63/63, no-scheme 11/11); the release-readiness
+survey commissioned (four investigators — release mechanics/versioning, doc
+reconciliation, the honest claim + disclosures, release verification/scope —
+synthesized adversarially into a proposed decision 0023, a slice plan, and an
+explicit list of maintainer-gated outward-facing actions), so the release's shape
+and its claim are derived before a tag or a doc edit is written.
+
+THE SURVEY CAME BACK (2026-09-18). Verdict: v0.1 is ready to release WITH
+disclosure — the code gate is clean and green (re-measured on this tree: release
+63/63, no-scheme 11/11, 0 failures, exercising both source and aot lanes plus the
+import/rename/provenance/corpus-provenance audits and both mutation suites), zero
+TODO/FIXME/XXX in src/tools/cmake, all 22 decisions accepted, LICENSE consistent,
+PROJECT_VERSION already 0.1.0. M8 ships NO code and NO new lane; the only work is
+the release act. The proposal became decision 0023's seven points: (1) no
+algorithm/src/lane; (2) one annotated tag v0.1.0 (byte-machine's SemVer
+precedent) on the squash-merged reconciliation commit, NOT aced550, no metadata
+change; (3) structural doc reconciliation with the measured prose preserved
+verbatim (no Keep-a-Changelog Added/Changed rewrite); (4) the honest claim from
+the decisions, not improvised; (5) THIS record is the amendment that releases on
+never-run CI, disclosed in the body; (6) a fresh re-measure at the tagged commit;
+(7) automation stops at a LOCAL tag — push, squash-merge and any GitHub Release
+are maintainer-gated. The synthesizer REJECTED three investigator overreaches as
+v0.2, not M8: a docs/quickstart (an untested example is itself an unmeasured
+claim), a downstream consumption-smoke lane (would change the count, break the
+no-code charter, and is redundant with the source+aot conformance/round-trip
+lanes that already import the public libraries), and PGP-signing as a gate
+(maintainer key discretion). Plan: ONE slice — no code ships, so a doc/verify
+split earns no gate; byte-machine's own precedent is a single docs(release)
+squash commit.
+
+SLICE ⓪ GATE (2026-09-18): decision 0023 presented with a recommendation, and the
+one genuine judgment isolated for the maintainer — releasing a public v0.1 tag is
+a strictly larger claim than the M1 merge decision 0017 covered, and the house
+convention (byte-machine 0041, quoted in 0017) forbids waiving an unfunded Tier-1
+cell "quietly in release notes," so the tag needs its OWN recorded amendment. I
+recommended shipping with disclosure (0023 is that amendment; 0017 item 3 stays
+open and disclosed; the first funded run discharges it); the alternative was to
+fund a CI run first. The maintainer chose "ship with disclosure" — ACCEPTING
+decision 0023 (including point 5's ratification) and authorizing Slice ①.
+
+SLICE ① COMPLETE (2026-09-18). Landed the whole release reconciliation in one
+slice — NO src, NO new lane (M8's charter). (1) decision 0023 recorded (the seven
+points above, grounded in the survey and decisions 0003/0011/0015/0017/0020/0021/
+0022, with byte-machine's tag precedent verified: v0.6.0 is an annotated object on
+a docs(release) squash commit, tags v0.1.0..v0.6.0). (2) README.org status line
+flipped "M7 — the round-trip property (the last milestone before v0.1)" → "v0.1.0
+— released 2026-09-19"; the five-caveat non-claims block and the CI-not-run quote
+block kept VERBATIM. (3) CHANGELOG.md reconciled structurally: the "has not been
+released" preamble → the Keep-a-Changelog opener; "## [Unreleased]" → "## [0.1.0]
+- 2026-09-19" with a fresh empty "## [Unreleased]" above and compare/tag link refs
+appended; the decision-0017 CI-never-ran + macOS-arm64-local disclosure placed in
+the [0.1.0] section BODY (not a footnote); the M7..M1 milestone prose preserved
+unchanged. Evidence, RE-MEASURED on the post-edit tree (docs-only, so unchanged
+from baseline but measured not assumed): release 63/63, no-scheme 11/11, 0
+failures. Darwin arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3.
+
+M8 MERGE-GATE VERIFICATION (2026-09-18, at the merge gate). A three-lens
+adversarial doc-fidelity pass — contradiction/stale-language sweep, honest-claim
+accuracy against the actual exports, decision-0023 fidelity — plus adjudication.
+Verdict: MERGE-READY, NO confirmed defects. The honest-claim and decision-fidelity
+lenses found nothing; the adjudicator spot-checked their load-bearing claims — the
+real exports (resolve-components, recompose, uri-parse), the five negative
+disclosures intact at README.org:30-62, the CI-never-ran disclosure in the
+CHANGELOG [0.1.0] BODY (not a footnote), the counts re-measured 63/63 + 11/11, and
+every decision-0023 citation resolving. Two contradiction-lens findings were
+DISMISSED as failing the strict bar: (1) README.org:9's "in portable R6RS" tagline
+vs caveat 5's "Not portable" — defensible dialect-naming (R6RS is Scheme's
+portable STANDARD, and the property so claimed — source importing only
+(rnrs)/(byte-machine …)/own libs — IS lane-measured; caveat 5 disclaims the
+ARTIFACT's cross-implementation portability, a different subject), pre-existing
+prose the docs-only diff never touched, surfaced to the maintainer as the one
+optional one-word polish; (2) README.org:101's "docs/ = user-facing documentation
+only" Layout row on an intentionally, 0023-recorded-empty reserved dir (a
+directory-ROLE label, not a contents claim). No fixes were made — the doc-set
+makes exactly the honest claim the records require (non-validating, not "RFC 3986
+compliant", CI-never-ran disclosed in the body). Evidence unchanged: release
+63/63, no-scheme 11/11, 0 failures. The doc-set is safe to tag v0.1.0; the tag,
+its push, the squash-merge and any GitHub Release remain maintainer-gated
+(decision 0023 point 7).
