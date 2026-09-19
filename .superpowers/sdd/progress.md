@@ -1336,3 +1336,73 @@ compliant", CI-never-ran disclosed in the body). Evidence unchanged: release
 63/63, no-scheme 11/11, 0 failures. The doc-set is safe to tag v0.1.0; the tag,
 its push, the squash-merge and any GitHub Release remain maintainer-gated
 (decision 0023 point 7).
+
+M8 RELEASED (2026-09-19). At the merge gate the maintainer ratified releasing on
+never-run CI with disclosure (accepting decision 0023) and chose "merge + tag +
+push" (no GitHub Release). The clock had crossed midnight, so the release date was
+corrected 2026-09-18 → 2026-09-19 across the shipping artifacts (README status
+line, CHANGELOG [0.1.0] heading, decision 0023 point 3, and this ledger's Slice ①
+quotes) before the merge — v0.1 is dated the day it was actually cut, the same
+re-measure discipline applied to a date. Then the closing ritual: PR #6
+squash-merged to main as 264c997; local main fast-forwarded; feat/m8-release
+deleted local and remote. The release GATE was RE-MEASURED at 264c997 (the tag
+target, not the branch tip): release 63/63, no-scheme 11/11, 0 failures (Darwin
+arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3, 2026-09-19), exercising both
+source and aot lanes plus the import/rename/provenance/corpus-provenance audits
+and both mutation suites. The annotated tag v0.1.0 (unsigned — signing is the
+maintainer's key operation, decision 0023 point 2) was cut on 264c997 carrying
+the honest claim, the re-measured counts, and the 0017 CI disclosure, and pushed
+to origin (tag object 5cc4d10 → 264c997), so v0.1.0 is consumable by the submodule
+gitlink pin. Merged and released over a RED linux-amd64 check, the documented
+Actions billing refusal (decision 0017 — a completed/failure run at ~5s with 0
+steps, confirmed by `gh run view`), not a test result; local macOS-arm64 evidence
+stands in its place, disclosed in the tag and the CHANGELOG body. (Operational
+note, not a repo fact: the SSH agent stayed broken for this whole session, so
+every push — branch, force-push, tag, and the main fast-forward — went over HTTPS
+via `gh auth git-credential`; the API merge and branch-delete were unaffected.)
+
+REFLECTION — M8, AND THE v0.1 ARC. M8 was the milestone that shipped NO code at
+all: not a src library, not even a test lane (M7 at least added the round-trip
+lane). Its deliverable was a tag, reconciled docs, and one decision — so its whole
+risk was, like M7's, epistemic, but sharper: a release is the moment a project
+states its claim OUT LOUD, and the failure mode is claiming one micron more than
+was measured. Three things carried it. First, the survey earned its keep by
+turning a one-line brief heading ("M8 — release v0.1") into a seven-point decision
+AND, more valuably, by ISOLATING the single judgment that was genuinely the
+maintainer's — releasing on never-run CI — from the mechanical work around it. The
+house convention (0017, quoting byte-machine 0041) is that an unfunded Tier-1 cell
+is "struck by an explicit amendment, never waived quietly in release notes," and
+0017 was M1-scoped; a lesser process would have let the M1 waiver silently cover
+the larger release claim. Instead decision 0023 is that amendment, the maintainer
+ratified it explicitly, and nothing was rubber-stamped. Second, the discipline
+that ran through every prior milestone held to the last inch: the honest claim was
+taken from the decision records verbatim, not improvised; the measured milestone
+prose was PRESERVED rather than rewritten into Keep-a-Changelog Added/Changed
+buckets (which would have dropped the mutation-witness detail the project sells);
+the counts were re-measured at the tag commit, not carried forward by arithmetic;
+and the CI-never-ran fact went in the release BODY, not a footnote. Third, the
+"green for the wrong reason" theme that caught M2's copy-discipline, M5's
+empty-authority gap, M6's three unobserved resolve paths and M7's decorative
+normalize smoke had a final, quieter echo: the merge-gate's job was to catch an
+overclaim or a stale pre-release contradiction the release might smuggle in, and
+the strict bar dismissed both candidates — the one real judgment (the "in portable
+R6RS" tagline) was SURFACED to the maintainer, not silently "fixed." The arc is
+now whole: M1 the instrument with no parser, M2 the generic split, M5 the pure
+core, M6 §5.4 at 42/42, M7 the round-trip property measured, M8 the honest
+release. Its through-line was an oracle derived from the RFC independently of the
+code, mutations watched red then reverted, and the rule "a property is measured or
+it is not claimed" — which at the release became the SHAPE of the claim: v0.1 is
+exactly what it measured and nothing more, its unmeasured edges (cross-platform
+CI, the host grammar, charset validation) disclosed rather than papered over.
+
+NEXT (v0.2, no longer this ledger's milestone sequence). v0.1 is released; the
+resolution-first arc (decision 0011) is complete. v0.2 reopens what v0.1 honestly
+deferred: M3 (charset validation — turning the scanner's per-component
+byte-dispatch fallback edges from "accept" to "error", design §6's cheap estimate
+to check against), M4 (the host grammar — userinfo/host/port sub-split, IPv6
+address, and host-case normalization, which unblocks the deferred half of decision
+0020), plus the deferred docs/quickstart and a downstream consumption smoke
+(decision 0023 overreaches, now in-scope), and — the standing external debt — the
+FIRST FUNDED CI RUN, which discharges decision 0017 item 3 and replaces v0.1's
+local-only disclosure with real cross-platform evidence. The tree is clean on main
+at 264c997, tagged v0.1.0.
