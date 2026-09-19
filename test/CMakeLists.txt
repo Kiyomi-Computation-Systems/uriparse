@@ -787,6 +787,30 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
+# M4 (decision 0025): the host-grammar oracle and its hand-derived negative
+# corpus. Same discipline as the charset pair above: AUTHORED from the ABNF (§3.2),
+# apart from the corpus-provenance-guarded rfc3986/ dir, gated by the cross-check
+# against the oracle.
+set(URI_HOST_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/host")
+set(URI_HOST_ORACLE_LIB
+    "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/host-oracle.sls")
+
+# M4 Slice ⓪ (decision 0025): the host oracle + negative corpus cross-check.
+# Pure test-side -- no src/uri host validator exists yet -- so it imports only the
+# harness and the oracle, and reads the corpus from URI_HOST_DIR.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.host-oracle.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/host-oracle-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_HOST_ORACLE_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/host-oracle-tests.sps"
+    ENVIRONMENT "URI_HOST_DIR=${URI_HOST_DIR}"
+    TIMEOUT 120
+    LABELS unit)
+endforeach()
+
 # --- The M2 pure seam ------------------------------------------------------
 #
 # The first product code (decision 0008, 0004, 0009): the vocabulary the
@@ -887,6 +911,7 @@ set(URI_COLLECT ${URI_VOCABULARY}
                 "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/components.sls"
                 "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/percent.sls"
                 "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/charset.sls"
+                "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/host.sls"
                 "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/collect.sls")
 
 foreach(mode source aot)
@@ -927,12 +952,12 @@ endforeach()
 
 # --- (uri normalize): §6.2.2 syntax-based normalization (M5 Slice 1) --------
 #
-# The §6 POLICY over `(uri percent)`'s mechanics: the §6.2.2.1a scheme case fold,
-# the §6.2.2.1b hex-uppercasing and §6.2.2.2 unreserved-decoding, and the two
-# deferrals decision 0020 documents -- host case (M4) and dot-segments (M6) --
-# pinned here as tests. It imports `(uri percent)` and `(uri components)`, so a
-# lane needs both on its path. Pure `(rnrs)`; source and aot like every other
-# Scheme lane.
+# The §6 POLICY over `(uri percent)`'s mechanics: the §6.2.2.1a scheme AND HOST
+# case fold (host case is M4/decision 0025, closing decision 0020's deferral), the
+# §6.2.2.1b hex-uppercasing and §6.2.2.2 unreserved-decoding, with dot-segments
+# (§6.2.2.3/M6) still deferred -- pinned here as tests. It imports `(uri percent)`,
+# `(uri components)` and now `(uri host)` (for the host span), so a lane needs all
+# three on its path. Pure `(rnrs)`; source and aot like every other Scheme lane.
 foreach(mode source aot)
   uri_add_scheme_lane(
     NAME uri.unit.normalize.chez.${mode}
@@ -941,6 +966,7 @@ foreach(mode source aot)
     SOURCES ${URI_HARNESS_MANIFEST}
             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/percent.sls"
             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/components.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/host.sls"
             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/normalize.sls"
             "${CMAKE_CURRENT_LIST_DIR}/common/normalize-tests.sps"
     TIMEOUT 120
@@ -1087,6 +1113,33 @@ foreach(mode source aot)
             ${URI_CORPUS_LIB}
             "${CMAKE_CURRENT_LIST_DIR}/common/charset-tests.sps"
     ENVIRONMENT "URI_CHARSET_DIR=${URI_CHARSET_DIR}"
+                "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+    TIMEOUT 180
+    LABELS unit)
+endforeach()
+
+# --- unit.host: the M4 host-grammar validator (decision 0025, Slices ①②) -----
+#
+# Grades (uri host) against the independent host oracle (agreement on a battery
+# plus the exhaustive dec-octet / h16 / group-count sweeps), the negative corpus
+# (each row rejected with its code + absolute offset, end to end through
+# uri-parse-validate), and the positive corpora (all accepted). Same shape as
+# unit.charset: it drives the whole read stack (the shell rebases the authority
+# offset), so it needs URI_COLLECT (which now carries host too) and the generated
+# parser, plus the host-oracle and corpus harness libraries.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.host.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/host-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
+            ${URI_COLLECT}
+            ${URI_GENERATED_PARSER}
+            ${URI_HOST_ORACLE_LIB}
+            ${URI_CORPUS_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/host-tests.sps"
+    ENVIRONMENT "URI_HOST_DIR=${URI_HOST_DIR}"
                 "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
     TIMEOUT 180
     LABELS unit)

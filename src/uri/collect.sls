@@ -27,7 +27,8 @@
           (generated uri-scanner)
           (uri components)
           (uri vocabulary)
-          (uri charset))
+          (uri charset)
+          (uri host))
 
   (define-record-type uri-parse-result
     (fields (immutable ok? uri-parse-ok?)
@@ -192,33 +193,44 @@
       (uri-collect-feed! c bv 0 (bytevector-length bv))
       (uri-collect-finish! c)))
 
-  ;; --- charset validation (M3, decision 0024) -----------------------------
+  ;; --- charset + host validation (M3 decision 0024, M4 decision 0025) ------
   ;;
   ;; component-bytes : Components Symbol -> (Option Bytevector)
-  ;; The bytes of an M3-validated component (authority is M4's, so it is absent
-  ;; from this map).
+  ;; The bytes of a validated component. `authority` joined the map at M4: its
+  ;; interior (userinfo/host/port) is judged by (uri host), the others by
+  ;; (uri charset).
   (define (component-bytes c name)
     (case name
-      ((scheme)   (uri-components-scheme c))
-      ((path)     (uri-components-path c))
-      ((query)    (uri-components-query c))
-      ((fragment) (uri-components-fragment c))))
+      ((scheme)    (uri-components-scheme c))
+      ((authority) (uri-components-authority c))
+      ((path)      (uri-components-path c))
+      ((query)     (uri-components-query c))
+      ((fragment)  (uri-components-fragment c))))
+
+  ;; validate-one : Symbol Bytevector -> (values (Option Symbol) (Option Nat))
+  ;; The authority is judged by (uri host) over its whole span; the four coarse
+  ;; components the core holds whole by (uri charset). Both return a
+  ;; component-RELATIVE index the caller rebases to absolute.
+  (define (validate-one name bytes)
+    (if (eq? name 'authority)
+        (validate-authority bytes)
+        (validate-component name bytes)))
 
   ;; validate-result : uri-parse-result -> (Option uri-parse-result)
-  ;; #f when every present M3 component is charset-valid; else a charset ERROR
-  ;; result (ok? #f, the core code, the ABSOLUTE offset -- the component's start
-  ;; from the offset seam plus the validator's relative index). Components are
-  ;; visited in input order (scheme, path, query, fragment), so the first error
-  ;; is the leftmost; a charset error, like a structural one, does not assemble.
+  ;; #f when every present component is valid; else a validation ERROR result
+  ;; (ok? #f, the core code, the ABSOLUTE offset -- the component's start from the
+  ;; offset seam plus the validator's relative index). Components are visited in
+  ;; input order (scheme, authority, path, query, fragment), so the first error is
+  ;; the leftmost; a validation error, like a structural one, does not assemble.
   (define (validate-result r)
     (let ((c (uri-parse-components r)))
-      (let loop ((names '(scheme path query fragment)))
+      (let loop ((names '(scheme authority path query fragment)))
         (if (null? names)
             #f
             (let ((bytes (component-bytes c (car names))))
               (if (not bytes)
                   (loop (cdr names))
-                  (let-values (((code index) (validate-component (car names) bytes)))
+                  (let-values (((code index) (validate-one (car names) bytes)))
                     (if code
                         (make-uri-parse-result
                          #f #f code
@@ -227,10 +239,11 @@
                         (loop (cdr names))))))))))
 
   ;; uri-parse-validate : Symbol Bytevector -> uri-parse-result
-  ;; Parse leniently, then JUDGE the component charsets (M3). A structural error
-  ;; passes straight through; an otherwise-valid split whose bytes the ABNF
-  ;; rejects becomes a charset error result. `uri-parse` itself stays the lenient
-  ;; splitter M5/M6/M7 depend on (a malformed "%" is content there, not an error).
+  ;; Parse leniently, then JUDGE the component charsets and the authority host
+  ;; grammar (M3, M4). A structural error passes straight through; an otherwise-
+  ;; valid split whose bytes the ABNF rejects becomes a validation error result.
+  ;; `uri-parse` itself stays the lenient splitter M5/M6/M7 depend on (a malformed
+  ;; "%" is content there, not an error).
   (define (uri-parse-validate mode-sym bv)
     (let ((r (uri-parse mode-sym bv)))
       (if (uri-parse-ok? r)

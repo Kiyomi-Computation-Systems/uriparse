@@ -1,11 +1,12 @@
 #!r6rs
 ;;; unit.normalize -- RFC 3986 §6.2.2 syntax-based normalization, the §6 policy
 ;;; over `(uri percent)`'s mechanics. Graded against the M5 oracle (derived from
-;;; RFC 3986 independently of this code): the §6.2.2.1a scheme fold, the
-;;; §6.2.2.1b hex-uppercasing, the §6.2.2.2 unreserved decoding, and the two
-;;; deferrals this milestone documents (decision 0020) as TESTS -- host case is
-;;; left alone, and dot-segments are not removed (M6). The percent codec is
-;;; judged in unit.percent; here the question is the §6 policy and the assembly.
+;;; RFC 3986 independently of this code): the §6.2.2.1a scheme AND host fold (host
+;;; case is M4/decision 0025, closing decision 0020's deferral -- userinfo case is
+;;; preserved, a `%XX` triplet's hex kept uppercase), the §6.2.2.1b hex-uppercasing,
+;;; the §6.2.2.2 unreserved decoding, and the ONE remaining deferral pinned as a
+;;; test -- dot-segments are not removed (M6). The percent codec is judged in
+;;; unit.percent; here the question is the §6 policy and the assembly.
 (import (rnrs)
         (uri test harness)
         (uri normalize)
@@ -153,21 +154,30 @@
         (check-components "§6.2.2 example"
           (normalize-components (comp "eXAMPLE" "a" "/./b/../b/%63/%7bfoo%7d" #f #f))
           "example" "a" "/./b/../b/c/%7Bfoo%7D" #f #f)))
-    ;; THE HOST-CASE DEFERRAL, pinned as a test (decision 0020): the authority's
-    ;; case is left ALONE -- lowercasing it would corrupt case-sensitive userinfo.
-    ;; A later change that lowercased the authority without the M4 host split
-    ;; reddens here.
-    (harness-case "authority case is preserved (host-case is deferred to M4)"
+    ;; HOST CASE, now normalized (M4, decision 0025 item 8, closing decision 0020's
+    ;; deferral): the HOST folds to lowercase, but case-sensitive userinfo is left
+    ;; ALONE. `User:S3cret` survives; `Example.COM` -> `example.com`. A regression
+    ;; to lowercasing the WHOLE authority (corrupting userinfo) reddens here.
+    (harness-case "the host case-folds to lowercase, userinfo case is preserved"
       (lambda ()
-        (check-components "host-case deferred"
+        (check-components "host-case normalized"
           (normalize-components (comp "HTTP" "User:S3cret@Example.COM" "/" #f #f))
-          "http" "User:S3cret@Example.COM" "/" #f #f)))
-    ;; ...but percent IN the authority IS normalized (position-independent).
-    (harness-case "the authority is percent-normalized though its case is not"
+          "http" "User:S3cret@example.com" "/" #f #f)))
+    ;; An IPv6 IP-literal host folds too (its hex is case-insensitive, §6.2.2.1a;
+    ;; lowercase is canonical, RFC 5952), and there is no userinfo to protect.
+    (harness-case "an IPv6 IP-literal host folds to lowercase"
       (lambda ()
-        (check-components "authority pct-normalized"
+        (check-components "ipv6 host"
+          (normalize-components (comp "s" "[2001:DB8::Ab]:80" "/" #f #f))
+          "s" "[2001:db8::ab]:80" "/" #f #f)))
+    ;; percent AND host case interact: the host's literal bytes fold, but a `%XX`
+    ;; triplet keeps its (uppercased, §6.2.2.1b) hex -- `H%2Fx` -> `h%2Fx`, never
+    ;; `h%2fx` -- while userinfo `Us~r` (from `Us%7Er`) keeps its case.
+    (harness-case "the host folds but its %XX hex stays uppercase; userinfo untouched"
+      (lambda ()
+        (check-components "host fold + pct"
           (normalize-components (comp "s" "Us%7Er@H%2Fx" "/" #f #f))
-          "s" "Us~r@H%2Fx" "/" #f #f)))
+          "s" "Us~r@h%2Fx" "/" #f #f)))
     ;; A reserved octet that percent-DECODES to a delimiter stays encoded, so
     ;; whole-authority normalization can never synthesize or destroy a `@`/`:`
     ;; boundary before M4's host split. The RFC 6874 IPv6 zone-id `%25` is the

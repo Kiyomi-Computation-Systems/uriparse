@@ -342,6 +342,22 @@ out of the same observation — accumulate into a **u8** and the overflow edge
 which also rejects `0000`. Measure at M4 as the brief says; do not reserve the
 fallback.
 
+> **Superseded by [decision 0025](decisions/0025-the-host-grammar-is-the-cores-over-the-opaque-authority.md).**
+> The node-count paragraph above sizes `IPv6address`/`dec-octet` as SCANNER
+> (byte-machine) work — "byte-machine has uint fields, `field-branch` and
+> `integer-accumulate`" — but it predates [decision 0019](decisions/0019-the-scanner-splits-five-coarse-components-and-the-core-owns-the-authority.md),
+> which moved the whole host grammar into the pure CORE (item 4): userinfo/host/port
+> are functions over the opaque `authority` bytevector, not scanner spans, enforced
+> green by `vocabulary-tests.sps`. So M4 does NOT regenerate `(generated
+> uri-scanner)`; it adds a pure `(uri host)` and rebases offsets in the shell (the
+> authority's absolute start is already captured). The `three-counter machine`
+> insight stands, but it is a small core function, not a byte-machine node budget —
+> so there is no scanner node count to measure and no `decision`-callback fallback
+> to weigh. Two things 0025 also settles: `invalid-dec-octet` is reachable ONLY
+> inside an `IP-literal` (a bare `999.1.1.1` is a valid `reg-name`, §3.2.2
+> first-match-wins), and M4 closes host-case normalization (decision 0020's deferred
+> §6.2.2.1a fold on the isolated host).
+
 ---
 
 ## 7. The instrument (decisions 0005, 0012, 0013, 0014, 0015)

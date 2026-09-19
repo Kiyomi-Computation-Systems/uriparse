@@ -1672,3 +1672,262 @@ code first. Standing debts carried forward: the FIRST FUNDED CI RUN (0017 item 3
 still undischarged) and, only after M4 completes the validating surface, the
 "RFC 3986 compliant" claim v0.1/v0.2 have not yet earned. The tree is clean on main
 at 3686dc6.
+
+================================================================================
+
+M4 — THE HOST GRAMMAR (v0.2). Branch feat/m4-host-grammar.
+
+Plan: .plans/2026-09-18-chez-uri-project-brief.md "M4 — the host grammar"
+(userinfo/host/port sub-split; reg-name, IPv4address, IP-literal → IPv6address /
+IPvFuture; port; host-case normalization) and .plans/2026-09-18-chez-uri-design.md
+§6 (whose IPv6 node-count / decision-callback-fallback note this milestone
+supersedes). Decisions in force: 0003 (RFC 3986 is normative, adjudicated against
+the ABNF), 0005 (the corpus + oracle-from-RFC discipline; two provenances two
+counts), 0007 (src is pure R6RS), 0009 (an error NAMES the ABNF production that
+failed, and carries an offset; item 6 — a declared code needs a reachable path),
+0010 (bytevectors), 0011 (M3/M4 are v0.2), 0012 (abnfgen + the mutator are deferred
+v0.2 tooling), 0019 (items 3–5 — userinfo/host/port are NOT scanner spans, the host
+grammar and its errors are the core's), 0020 (item 2 — host-case normalization
+deferred to M4; CLOSED here), 0024 (M3's mirror; item 2 deferred port + every
+authority-interior charset to M4).
+
+Base at start: 3bfa51e (local main == origin/main; M3 merged 3686dc6, its close-out
+3bfa51e). Measured environment (2026-09-19, Darwin arm64): Chez 10.4.1 (tarm64osx),
+CMake/CTest 4.3.3. Baseline on the branch before any slice, RE-MEASURED: release
+67/67, no-scheme 11/11, 0 failures.
+
+THE FORCING QUESTION (the M4 analog of M3's, settled by an opening survey and
+recorded as decision 0025): does the authority sub-split (userinfo/host/port + the
+whole host grammar) live scanner-side or core-side? SETTLED BY THE CODE, CORE-SIDE,
+NOT A CLOSE CALL — the exact M3 pattern. Three green, mutation-witnessed pins decide
+it before a line of validator is written: (1) vocabulary.sls:82-83 + decision 0019
+item 4 — userinfo/host/port are pure CORE functions over the opaque `authority`
+bytevector, not scanner spans; (2) vocabulary-tests.sps:51-59 pins `authority` as
+one span and `userinfo`/`host`/`port` as NOT spans, and :152-159 pins M4's exact
+core error codes (invalid-userinfo, invalid-reg-name, invalid-ip-literal,
+invalid-dec-octet, invalid-port) OUT of the scanner set; (3) uri-scanner.sls:137-147
+— the authority span scans one undifferentiated loop recognizing only `#`/`/`/`?`
+(the authority END), never `@`/`:`/`[`/`]` inside it. No host-grammar code exists
+anywhere in src/. Design §6's M4 note sizes IPv6 as SCANNER work and predates 0019 —
+stale prose (the byte-machine memory: the prose lags the code), superseded by 0025
+in place. And a bonus over M3: collect.sls:119 ALREADY captures the authority's
+absolute start offset (assemble-offsets / uri-parse-component-offset), so there is
+NO offset seam to build — the validator returns an authority-relative index and the
+shell rebases, exactly as M3's validate-result does.
+
+THE ABNF (rfc3986.abnf:32-55, verbatim in decision 0025 item 2): authority =
+[ userinfo "@" ] host [ ":" port ]; userinfo = *( unreserved / pct-encoded /
+sub-delims / ":" ); host = IP-literal / IPv4address / reg-name; port = *DIGIT
+(empty allowed); reg-name = *( unreserved / pct-encoded / sub-delims ); IP-literal =
+"[" ( IPv6address / IPvFuture ) "]"; IPv4address = four dec-octets each 0-255;
+IPv6address = the ::-compression counting grammar (≤8 h16, one optional ::, optional
+trailing IPv4address as ls32); IPvFuture = "v" 1*HEXDIG "." 1*( unreserved /
+sub-delims / ":" ).
+
+THE THREE SUBTLETIES (M4's analog of M3's offset-seam + leftmost-error; decision
+0025 items 3-4): (1) invalid-dec-octet is reachable ONLY inside brackets — §3.2.2
+first-match-wins makes a bare bad dotted quad (999.1.1.1) a VALID reg-name, not an
+error, so dec-octet/h16/group-count faults fire only within an IP-literal's
+IPv6address where there is no reg-name fallback; the corpus must reach dec-octet
+through `[...]`, never bare (0009 item 6). (2) The host/port split is bracket-aware:
+split userinfo at the single `@` first (consuming userinfo's own `:`), then split
+host/port at the `:` AFTER the closing `]` for an IP-literal, or the first `:` for
+reg-name/IPv4 — `[::1]:80` → host `[::1]`, port `80`. (3) IPv6address is a COUNTER
+(groups-seen, saw-`::`, per-h16 hex-digit-count, optional IPv4 tail), not a
+transcription of the nine ABNF alternatives, and is M4's genuine engineering risk —
+witnessed against a hand-counted valid/invalid IPv6 battery before a test trusts it
+(M3's "witness, don't assume").
+
+SCOPE DECISION SETTLED AT THE GATE: host-case normalization (decision 0020's
+deferred §6.2.2.1a fold) is FOLDED INTO M4 as a final slice — the maintainer chose
+"Fold into M4" over "validation only". Rationale: M4 is the last v0.2 milestone, so
+deferring would orphan the fold and leave 0020's honesty obligation open; folding it
+closes 0020's last §6.2.2.1 transform ("no rework, just a newly reachable
+component"), drops the README host-case caveat, and lets v0.2 ship a COMPLETE
+§6.2.2.1 normalizer. Recorded as decision 0025 item 8.
+
+SLICE PLAN (cadence: drive to gates — stop after Slice ⓪ and at the merge gate;
+subagents for surveys & reviews; Ultracode ON — Workflow for substantive slices):
+  ⓪  This record + the design-§6 reconciliation + a NEW test-side ABNF oracle
+     `(uri test host-oracle)` (an INDEPENDENT reading of the authority split + host
+     grammar: userinfo/reg-name/port predicates, IPv4/dec-octet, IPv6/IP-literal/
+     IPvFuture, plus oracle-scan-authority and the negative-corpus reader +
+     cross-check) + a hand-derived negative corpus test/conformance/host/negative.scm
+     + PROVENANCE. Every code reached by a REACHABLE path; dec-octet only through
+     brackets; a two-fault authority pins userinfo→host→port order. No validator
+     code. — GATE.
+  ①  `(uri host)`: the bracket-aware authority split + the userinfo / reg-name /
+     port / IPv4address / dec-octet validators (the non-IPv6 surface), pure over the
+     authority bytevector, returning an authority-relative index; wired into
+     component-bytes / validate-result / uri-parse-validate in (uri collect).
+     Offsets WITNESSED against hand-counted authorities. Graded vs the oracle for the
+     non-IPv6 surface + the non-IPv6 corpus rows. TDD, mutation witnesses.
+  ②  The IPv6address / IPvFuture / IP-literal validators (the counter) + exhaustive
+     oracle agreement over a hand-counted valid/invalid IPv6 battery + the
+     bracket-only invalid-dec-octet / invalid-ip-literal corpus rows. — MERGE GATE.
+  ③  Host-case normalization (decision 0020's close): normalize-components isolates
+     the host (reusing (uri host)'s split) and applies ascii-downcase to the host
+     ONLY; pin host lowercased AND userinfo case preserved; update
+     normalize-components' doc + README's "will not claim" list to drop the
+     host-case caveat.
+
+SLICE ⓪ OPEN (2026-09-19): ledger seeded; branch feat/m4-host-grammar cut from
+3bfa51e; baseline re-measured (release 67/67, no-scheme 11/11, 0 failures); the
+opening survey (one Sonnet collector over the ABNF + design §6 + decisions
+0019/0020/0024 + the scanner/collect/normalize wiring) came back and the forcing
+question was settled core-side against the code (above); decision 0025 written (8
+points), the design §6 M4 note superseded in place. AWAITING the maintainer's "Go"
+to drive Slice ⓪ (the oracle + negative corpus + cross-check). — AT THE GATE.
+
+SLICE ⓪ GATE (2026-09-19): the maintainer said "Go", and — before it — settled the
+one open scope fork ("Fold into M4" over "validation only"), so host-case
+normalization is M4 Slice ③ (decision 0025 item 8, recorded above).
+
+SLICE ⓪ COMPLETE (2026-09-19). Landed decision 0025 + the design-§6 supersession +
+the test-side oracle + the hand-derived negative corpus + the cross-check lane. No
+src validator (that is Slices ①②③).
+  - `(uri test host-oracle)` — an INDEPENDENT reading of RFC 3986 §3.2's authority
+    grammar from the ABNF: the byte sets; oracle-scan-authority (bracket-aware
+    userinfo/host/port split; reg-name/userinfo/port scans; the IPv6address COUNTER
+    — ≤8 h16, one optional "::", optional trailing IPv4 as ls32 counting 2; IPvFuture;
+    dec-octet 0-255 canonical); authority-of (a naive test-side extractor,
+    independent of the src scanner); and the negative reader + negative-cross-check.
+    All IP-literal-interior faults (incl. dec-octet range) report at the "[";
+    userinfo/reg-name/port literal faults at the bad byte; malformed pct at the "%".
+  - test/conformance/host/negative.scm (20 rows) + PROVENANCE — hand-derived from
+    the ABNF, tagged (mode input component code offset note), ABSOLUTE offsets, every
+    input "http://<auth>..." (authority at 7). Coverage: userinfo 3, reg-name 5, port
+    3, ip-literal 5, dec-octet 2, pct 2. dec-octet reached ONLY through brackets; two
+    multi-fault rows pin userinfo→host→port order (row 19 three-fault, row 20 two).
+  - test/common/host-oracle-tests.sps + the uri.unit.host-oracle lane (source+aot);
+    URI_HOST_DIR / URI_HOST_ORACLE_LIB added to test/CMakeLists.txt beside the M3
+    charset pair.
+  MUTATION WITNESSES (watched to fail, then restored): (1) a corpus offset 9→8 →
+  cross-check reddens "oracle offset 9 (start 7 + relative 2) but the row records 8";
+  (2) the IPv6 no-"::" total 8→7 → the valid 8-group and 6h16+IPv4-tail literals
+  redden "expected (#f . #f), got (invalid-ip-literal . 0)" (needed a rebuild first —
+  the source lane fingerprints the .sls, so an in-place edit trips the provenance
+  guard, exit 3, not the assertion; the M3-noted source-lane-rebuild discipline); (3)
+  a corpus code ip-literal→port → "code invalid-port does not name component
+  ip-literal". A probe over 12 edge authorities (compression boundaries, leading/
+  trailing lone colons, port-after-"]", IPvFuture, `user:pass@[::1]:443`, bare
+  `999.999.999.999`) all matched the ABNF by hand.
+  ORACLE DISCIPLINE: the corpus was INDEPENDENTLY REFUTED by a subagent that re-read
+  the ABNF and hand-counted every offset — ALL 20 ROWS AGREE (input invalid, code =
+  the failing production, component right, offset correct); claims A (bare dotted quad
+  is a valid reg-name → dec-octet only in brackets), B (both dec-octet rows are
+  well-shaped IPv6 whose sole fault is the range), C (both multi-fault rows exercise
+  visit order) all upheld. Its one nit — row 2's note miscalled "<" a gen-delim —
+  fixed (it is outside the URI charset). GRADED: release 69/69 (+2 host-oracle lanes
+  over the 67 baseline), no-scheme 11/11, host-oracle + vocabulary seam-guard green.
+  — AT THE SLICE ⓪ GATE (cadence: stop after Slice ⓪). Next: Slice ①.
+
+SLICE ⓪ GATE (2026-09-19): the maintainer said "go" — committed as 3fde2a3.
+
+SLICES ①② COMPLETE (2026-09-19). Driven together to the merge gate (a half-built
+validator with a filtered corpus is the awkward state; the cadence's stop is the
+merge gate). Landed `(uri host)` (the whole authority validator, incl. the IPv6
+counter) + the shell wiring + the unit.host lane.
+  - src/uri/host.sls — pure R6RS, imports only (rnrs) + (uri percent) (decision 0025
+    item 5). validate-authority : Bytevector -> (values (Option code) (Option Nat)),
+    authority-RELATIVE index. Bracket-aware split (userinfo at the single "@";
+    host/port at the ":" after "]" for an IP-literal, else the first ":"); userinfo/
+    reg-name/port scans reusing percent's unreserved-byte?/hex-digit-value; the host
+    grammar inside "[" ... "]" — h16?, dec-octet (canonical, 0-255), ipv4, the
+    count-pieces + dcolon IPv6 COUNTER (≤7 with "::", ==8 without), ipvfuture. All
+    IP-literal-interior faults (incl. dec-octet range) reported at the "[". INDEPENDENT
+    of the oracle: it uses percent's primitives where the oracle defines its own, so a
+    charset mistake cannot be shared. (`find` renamed to find-byte — (rnrs lists)
+    already binds `find`.)
+  - src/uri/collect.sls — import (uri host); component-bytes gains (authority);
+    validate-one dispatches authority→validate-authority, else validate-component;
+    validate-result visits '(scheme AUTHORITY path query fragment) in input order and
+    rebases the authority-relative index onto the ALREADY-captured authority start.
+    uri-parse stays lenient; uri-parse-validate now judges the authority too.
+  - test/common/host-tests.sps + the uri.unit.host lane (source+aot); host.sls added
+    to URI_COLLECT.
+  GRADING (unit.host): the six-code core vocabulary; validate-authority ⇄
+  oracle-scan-authority agreement over a 45-shape battery PLUS three EXHAUSTIVE sweeps
+  — dec-octet 0..300 (bracketed hits the 255/256 edge, bare stays a valid reg-name),
+  h16 length 1..7 (≤4 valid), group-count 1..10 (==8 valid) — plus a "::"-total
+  boundary battery; the negative corpus rejected exactly through uri-parse-validate
+  (all 20 rows, code + ABSOLUTE offset); the positive corpora ACCEPTED (§1.1.2's eight
+  incl. the ldap `[2001:db8::7]` IPv6 host, §5.4's 42 targets, seven explicit valid
+  authorities incl. `user:pass@[::1]:8080`); a structural error still passes through.
+  MUTATION WITNESSES (rebuilt each, source-lane fingerprint discipline): (1) the IPv6
+  counter ≤7→≤8 → the `[...:7:8::]` and `[...:7::8]` boundary cases redden (src
+  disagrees with the oracle — the agreement catches src-only bugs); (2) the shell
+  offset rebase dropped (+off→+0) → every corpus offset reddens "expected 9, got 2"
+  (the authority-relative index, absolute-7). Two boundary battery rows were ADDED
+  first so the "::" rule was actually pinned before the mutation. GRADED: release
+  71/71 (+2 unit.host lanes), no-scheme 11/11. The existing charset/round-trip/
+  resolution positive corpora stay green now that authority validation is live on
+  every uri-parse-validate. — AT THE MERGE GATE (cadence: stop). Next: the merge-gate
+  adversarial review (a Workflow), then Slice ③ (host-case normalization).
+
+M4 MERGE-GATE VERIFICATION (2026-09-19, at the merge gate — the VALIDATION surface,
+Slices ⓪①②; Slice ③ still to come). A five-dimension adversarial review Workflow
+(Ultracode): reviewers over ABNF correctness, offset correctness, oracle independence,
+shell wiring/regression, and record accuracy, each finding fed to a default-refute
+verifier — 10 agents. Result: 5 findings, 1 CONFIRMED, 4 REFUTED; the ABNF-correctness,
+offset-correctness and wiring-regression dimensions came back CLEAN (no code defect in
+the validator or the shell).
+  CONFIRMED (minor, records): row 19 "us er@ho st:8x" is a THREE-fault authority
+  (userinfo, host AND port — as its own note says), so the "TWO-FAULT authorities"
+  label was wrong. Fixed the prose in negative.scm's header, PROVENANCE, and this
+  ledger (row 19 three-fault, row 20 two-fault); the test assertion (leftmost userinfo
+  fault @9) was already correct.
+  TWO REFUTED-BUT-LEGITIMATE COVERAGE GAPS CLOSED (the recurring merge-gate lesson —
+  what a slice cannot see about itself): (1) the "::"-total ≤7 rule had NO independent-
+  corpus witness — only src↔oracle agreement, which a SHARED 7→8 mutation survives — so
+  added corpus row `[1:2:3:4:5:6:7:8::]` → invalid-ip-literal @7, and WITNESSED it:
+  under ≤7→≤8 the row now reddens through uri-parse-validate (code expected
+  invalid-ip-literal, got #f), an independent guard the agreement alone did not give.
+  (2) IPvFuture had ZERO corpus rows — added `[v1z]` → invalid-ip-literal @7, plus seven
+  IPvFuture agreement-battery cases (v./v1./vG./V2.a:b/v1a.x-y~z) and two valid IPvFuture
+  positives. Corpus 20 → 22 rows (ip-literal 5 → 7).
+  REFUTED, no change (verified as non-defects): the "shared-bug" independence critique
+  (a test-methodology observation, not a live defect — the code is correct and the
+  third artifact, the corpus, now guards the ::-boundary too); an "@"-inside-brackets
+  code choice (`[a@b]` → invalid-userinfo) — the DOCUMENTED "@-first" split (0025 item
+  4), correctly rejects, oracle-consistent; and a temporal "does not exist yet" note in
+  the oracle header — accurate as of Slice ⓪ authorship. GRADED after the fixes: release
+  71/71, no-scheme 11/11. — STILL AT THE MERGE GATE. Next: Slice ③ (host-case
+  normalization, decision 0025 item 8), then the closing ritual (ask first).
+
+SLICE ③ COMPLETE (2026-09-19). Host-case normalization — decision 0025 item 8,
+CLOSING decision 0020's last deferred §6.2.2.1 transform. The last M4 slice.
+  - src/uri/host.sls — new export `authority-host-span : Bytevector -> (values Nat
+    Nat)`, the host [start,end) by the SAME bracket-aware split as validate-authority
+    (host after "@"; ends at "]" for an IP-literal, else the port ":", else the end).
+  - src/uri/normalize.sls — imports (uri host); `downcase-host` folds ONLY the host
+    span's LITERAL bytes to lowercase, SKIPPING each "%XX" triplet so its hex stays
+    uppercase (§6.2.2.1b) — userinfo stays case-sensitive, port is digits.
+    `normalize-authority` = pct-normalize THEN downcase-host (percent first, so a
+    reserved-decoding %XX never synthesizes a delimiter that moves the host span);
+    normalize-components' authority field uses it. Docs updated (the "host case
+    deferred" caveat dropped; ascii-downcase now feeds the host fold too).
+  - test/common/normalize-tests.sps — the decision-0020 host-case-PRESERVED pin
+    FLIPPED to host-case-NORMALIZED: `HTTP User:S3cret@Example.COM` → `http
+    User:S3cret@example.com` (host folded, userinfo preserved); added an IPv6 host
+    fold (`[2001:DB8::Ab]:80` → `[2001:db8::ab]:80`) and the pct-interaction pin
+    (`Us%7Er@H%2Fx` → `Us~r@h%2Fx`: host literal folds, %2F hex stays upper, userinfo
+    Us~r preserved). Header + the unit.normalize CMake comment updated.
+  - test/CMakeLists.txt — host.sls added to the unit.normalize lane's source list
+    (the resolution + round-trip lanes already carry it via URI_COLLECT).
+  MUTATION WITNESSES: (1) fold from authority index 0 instead of the host start →
+  userinfo reddens (byte 85 "U"→117 "u", 83 "S"→115 "s"): starting at the host span
+  is what protects case-sensitive userinfo (decision 0020's whole point); (2) the
+  "%XX" skip removed (advance 1 not 3) → `%2F`→`%2f` (70 "F"→102 "f"): the triplet
+  skip preserves §6.2.2.1b's uppercase hex.
+  HONESTY OBLIGATION: discharged IN THE CODE (normalize.sls doc + the flipped test);
+  the USER-FACING README/CHANGELOG claim-drop rides with the v0.2 RELEASE, not M4
+  merge — README.org is stamped "v0.1.0 — released" and describes the frozen tag
+  (which does not normalize host case), and M3 set the precedent (charset validation
+  merged without touching the release-scoped README). Decision 0025 item 8 amended to
+  record this timing.
+  GRADED: release 71/71, no-scheme 11/11. Round-trip + resolution stay green (their
+  corpora have lowercase hosts, so host-case is a no-op there; the property is
+  idempotent under the added fold). — M4 IS FEATURE-COMPLETE (⓪①②③): the validating
+  surface AND decision 0020's last normalization gap are closed. AT THE CLOSING-RITUAL
+  GATE (AGENTS.md: ALWAYS ask before running the closing ritual).
