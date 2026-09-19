@@ -41,8 +41,9 @@ TWO M4-SPECIFIC INVARIANTS THE CORPUS PINS (decision 0025 item 3)
     fails IPv4address but is a valid reg-name (§3.2.2 first-match-wins), so it is
     a valid host, not an error. Both invalid-dec-octet rows are inside "[" ... "]".
   - the split visits userinfo → host → port left to right. The last two rows are
-    TWO-FAULT authorities whose earlier fault is the one reported, so a reordered
-    validator reddens.
+    MULTI-FAULT authorities whose earlier fault is the one reported, so a reordered
+    validator reddens (row 19 is three-fault: userinfo, host AND port; row 20 is
+    two-fault: host AND port).
 
 WHAT IS NOT HERE, AND WHY
 

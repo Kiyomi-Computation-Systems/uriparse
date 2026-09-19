@@ -1798,7 +1798,7 @@ src validator (that is Slices ①②③).
     the ABNF, tagged (mode input component code offset note), ABSOLUTE offsets, every
     input "http://<auth>..." (authority at 7). Coverage: userinfo 3, reg-name 5, port
     3, ip-literal 5, dec-octet 2, pct 2. dec-octet reached ONLY through brackets; two
-    two-fault rows pin userinfo→host→port order.
+    multi-fault rows pin userinfo→host→port order (row 19 three-fault, row 20 two).
   - test/common/host-oracle-tests.sps + the uri.unit.host-oracle lane (source+aot);
     URI_HOST_DIR / URI_HOST_ORACLE_LIB added to test/CMakeLists.txt beside the M3
     charset pair.
@@ -1816,7 +1816,7 @@ src validator (that is Slices ①②③).
   the ABNF and hand-counted every offset — ALL 20 ROWS AGREE (input invalid, code =
   the failing production, component right, offset correct); claims A (bare dotted quad
   is a valid reg-name → dec-octet only in brackets), B (both dec-octet rows are
-  well-shaped IPv6 whose sole fault is the range), C (both two-fault rows exercise
+  well-shaped IPv6 whose sole fault is the range), C (both multi-fault rows exercise
   visit order) all upheld. Its one nit — row 2's note miscalled "<" a gen-delim —
   fixed (it is outside the URI charset). GRADED: release 69/69 (+2 host-oracle lanes
   over the 67 baseline), no-scheme 11/11, host-oracle + vocabulary seam-guard green.
@@ -1864,3 +1864,33 @@ counter) + the shell wiring + the unit.host lane.
   resolution positive corpora stay green now that authority validation is live on
   every uri-parse-validate. — AT THE MERGE GATE (cadence: stop). Next: the merge-gate
   adversarial review (a Workflow), then Slice ③ (host-case normalization).
+
+M4 MERGE-GATE VERIFICATION (2026-09-19, at the merge gate — the VALIDATION surface,
+Slices ⓪①②; Slice ③ still to come). A five-dimension adversarial review Workflow
+(Ultracode): reviewers over ABNF correctness, offset correctness, oracle independence,
+shell wiring/regression, and record accuracy, each finding fed to a default-refute
+verifier — 10 agents. Result: 5 findings, 1 CONFIRMED, 4 REFUTED; the ABNF-correctness,
+offset-correctness and wiring-regression dimensions came back CLEAN (no code defect in
+the validator or the shell).
+  CONFIRMED (minor, records): row 19 "us er@ho st:8x" is a THREE-fault authority
+  (userinfo, host AND port — as its own note says), so the "TWO-FAULT authorities"
+  label was wrong. Fixed the prose in negative.scm's header, PROVENANCE, and this
+  ledger (row 19 three-fault, row 20 two-fault); the test assertion (leftmost userinfo
+  fault @9) was already correct.
+  TWO REFUTED-BUT-LEGITIMATE COVERAGE GAPS CLOSED (the recurring merge-gate lesson —
+  what a slice cannot see about itself): (1) the "::"-total ≤7 rule had NO independent-
+  corpus witness — only src↔oracle agreement, which a SHARED 7→8 mutation survives — so
+  added corpus row `[1:2:3:4:5:6:7:8::]` → invalid-ip-literal @7, and WITNESSED it:
+  under ≤7→≤8 the row now reddens through uri-parse-validate (code expected
+  invalid-ip-literal, got #f), an independent guard the agreement alone did not give.
+  (2) IPvFuture had ZERO corpus rows — added `[v1z]` → invalid-ip-literal @7, plus seven
+  IPvFuture agreement-battery cases (v./v1./vG./V2.a:b/v1a.x-y~z) and two valid IPvFuture
+  positives. Corpus 20 → 22 rows (ip-literal 5 → 7).
+  REFUTED, no change (verified as non-defects): the "shared-bug" independence critique
+  (a test-methodology observation, not a live defect — the code is correct and the
+  third artifact, the corpus, now guards the ::-boundary too); an "@"-inside-brackets
+  code choice (`[a@b]` → invalid-userinfo) — the DOCUMENTED "@-first" split (0025 item
+  4), correctly rejects, oracle-consistent; and a temporal "does not exist yet" note in
+  the oracle header — accurate as of Slice ⓪ authorship. GRADED after the fixes: release
+  71/71, no-scheme 11/11. — STILL AT THE MERGE GATE. Next: Slice ③ (host-case
+  normalization, decision 0025 item 8), then the closing ritual (ask first).

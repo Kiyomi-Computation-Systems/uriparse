@@ -60,7 +60,9 @@
            ;; faults across userinfo / reg-name / port / ip-literal / dec-octet
            "us er@h" "a<b@h" "a%z@h" "h st" "a@b@c" "h%g" "h:8x" "h:a" "h: "
            "[::1" "[xyz]" "[]" "[12345::1]" "[1:2:3:4:5:6:7:8:9]" "[:1]" "[1:]"
-           "[::ffff:999.1.1.1]" "[::1.2.3.256]" "[vG.a]" "[::1]x" "[::1]:8x")))
+           "[::ffff:999.1.1.1]" "[::1.2.3.256]" "[::1]x" "[::1]:8x"
+           ;; IPvFuture = "v" 1*HEXDIG "." 1*( unreserved / sub-delims / ":" )
+           "[vG.a]" "[v1z]" "[v.a]" "[v1.]" "[vFF.foo]" "[V2.a:b]" "[v1a.x-y~z]")))
       )
     (harness-case "exhaustive dec-octet sweep: bracketed hits the range, bare stays reg-name"
       (lambda ()
@@ -139,7 +141,8 @@
                   (uri-parse-ok? (uri-parse-validate 'uri (string->utf8 u)))))
          '("http://user:pass@[::1]:8080/p" "http://[2001:db8::1]"
            "http://192.168.0.1:80/" "http://example.com" "http:///p"
-           "http://user@host" "ldap://[2001:db8::7]/c=GB"))))
+           "http://user@host" "ldap://[2001:db8::7]/c=GB"
+           "http://[vFF.foo]/p" "http://[v1a.x-y~z]"))))
     (harness-case "a structural error still passes straight through"
       (lambda ()
         (let ((r (uri-parse-validate 'uri (string->utf8 "foo/bar"))))

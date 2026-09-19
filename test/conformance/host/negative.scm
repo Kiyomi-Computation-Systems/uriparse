@@ -28,8 +28,9 @@
 ;;; REACHABILITY (decision 0025 item 3): dec-octet is reached ONLY through a
 ;;; bracketed literal -- a bare `999.1.1.1` is a valid reg-name (§3.2.2
 ;;; first-match-wins), NOT an error -- so every invalid-dec-octet row is inside
-;;; "[" ... "]". The last two rows are TWO-FAULT authorities that pin the
-;;; leftmost visit order userinfo → host → port.
+;;; "[" ... "]". The last two rows are MULTI-FAULT authorities that pin the
+;;; leftmost visit order userinfo → host → port: row 19 is three-fault
+;;; (userinfo, host AND port), row 20 two-fault (host AND port).
 (negatives
   ;; --- userinfo = *( unreserved / pct-encoded / sub-delims / ":" ) ----------
   (uri "http://us er@host" userinfo invalid-userinfo 9
@@ -70,6 +71,10 @@
        "h16 \"12345\" is five HEXDIG; h16 = 1*4HEXDIG")
   (uri "http://[]" ip-literal invalid-ip-literal 7
        "empty IP-literal: the minimal IPv6address is \"::\", never empty")
+  (uri "http://[1:2:3:4:5:6:7:8::]" ip-literal invalid-ip-literal 7
+       "eight h16 then \"::\": the \"::\" needs >=1 zero group, so 8 + \"::\" > 8 pieces")
+  (uri "http://[v1z]" ip-literal invalid-ip-literal 7
+       "IPvFuture = \"v\" 1*HEXDIG \".\" ...: \"v1z\" has no \".\" after the hex run")
 
   ;; --- dec-octet 0-255, reachable ONLY inside a bracketed IPv4 tail ---------
   (uri "http://[::ffff:999.1.1.1]" dec-octet invalid-dec-octet 7
