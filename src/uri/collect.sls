@@ -17,6 +17,7 @@
 ;;; (decision 0019); it is not this library's job.
 (library (uri collect)
   (export make-uri-collector uri-collect-feed! uri-collect-finish!
+          uri-collector-reset!
           uri-parse
           uri-parse-result? uri-parse-ok? uri-parse-components
           uri-parse-error-code uri-parse-error-offset
@@ -182,7 +183,28 @@
                    (make-uri-parse-result #f #f (parser-error-code err) (parser-error-offset err) #f)
                    (make-uri-parse-result #t (assemble table present rooted? verdict) #f #f
                                           (assemble-offsets offsets present rooted? verdict)))))
+            ;; Return to the just-constructed state for REUSE (decision 0029): reset
+            ;; the parser (which PRESERVES the embedder-chosen mode -- it restores the
+            ;; merged field-initials, not the bare declared ones), and clear the span
+            ;; table, the offset table and the verdict flags IN PLACE. Nothing is
+            ;; reallocated.
+            ((reset!)
+             (parser-reset! parser)
+             (hashtable-clear! table)
+             (hashtable-clear! offsets)
+             (set! present '())
+             (set! rooted? #f)
+             (set! verdict #f))
             (else (assertion-violation 'uri-collector "unknown message" msg)))))))
+
+  ;; uri-collector-reset! : Collector -> unspecified
+  ;; Return a collector to its just-constructed state so an embedder can REUSE one
+  ;; collector across parses -- one per connection -- instead of allocating a parser
+  ;; and two hashtables per request (issue #11, decision 0029). A reset-and-reparse
+  ;; yields the same result as a fresh collector, and the embedder-chosen mode
+  ;; survives (parser-reset! restores the merged field-initials). `uri-parse`'s
+  ;; one-shot behaviour is unchanged.
+  (define (uri-collector-reset! collector) (collector 'reset!))
 
   ;; uri-collect-feed! : Collector Bytevector Nat Nat -> feed-result
   (define (uri-collect-feed! collector bv start end) (collector 'feed! bv start end))
