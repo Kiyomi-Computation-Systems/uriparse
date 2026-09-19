@@ -2278,3 +2278,50 @@ official 0023-item-6 gate re-measures again AT the tag commit after the merge. �
 publish ritual under the maintainer's "Do it" ratification (0027 item 7): push, PR, confirm
 the billing refusal, squash-merge, re-measure at the tag commit, cut + push the annotated
 v0.2.0 tag.
+
+v0.2.0 RELEASED (2026-09-19). The maintainer ratified the release ("Do it"). PR #14
+squash-merged to main as f359743; local main fast-forwarded (1147724..f359743);
+chore/v0.2.0-release deleted local and remote. Merged over a RED linux-amd64 check, confirmed
+the documented Actions billing refusal (decision 0017 — 0 steps, 3s, "the job was not started
+because recent account payments have failed"), not a test result. The release GATE was
+RE-MEASURED at f359743 (the tag commit): release 73/73, no-scheme 11/11, 0 failures (Darwin
+arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3), exercising both the source and AOT lanes and
+every audit and mutation suite. The annotated tag v0.2.0 (unsigned — signing is the
+maintainer's key operation, 0027 item 2; tag object b24408b → f359743) was cut on f359743
+carrying the disclosed evidence (the CI-never-ran fact + the counts + the deferred compliance
+claim) in its message, and pushed to origin over HTTPS (the SSH agent stayed broken this whole
+session; the API merge, branch-delete and tag push were unaffected). v0.1.0 stays frozen at
+264c997. No GitHub Release was cut — optional and separately gated (0027 item 7); the gitlink
+pin needs only the pushed tag, and its body, if wanted, is the CHANGELOG [0.2.0] section
+verbatim.
+
+REFLECTION. The v0.2 release was the M8 analog, and it landed as a REPEATABLE ritual rather
+than a one-off: decision 0027 is the v0.2 successor to 0023 (as 0023 was to 0017), the doc
+reconciliation was structural (drop the EARNED caveats, keep the STILL-TRUE boundaries
+verbatim), and the tag carried disclosed local evidence — the same shape as v0.1, now second
+time through. Two things are worth their own line. First, the deferred claim-drops from M4
+(0025 item 8) and M9 (0026 item 7) landed here EXACTLY as designed: each feature milestone
+merged without touching the release-scoped README/CHANGELOG (keeping the frozen v0.1.0 docs
+honest), and the release consolidated them into one [0.2.0] section and one README rewrite.
+The discipline of deferring the user-facing claim to the release paid off — no released tag
+ever over-claimed. Second, the one real judgment call — "RFC 3986 compliant" — was settled by
+the house rule "a property is measured or it is not claimed", now applied to a claim that is
+EARNABLE, not absent: v0.2 genuinely VALIDATES (uri-parse-validate judges every component's
+charset AND the whole host grammar) and fully NORMALIZES §6.2.2.1, so the surface is complete
+and measured — but "compliant" is a whole-ABNF conformance audit that has NOT run, so the
+release says "earnable and nearer, not granted" rather than either hiding the progress or
+over-claiming it. CI has STILL never run, disclosed in the release body (0027, the successor
+to 0023→0017), not waived.
+
+NEXT (v0.2 is DONE; what reopens is a SEPARATE choice, not a v0.2 gap). v0.2's entire arc —
+M3 (charset validation), M4 (host grammar + host-case normalization), M9 (authority-form) —
+is merged, released, and tagged v0.2.0 on f359743. Three distinct directions are now open,
+each its own decision: (1) the RFC 3986 CONFORMANCE AUDIT — a systematic accept/reject sweep
+against the collected ABNF that could EARN the "RFC 3986 compliant" claim 0027 deferred; (2)
+the FIRST FUNDED CI RUN — discharging 0017 item 3, replacing the macOS-arm64-local disclosure
+with cross-platform evidence; (3) v0.3 FEATURES — e.g. the deferred abnfgen positive generator
+and host-aware mutator (0012), a relative-reference serializer above recompose (0022), or the
+sibling's next request. The two sibling-repo issues filed this session are both resolved:
+#10 (SP/CTL in the authority) subsumed by M4, #9 (authority-form) shipped by M9 — chez-http-
+server can drop both workarounds and consume v0.2.0 by gitlink. The tree is clean on main at
+f359743, tagged v0.2.0.
