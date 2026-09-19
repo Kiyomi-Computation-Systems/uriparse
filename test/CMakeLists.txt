@@ -816,6 +816,35 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
+# --- The RFC 3986 conformance audit, Slice ⓪ (decision 0028) ----------------
+#
+# The whole-URI oracle + its self-tests, graded on its OWN before any differential
+# against the product (that is the audit's Slice ①). (uri test abnf-oracle) reads
+# RFC 3986 Appendix A's STRUCTURAL grammar and COMPOSES the two audited component
+# oracles (charset + host), so the lane carries all three oracle libs plus the
+# corpus harness lib: the self-tests accept the §1.1.2 / §5.4 positives (read
+# through (uri test corpus)) and reject a hand-built structural negative set. Pure
+# test-side, like the charset/host-oracle lanes above -- no src validator is
+# imported -- and it reads the positive corpora from URI_CORPUS_DIR.
+set(URI_ABNF_ORACLE_LIB
+    "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/abnf-oracle.sls")
+
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.abnf-oracle.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/abnf-oracle-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_CHARSET_ORACLE_LIB}
+            ${URI_HOST_ORACLE_LIB}
+            ${URI_ABNF_ORACLE_LIB}
+            ${URI_CORPUS_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/abnf-oracle-tests.sps"
+    ENVIRONMENT "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+    TIMEOUT 120
+    LABELS unit)
+endforeach()
+
 # --- The M2 pure seam ------------------------------------------------------
 #
 # The first product code (decision 0008, 0004, 0009): the vocabulary the

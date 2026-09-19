@@ -2438,3 +2438,114 @@ Slice ⓪ (the independent whole-URI abnf-oracle + its self-tests). The three si
 filed this session — #9, #10, #11 — are all now resolved and merged; chez-http-server can drop
 all three workarounds and consume main. The tree is clean on main at a1b9176 (v0.2.0 stays the
 latest tag; #11 is post-v0.2, unreleased).
+
+---
+
+THE RFC 3986 CONFORMANCE AUDIT — earning (or refusing) the claim v0.2 deferred. Branch
+feat/rfc3986-conformance-audit (a FRESH branch from the post-#11 main; it SUPERSEDES the stale
+WIP feat/conformance-audit / commit 115764d, which was based on the pre-#11 main dee40d8 and
+can be pruned at the maintainer's convenience — its two files, decision 0028 and the ledger
+seed, are re-authored here on the correct base).
+
+Plan: the audit decision 0027 item 4 deferred. Decisions in force: 0003 (adjudicate against
+the ABNF, not a popular library), 0005/0012 (oracle-from-the-RFC, independent of the code;
+agreement is the check; abnfgen/mutator are the deferred generators), 0011 (uri-parse is
+lenient; validation is uri-parse-validate), 0024/0025 (the M3 charset + M4 host oracles this
+audit composes), 0026 (M9 authority-form is RFC 9112 — OUT of scope), 0027 (the release that
+deferred the claim), and 0028 (the audit charter: recognizer-equivalence, an independent
+whole-URI oracle, earned only if clean).
+
+Base at start: beb8952 (a1b9176 = the #11 merge; beb8952 = the #11 close-out; local main ==
+origin/main; v0.2.0 released as f359743, tagged v0.2.0 and still the latest tag; #11 is
+post-v0.2, unreleased). Measured environment (2026-09-19, Darwin arm64): Chez 10.4.1
+(tarm64osx). Pre-audit baseline INHERITED from main (no product source changed on this
+branch): release lists 73 tests; the existing pure-oracle lanes run green (host-oracle: 10
+cases / 67 checks / 0 failures, re-run this session).
+
+THE FORCING QUESTION, AND WHY THE AUDIT HAS SUBTLE TEETH. "RFC 3986 compliant" for a
+validating parser means RECOGNIZER-EQUIVALENCE: uri-parse-validate accepts a bytevector in
+mode `uri` iff it is a `URI` (Appendix A), etc. (0028 item 1). An armchair probe found the
+OBVIOUS gaps already closed — the scheme first-char ALPHA rule holds (`1abc:x`, `+x:y`,
+`ht!tp:x` all rejected invalid-scheme), and even `uri-reference "1abc:x"` (neither a valid
+URI nor a valid relative-ref) is rejected. So M3/M4 are more conformant than a naive read
+suggests; the audit is NOT a bug-hunt for the obvious but a rigorous recognizer-equivalence
+check for SUBTLE deviations in the lenient-split × component-validation interaction. The
+existing charset/host oracles are COMPONENT-level; the untested questions are STRUCTURAL
+(path-type-per-context, the mode→production mapping, empty/edge shapes), so the audit's new
+oracle must recognize a WHOLE URI.
+
+WHAT THE AUDIT SHIPS (decision 0028): NO README/CHANGELOG claim-flip at merge (that rides a
+release, 0028 item 6). Test artifacts + any confirmed src fixes + the recorded verdict:
+  - `(uri test abnf-oracle)` — an INDEPENDENT whole-URI recognizer of URI / URI-reference /
+    relative-ref, the STRUCTURAL grammar composed with the existing charset/host oracles
+    (0028 item 2). A fourth, structural reading of the ABNF, product-independent.
+  - a DIFFERENTIAL lane — uri-parse-validate ⇄ the oracle over positives, negatives,
+    exhaustive small sweeps, adversarial boundary corpora, and generated valids (0028 item 3).
+  - each disagreement adjudicated against the ABNF → product fix (witnessed) / oracle fix /
+    documented deviation (0028 item 4); the recorded VERDICT (0028 item 5).
+
+SLICE PLAN (cadence: drive to gates — stop after Slice ⓪ and at the merge gate; a Workflow
+for the differential's per-production probing + adversarial adjudication):
+
+  ⓪  `(uri test abnf-oracle)` — the independent whole-URI recognizer (structural grammar +
+     the composed component oracles) + its SELF-tests: it must ACCEPT every positive corpus
+     (§1.1.2, §5.4 base/refs/targets) and REJECT a hand-built structural negative set (bad
+     scheme-first-char, a path-type-per-context violation, a mode-production mismatch, the
+     uri-reference disambiguation), mutation-witnessed. NO differential against the product
+     yet (the oracle is graded on its own first, as the corpus loader was — 0005). — GATE.
+  ①  the DIFFERENTIAL AUDIT — run uri-parse-validate ⇄ the oracle over the broad space
+     (0028 item 3); catalog every disagreement; adjudicate each against the ABNF; fix
+     confirmed product bugs (witnessed); the VERDICT emerges (clean, or the residual
+     deviations). A Workflow drives the per-production probing and the adversarial
+     adjudication (default-refute a claimed deviation). — MERGE GATE.
+  CLOSE — merge-gate adversarial review + the recorded verdict + closing ritual (ask first)
+  + reflection.
+
+SLICE ⓪ DONE (2026-09-19). The whole-URI oracle and its self-tests, graded on the oracle's OWN.
+  - test/support/harness/uri/test/abnf-oracle.sls — `(uri test abnf-oracle)`, exports
+    oracle-recognize? (mode symbol + bytevector → boolean) and oracle-recognize-string?. A
+    recursive-descent recognizer of RFC 3986 Appendix A's STRUCTURE: it peels [ "#" fragment ]
+    then [ "?" query ] by the ABNF's own unambiguous greedy split (query/fragment carry no "#",
+    hier-part/relative-part carry neither), then matches the front as `scheme ":" hier-part`
+    (URI) or `relative-part` (relative-ref). The five path-types are predicates over the path
+    range (empty / abempty / absolute / rootless / noscheme), and the ONE structural fork is
+    path-rootless (colon-bearing, a URI's) vs path-noscheme (first-segment-no-colon, a
+    relative-ref's) — the whole URI/relative-ref disambiguation. It DEFERS every charset
+    question to the two audited component oracles: `only (uri test charset-oracle) oracle-scan`
+    for scheme/path/query/fragment (also the leading-ALPHA and non-empty scheme rules), and
+    `only (uri test host-oracle) oracle-scan-authority` for the "//" authority (split at the
+    first "/", exact because userinfo/host/port admit no "/"). `only` imports because the two
+    component oracles share the ABNF byte-set names and would otherwise collide. PURE.
+  - test/common/abnf-oracle-tests.sps — unit.abnf-oracle, graded two ways (0005): ACCEPT every
+    positive (the §1.1.2 examples as both uri and uri-reference; the §5.4 base + 43 targets as
+    uri; the §5.4 43 references as uri-reference — all read through (uri test corpus)), plus
+    explicit per-path-type / per-mode positives and the divergence trio (g:h and a:/b are URIs,
+    are NOT relative-refs, are URI-references through the URI arm); REJECT a hand-built
+    structural negative set, one class per case (bad/empty/space scheme; mode↔production
+    mismatch; invalid authority; per-component charset fault in path/query/fragment; a raw
+    non-ASCII byte). 12 cases / 142 checks / 0 failures.
+  - test/CMakeLists.txt — the uri.unit.abnf-oracle.chez.{source,aot} lane, modeled on the
+    charset/host-oracle lanes: pure test-side (harness + all three oracle libs + the corpus
+    harness lib), reads URI_CORPUS_DIR, LABELS unit. Registering it takes the release
+    selection from 73 to 75 (a source + an aot twin).
+
+  VERIFICATION UNDER A BUILD-BLOCKED SESSION (disclosed, not waived — the honesty the ledger
+  owes). This session's permission mode auto-DENIES `make` / `cmake --build` / `cmake` configure
+  as potentially-destructive, so the CMake reconfigure that would register the new lane under
+  CTest, and the AOT compile, could not run here. `ctest` (run/list) and direct `chez` execution
+  ARE permitted, so the SOURCE lane was verified by invoking the exact command the CMake lane
+  wraps — the chez-source launcher with `--library-root test/support/harness`, an empty
+  object-guard, `--program …/abnf-oracle-tests.sps`, `URI_CORPUS_DIR` on the environment — which
+  is source-mode-identical to `uri.unit.abnf-oracle.chez.source`. Result: status=0, 12 cases /
+  142 checks / 0 failures. STILL TO RUN once a build is authorised (a `make build` + `ctest
+  --preset release`): the CTest registration of the new lane and its AOT twin, and the full
+  75-test release + 11-test no-scheme sweep. Nothing about the artifacts is provisional — only
+  their registration under CTest and the compiled twin await the build step.
+
+  MUTATION WITNESSES (watched to fail via the direct source lane, then reverted; the two
+  load-bearing structural decisions). (1) The URI/relative-ref FORK: dropping path-noscheme's
+  first-segment-no-colon check (→ #t) made the oracle accept "g:h" and "a:/b" as relative-refs
+  and "http://a" too — 5 failures across the disambiguation and mode-mismatch cases, status=1.
+  (2) The SCHEME GATE: dropping `charset-ok? 'scheme` from scheme-hier? made it accept "1abc:x",
+  ":x", "a b:c" as URIs (and "1abc:x" as a URI-reference) — 4 failures, status=1. Both reverted;
+  re-run green (12/142/0), no mutation markers left in source. — AT THE GATE.
