@@ -911,6 +911,7 @@ set(URI_COLLECT ${URI_VOCABULARY}
                 "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/components.sls"
                 "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/percent.sls"
                 "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/charset.sls"
+                "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/host.sls"
                 "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/collect.sls")
 
 foreach(mode source aot)
@@ -1111,6 +1112,33 @@ foreach(mode source aot)
             ${URI_CORPUS_LIB}
             "${CMAKE_CURRENT_LIST_DIR}/common/charset-tests.sps"
     ENVIRONMENT "URI_CHARSET_DIR=${URI_CHARSET_DIR}"
+                "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+    TIMEOUT 180
+    LABELS unit)
+endforeach()
+
+# --- unit.host: the M4 host-grammar validator (decision 0025, Slices ①②) -----
+#
+# Grades (uri host) against the independent host oracle (agreement on a battery
+# plus the exhaustive dec-octet / h16 / group-count sweeps), the negative corpus
+# (each row rejected with its code + absolute offset, end to end through
+# uri-parse-validate), and the positive corpora (all accepted). Same shape as
+# unit.charset: it drives the whole read stack (the shell rebases the authority
+# offset), so it needs URI_COLLECT (which now carries host too) and the generated
+# parser, plus the host-oracle and corpus harness libraries.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.host.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/host-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
+            ${URI_COLLECT}
+            ${URI_GENERATED_PARSER}
+            ${URI_HOST_ORACLE_LIB}
+            ${URI_CORPUS_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/host-tests.sps"
+    ENVIRONMENT "URI_HOST_DIR=${URI_HOST_DIR}"
                 "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
     TIMEOUT 180
     LABELS unit)

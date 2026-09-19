@@ -1821,3 +1821,46 @@ src validator (that is Slices ①②③).
   fixed (it is outside the URI charset). GRADED: release 69/69 (+2 host-oracle lanes
   over the 67 baseline), no-scheme 11/11, host-oracle + vocabulary seam-guard green.
   — AT THE SLICE ⓪ GATE (cadence: stop after Slice ⓪). Next: Slice ①.
+
+SLICE ⓪ GATE (2026-09-19): the maintainer said "go" — committed as 3fde2a3.
+
+SLICES ①② COMPLETE (2026-09-19). Driven together to the merge gate (a half-built
+validator with a filtered corpus is the awkward state; the cadence's stop is the
+merge gate). Landed `(uri host)` (the whole authority validator, incl. the IPv6
+counter) + the shell wiring + the unit.host lane.
+  - src/uri/host.sls — pure R6RS, imports only (rnrs) + (uri percent) (decision 0025
+    item 5). validate-authority : Bytevector -> (values (Option code) (Option Nat)),
+    authority-RELATIVE index. Bracket-aware split (userinfo at the single "@";
+    host/port at the ":" after "]" for an IP-literal, else the first ":"); userinfo/
+    reg-name/port scans reusing percent's unreserved-byte?/hex-digit-value; the host
+    grammar inside "[" ... "]" — h16?, dec-octet (canonical, 0-255), ipv4, the
+    count-pieces + dcolon IPv6 COUNTER (≤7 with "::", ==8 without), ipvfuture. All
+    IP-literal-interior faults (incl. dec-octet range) reported at the "[". INDEPENDENT
+    of the oracle: it uses percent's primitives where the oracle defines its own, so a
+    charset mistake cannot be shared. (`find` renamed to find-byte — (rnrs lists)
+    already binds `find`.)
+  - src/uri/collect.sls — import (uri host); component-bytes gains (authority);
+    validate-one dispatches authority→validate-authority, else validate-component;
+    validate-result visits '(scheme AUTHORITY path query fragment) in input order and
+    rebases the authority-relative index onto the ALREADY-captured authority start.
+    uri-parse stays lenient; uri-parse-validate now judges the authority too.
+  - test/common/host-tests.sps + the uri.unit.host lane (source+aot); host.sls added
+    to URI_COLLECT.
+  GRADING (unit.host): the six-code core vocabulary; validate-authority ⇄
+  oracle-scan-authority agreement over a 45-shape battery PLUS three EXHAUSTIVE sweeps
+  — dec-octet 0..300 (bracketed hits the 255/256 edge, bare stays a valid reg-name),
+  h16 length 1..7 (≤4 valid), group-count 1..10 (==8 valid) — plus a "::"-total
+  boundary battery; the negative corpus rejected exactly through uri-parse-validate
+  (all 20 rows, code + ABSOLUTE offset); the positive corpora ACCEPTED (§1.1.2's eight
+  incl. the ldap `[2001:db8::7]` IPv6 host, §5.4's 42 targets, seven explicit valid
+  authorities incl. `user:pass@[::1]:8080`); a structural error still passes through.
+  MUTATION WITNESSES (rebuilt each, source-lane fingerprint discipline): (1) the IPv6
+  counter ≤7→≤8 → the `[...:7:8::]` and `[...:7::8]` boundary cases redden (src
+  disagrees with the oracle — the agreement catches src-only bugs); (2) the shell
+  offset rebase dropped (+off→+0) → every corpus offset reddens "expected 9, got 2"
+  (the authority-relative index, absolute-7). Two boundary battery rows were ADDED
+  first so the "::" rule was actually pinned before the mutation. GRADED: release
+  71/71 (+2 unit.host lanes), no-scheme 11/11. The existing charset/round-trip/
+  resolution positive corpora stay green now that authority validation is live on
+  every uri-parse-validate. — AT THE MERGE GATE (cadence: stop). Next: the merge-gate
+  adversarial review (a Workflow), then Slice ③ (host-case normalization).
