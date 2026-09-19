@@ -2405,3 +2405,36 @@ asserted and then used to de-scope a line from the witness discipline. The revie
 one. The rule sharpens: "unobservable, so not witnessed" is itself a claim to be adversarially
 refuted, never a rationale to skip the witness — the byte/offset seam is wider than the first
 reading of it.
+
+ISSUE #11 MERGED (2026-09-19). PR #15 squash-merged to main as a1b9176; local main
+fast-forwarded (dee40d8..a1b9176); feat/collector-reset deleted local and remote; issue #11
+auto-closed ("Closes #11"). Merged over a RED linux-amd64 check, confirmed the documented
+Actions billing refusal (decision 0017 — 0 steps, billing annotation), not a test result;
+local macOS-arm64 evidence stands (release 73/73, no-scheme 11/11). The maintainer authorised
+the closing ritual explicitly. Every push over HTTPS via `gh auth git-credential` (SSH still
+broken this session).
+
+REFLECTION. Issue #11 was a small, additive ergonomics win — one export, a reset! message —
+but it earned the same merge-gate lesson the big milestones did, aimed this time at my own
+REASONING rather than the code. The shipped reset was correct, yet I asserted a false
+invariant ("verdict is unobservable, so kept as un-witnessed hygiene") by reasoning only about
+`assemble` (the component bytes) and missing that `path-offset` reads verdict against the
+offset seam. The adversarial review refuted it with a concrete counterexample (`uri-reference
+"g/h" → "/p"`: a stale segment-verdict drops the path offset), which turned an unwitnessed,
+wrongly-rationalised reset into a witnessed one and corrected the record. Two things carried
+the milestone: the correctness hinge (does parser-reset! preserve the embedder mode?) was
+settled from byte-machine SOURCE, not assumption — it restores the merged initials (slot 17),
+so the mode survives; and the win was MEASURED once (~6.4x for a short target), disclosed as a
+benchmark not baked into a lane (decision 0016 forbids a standing allocation lane). The
+sharpened rule is banked: "unobservable, so not witnessed" is a claim to adversarially refute,
+never a reason to skip the witness.
+
+NEXT (RESUME THE RFC 3986 CONFORMANCE AUDIT). The audit was set up (decision 0028 + a ledger
+seed) then paused for #11; its WIP is commit 115764d on feat/conformance-audit, based on the
+pre-#11 main (dee40d8). To resume: cut a fresh audit branch from the new main (a1b9176) — or
+rebase feat/conformance-audit onto it — re-applying decision 0028 and re-seeding the audit
+ledger section AFTER this #11 close-out (fixing its "Base at start" to a1b9176), then drive
+Slice ⓪ (the independent whole-URI abnf-oracle + its self-tests). The three sibling issues
+filed this session — #9, #10, #11 — are all now resolved and merged; chez-http-server can drop
+all three workarounds and consume main. The tree is clean on main at a1b9176 (v0.2.0 stays the
+latest tag; #11 is post-v0.2, unreleased).
