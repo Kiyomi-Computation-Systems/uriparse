@@ -83,6 +83,55 @@ make test-all # the complete selection
 make no-scheme # the CMake layer alone, on a host with no Scheme
 #+end_src
 
+** Parsing a URI
+
+~(uri collect)~ splits a URI into its five components and ~(uri components)~ reads
+them. The core is bytevectors throughout, so a URI goes in as UTF-8 bytes and each
+field comes back as bytes — or ~#f~ when the component is *absent*, which is never
+confused with present-but-empty.
+
+#+begin_src scheme
+(import (rnrs)
+        (uri collect)
+        (uri components))
+
+;; Parse a URI. The core works in bytevectors, so the input is UTF-8 bytes.
+(define result
+  (uri-parse 'uri (string->utf8 "https://example.com/path?q=1#top")))
+
+;; Print one component, or "<absent>" when it never appeared (absent, not empty).
+(define (show name bv)
+  (display name) (display ": ")
+  (display (if bv (utf8->string bv) "<absent>"))
+  (newline))
+
+(when (uri-parse-ok? result)
+  (let ((c (uri-parse-components result)))
+    (show "scheme"    (uri-components-scheme c))
+    (show "authority" (uri-components-authority c))
+    (show "path"      (uri-components-path c))
+    (show "query"     (uri-components-query c))
+    (show "fragment"  (uri-components-fragment c))))
+#+end_src
+
+Run it against the source libraries — ~src~ and the vendored ~byte-machine~:
+
+#+begin_src sh
+scheme --libdirs "src:vendor/byte-machine/src" --script parse.scm
+#+end_src
+
+#+begin_example
+scheme: https
+authority: example.com
+path: /path
+query: q=1
+fragment: top
+#+end_example
+
+The mode is ~uri~ (an absolute URI); ~relative-ref~ and ~uri-reference~ are the
+other two. Resolving a reference against a base, normalizing, and recomposing live
+in ~(uri resolve)~, ~(uri normalize)~ and ~(uri recompose)~.
+
 ** The corpus
 
 [[file:test/conformance/rfc3986/][test/conformance/rfc3986/]] is *derived*, not authored: extracted from
