@@ -319,6 +319,18 @@ barely moves. Its timing is therefore a choice that can be revisited at M2 — a
 a scope decision, not a re-plan — and this document records the estimate so the
 revisit has something to check against.
 
+> **Superseded by [decision 0024](decisions/0024-charset-validation-is-the-cores-over-the-split-components.md).**
+> The grammar-side sizing above predates [decision 0019](decisions/0019-the-scanner-splits-five-coarse-components-and-the-core-owns-the-authority.md),
+> which redrew the functional-core line: charset errors are the CORE's, raised
+> over the split component bytevectors, and the scanner stays delimiter-only
+> (0019 item 5, enforced green by `vocabulary-tests.sps`). So M3 does NOT change
+> the scanner's fallback edges or regenerate `(generated uri-scanner)`; it adds a
+> pure `(uri charset)` and rebases offsets in the shell. Two further corrections
+> 0024 records: the brief's "port digits" and the `http://exa mple.com/`
+> space-in-host case above are **M4**, not M3 — the authority is one opaque span
+> until M4 splits userinfo/host/port, and an error cannot name the violated
+> production (0009 item 1) without that split.
+
 **And one to M4.** The brief budgets `IPv6address` at 150–250 nodes and reserves
 a `decision`-callback fallback against it. That estimate is ABNF's shape, not
 the grammar's: ABNF cannot count, so the RFC writes nine alternatives for what

@@ -1406,3 +1406,212 @@ address, and host-case normalization, which unblocks the deferred half of decisi
 FIRST FUNDED CI RUN, which discharges decision 0017 item 3 and replaces v0.1's
 local-only disclosure with real cross-platform evidence. The tree is clean on main
 at 264c997, tagged v0.1.0.
+
+Post-release: PR #7 (610d007) added a README "Parsing a URI" example, squash-merged
+as ecfa4a0. Not a milestone (no ledger reflection); verified by running, not gated
+by a lane. It is on main but NOT in the v0.1.0 tag (which stays at 264c997).
+
+---
+
+M3 — CHARSET VALIDATION (v0.2). Branch feat/m3-charset-validation.
+
+Plan: .plans/2026-09-18-chez-uri-project-brief.md "M3 — charset validation"
+(pct-encoded in every component that admits it, the scheme charset,
+pchar/segment-nz-nc/query/fragment sets, port digits, error offsets for each) and
+.plans/2026-09-18-chez-uri-design.md §6. Decisions in force: 0003 (RFC 3986 is
+normative, adjudicated against the ABNF), 0005 (the corpus + oracle-from-RFC
+discipline; two provenances two counts), 0007 (src is pure R6RS), 0009 (an error
+NAMES the ABNF production that failed, and carries an offset), 0010 (bytevectors),
+0011 (v0.1 was resolution-first; M3/M4 are v0.2), 0012 (abnfgen is the positive
+generator), 0019 (the scanner splits five coarse components delimiter-only; the
+core owns the authority AND — item 5 — the charset errors).
+
+Base at start: ecfa4a0 (local main == origin/main; v0.1.0 released as 264c997,
+its close-out 453ecbc, the README example ecfa4a0). Measured environment
+(2026-09-19, Darwin arm64): Chez 10.4.1 (tarm64osx), CMake/CTest 4.3.3. Baseline
+on the branch before any slice, RE-MEASURED: release 63/63, no-scheme 11/11, 0
+failures.
+
+THE FORCING QUESTION (the M3 analog of 0020/0021/0022 — settled by the survey and
+recorded as decision 0024): WHERE does charset validation live? The record
+conflicts. Design §6 (early) says M3 changes the SCANNER nodes' fallback edges
+accept→error and adds pct-encoded sub-nodes — GRAMMAR-side, regenerating the
+(generated uri-scanner) artifact. But decision 0019 item 5 (accepted at M2, the
+line the code is built around; restated in vocabulary.sls:138-147 and
+grammar.sls:80-87) says the scanner's error vocabulary is ONLY the four structural
+codes and that "Host and charset errors (invalid-ip-literal, invalid-dec-octet,
+invalid-pct-encoded, …) are the CORE's, raised where the core validates" —
+CORE-side, over the split component bytevectors, scanner stays delimiter-only.
+Design §6 predates 0019's redraw of the functional-core line, so it is LIKELY
+STALE PROSE (the project's own memory note: the prose lags the code on the points
+that matter most). The survey adjudicates this — the answer reshapes the whole
+milestone (core = pure R6RS, no ABI change; grammar = regenerate the scanner,
+re-pass the ABI-9 + determinism lanes and contradict 0019).
+
+Sub-questions the survey settles: the exact M3 component scope (scheme, path,
+query, fragment charsets — and does PORT slip to M4, since the authority is one
+opaque bytevector until M4 splits userinfo/host/port?); the ERROR-OFFSET mechanism
+(collect.sls accumulates span BYTES but tracks no start offset — a core validator
+finding a bad byte at component index i needs the component's absolute start
+offset to satisfy 0009); where the validator lives (extend (uri percent) vs a new
+(uri charset)/(uri validate)); and the NEGATIVE corpus — none exists yet (only
+positive vectors + the committed ABNF), so M3 must derive invalid vectors from the
+ABNF independently of the code (oracle discipline), each tagged with the production
+it violates and its expected offset.
+
+SLICE ⓪ OPEN (2026-09-19): ledger seeded (provisional); branch cut from ecfa4a0;
+baseline re-measured (release 63/63, no-scheme 11/11); the M3 scoping survey
+commissioned (four investigators — placement grammar-vs-core, scope+offsets,
+the ABNF charsets+pct, the negative corpus+oracle — synthesized adversarially into
+a proposed decision 0024, a slice plan, and blockers), so the placement question
+and M3's exact scope are settled before a line of validator is written.
+
+THE SURVEY CAME BACK (2026-09-19). Verdict: CORE placement, NOT a close call.
+0019 item 5 governs and the code already enforces it — vocabulary-tests.sps
+asserts invalid-pct-encoded/invalid-scheme/… OUT of the scanner set with a green
+mutation-witnessed test — so going grammar-side would redden an existing test to
+reverse an accepted decision. Design §6's grammar-side note is the stale prose the
+design's own amendment banner already conceded. The one novel "grammar is
+impossible" argument was walked back (byte-machine could carry a scheme-taint
+field; it is redundant, not impossible). Decision 0024's seven points: (1) core
+placement, scanner stays delimiter-only; (2) scope = scheme/path/query/fragment +
+pct-encoded, with PORT and all authority-interior charsets DEFERRED to M4
+(correcting the brief's "port digits" — the authority is one opaque span until M4
+and 0009 can't name the production without the split); (3) offsets rebased in the
+shell (collect) from the runtime stream offset, witnessed not assumed; (4) a new
+pure (uri charset), NOT an extension of the deliberately-non-validating
+(uri percent); (5) a core error vocabulary (invalid-scheme/-pchar/-query/
+-fragment/-pct-encoded) named per ABNF production, kept out of the scanner set;
+(6) a hand-derived negative corpus, tagged (production, absolute-offset), separate
+provenance and count, gated by a cross-check + coverage floors (not a ratchet);
+(7) M3 opens v0.2, v0.1.0 frozen. The synthesizer pruned four overreaches:
+carried-forward node/byte counts (re-measure, don't assert), building the
+abnfgen/mutator in M3 (deferred v0.2 tooling), and pulling port/host charset
+forward. Plan: three slices (⓪ decision+oracle+corpus; ① the offset seam in
+collect; ② the (uri charset) validator).
+
+SLICE ⓪ COMPLETE (2026-09-19). Landed the decision + the oracle + the negative
+corpus — NO src validator (that is Slice ②). (1) decision 0024 recorded (seven
+points, citations verified). (2) design §6 amended in place with a "Superseded by
+0024" banner + the port/host→M4 corrections. (3) (uri test charset-oracle) — the
+ABNF byte sets (unreserved/sub-delims/pchar/…) and oracle-scan, an INDEPENDENT
+reference validator derived from the ABNF (RFC 5234 B.1 for ALPHA/DIGIT/HEXDIG,
+lower-case hex admitted per §6.2.2.1), plus the negative-corpus loader and the
+cross-check. It is test-side (grades the src validator in Slice ②), so outside the
+src import-audit. (4) test/conformance/charset/{negative.scm,PROVENANCE} — 15
+hand-derived negative vectors (scheme 4, pchar 4, pct 4, query 1, fragment 2),
+each tagged with the ABNF production and the ABSOLUTE offset (the "%" for a
+malformed pct-encoded); a SEPARATE provenance ("ours, derived from the ABNF, not
+extracted from the RFC text"), kept out of the corpus-provenance-guarded rfc3986/
+dir. (5) the lane uri.unit.charset-oracle (source+aot) cross-checks every row
+against the oracle. Evidence: release 65/65 (was 63), no-scheme 11/11, 0 failures.
+Darwin arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3.
+
+ORACLE DISCIPLINE + REVIEW (Slice ⓪). The corpus was INDEPENDENTLY REFUTED by a
+subagent that re-derived every offset/production from the ABNF and RFC 5234, blind
+to the oracle code (and with its own verification script): all 15 rows AGREE, zero
+corrections. Two MUTATION WITNESSES watched the lane redden then reverted: a
+corrupted corpus offset (10→9, where the byte is a valid 'a') → "invalid-pchar at
+9 but that byte is valid for path"; and a corrupted oracle byte-set (path admits
+space) → both the oracle-scan pin AND the corpus cross-check reddened, proving the
+byte sets are load-bearing. A per-slice adversarial review found NO blockers and
+closed one should-fix + two nits: the cross-check's pct-encoded branch skipped the
+component check the literal branch had (a mislabeled pct row on 'scheme passed) —
+hoisted a code↔component guard to the front for all codes and witnessed the new
+guard red ("code invalid-pct-encoded does not name component scheme"); oracle-scan
+computed ok? eagerly, raising instead of a graceful diagnostic on an out-of-scope
+component (fixed by the same hoist); and an unused `code` binding in oracle-scan's
+scheme branch (scoped it to path/query/fragment). Re-measured after fixes: release
+65/65, no-scheme 11/11.
+
+SLICE ① COMPLETE (2026-09-19). The OFFSET SEAM in (uri collect) — the shell's
+half of decision 0024 item 3, so a core validator's component-relative index can
+rebase to an absolute input offset. No validator yet (Slice ②); no charset logic.
+The collector captures each present span's absolute start at its FIRST fragment
+(the runtime commits parser-stream-offset — the fragment's END — before the data
+callback, so the start is that minus the fragment width), and `assemble-offsets`
+mirrors `assemble` to give each component's start: a mode-3 scheme/segment verdict
+rebases onto the leading token, and a rooted path (0018) begins one byte BEFORE
+its span, where the dropped "/" was. Exposed as uri-parse-component-offset :
+result symbol -> (Option Nat), keeping absent (#f) distinct from present-empty (a
+captured offset). uri-parse-result gained an internal offsets alist (present
+components only); uri-components is UNCHANGED (offsets live on the shell's result,
+not the seam type). THE FORMULA WAS WITNESSED, NOT ASSUMED: a probe printed the
+computed offsets for nine inputs and every one matched a hand count (scheme@0,
+authority@7, path@8, query@17; the rooted "http:/p" path@5; the empty-authority
+"http:///p" path@7 which is NOT rooted; mode-3 "g:h" scheme@0/path@2 and "g/h"
+path@0). Then the unit.collect "offsets" group pins all three path shapes + the
+absent cases + feed-invariance (dripped byte-at-a-time gives the same absolute
+offsets). MUTATION WITNESS: dropping the rooted "-1" reddened three checks
+(rooted path@5→6, rel rooted@0→1, drip rooted@5→6), then reverted. Evidence:
+release 65/65, no-scheme 11/11, 0 failures.
+
+SLICE ② COMPLETE (2026-09-19). The VALIDATOR. (1) (uri charset) — pure R6RS
+importing only (uri percent) (reusing unreserved-byte? and hex-digit-value, so the
+validator and the codec cannot disagree about a byte), written INDEPENDENTLY of
+the oracle: validate-component : Symbol Bytevector -> (values (Option code)
+(Option index)), plus the core error vocabulary (invalid-scheme/-pchar/-query/
+-fragment/-pct-encoded, 0024 item 5). (2) uri-parse-validate wired through the
+shell (uri collect): parse leniently, then judge scheme/path/query/fragment (in
+input order, so the first error is the leftmost), rebasing the validator's
+relative index onto the offset seam to an ABSOLUTE offset; a charset fault becomes
+an error result (ok? #f, the core code, the absolute offset), like a structural
+one. CRUCIALLY, uri-parse ITSELF STAYS LENIENT — validation is a distinct entry,
+not always-on — because M5/M6/M7 depend on the non-validating splitter (M7's
+round-trip deliberately parses a malformed "%%341" to test normalization; making
+uri-parse validating would redden it). (3) the unit.charset lane grades three
+ways: validate-component AGREES with oracle-scan on all 256 single bytes × four
+components + a pct-encoded battery (two independent readings of the ABNF, agreement
+is the check); the negative corpus is rejected with the exact code AND absolute
+offset end to end; and the positive corpora (8 §1.1.2 + 42 §5.4 targets) are all
+ACCEPTED (the reject-everything guard), with a structural error still passing
+through. CMake: URI_COLLECT gained percent + charset (manifest completeness), and
+the now-duplicate explicit percent.sls was dropped from the resolution/round-trip
+lanes. Evidence: release 67/67 (was 65), no-scheme 11/11, 0 failures.
+
+MUTATION WITNESSES (Slice ②): (A) the offset-seam integration — dropping the
+component-offset from the rebase (reporting the relative index) reddened every
+non-zero-offset negative (path space expected 10 got 2, high-byte expected 9 got
+1, …), proving the seam is load-bearing; (B) an over-permissive path (space
+admitted) reddened THREE ways at once — the exhaustive byte-agreement (path byte
+32), a multi-byte agreement, and the negative corpus (the space no longer
+rejected) — proving both the oracle and the corpus catch a loose validator. Both
+reverted; import-audit green (charset is pure R6RS).
+
+M3 MERGE-GATE VERIFICATION (2026-09-19, at the merge gate). A four-lens adversarial
+pass (validator correctness + oracle independence, the offset seam + shell wiring,
+lane non-vacuity, decision/CMake fidelity) + adjudication. Verdict: READY TO
+MERGE, NO blockers — the validator logic is correct, the oracle is genuinely
+independent, and the offset seam was corroborated. Six findings closed (three
+should-fix, three nits):
+  - should-fix (PROVENANCE GAP): the unit.charset lane executed the byte-machine
+    runtime (via uri-parse-validate → collect → generated scanner) but did NOT
+    fingerprint it — URI_GENERATOR_SOURCES was omitted, the one collect-driving
+    lane that missed it, so a runtime.sls change would perturb its siblings'
+    fingerprints but not this lane's. Added URI_GENERATOR_SOURCES to its SOURCES.
+  - should-fix (LEFTMOST unwitnessed): validate-result visits scheme→path→query→
+    fragment and returns the first error, but every negative row had exactly ONE
+    bad component, so a permuted visit order survived green. Added a two-fault row
+    ("1a:x#y z": bad scheme AND bad fragment) asserting invalid-scheme@0, and
+    mutation-witnessed it — reversing the order reports invalid-fragment@6 instead.
+  - should-fix (0024 SILENT on the lenient split): the record did not say uri-parse
+    stays lenient and validation is the distinct uri-parse-validate entry (the
+    rationale lived only here). Amended 0024 item 3 in place with that choice and
+    its reason (M7 parses a malformed "%").
+  - nit: 0024 item 4 claimed (uri charset) imports (uri components); it imports
+    only (uri percent) (dispatches on a component symbol over a bytevector).
+    Trimmed the record to match the shipped library.
+  - nit (pct hex agreement not exhaustive): single-byte agreement never reaches the
+    two-HEXDIG path, so hex-digit-value vs oracle-hexdig? agreeing on all 256 rested
+    unasserted. Added an exhaustive %XY sweep (256×256, one accumulator check).
+  - nit (offset bases not composed end to end): every path/query/fragment negative
+    was authority-present/non-rooted/non-stitched, so the rooted (-1) and mode-3
+    rebases were witnessed only in isolation. Added a rooted no-authority path
+    ("http:/ p" → invalid-pchar@6) and a mode-3 stitched path ("g/ h" →
+    invalid-pchar@2), plus a pct fault routed through a query.
+One finding was DISMISSED: a "no in-lane floor on the negative corpus" concern —
+the charset-oracle lane already applies per-production floors to the SAME file, so
+any shrink reddens a sibling. The negative corpus grew 15 → 19 rows. Evidence after
+fixes: release 67/67, no-scheme 11/11, 0 failures. The review found the CODE sound;
+the fixes were one provenance gap, one measured claim, one recorded decision, and
+coverage/doc reconciliation.

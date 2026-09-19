@@ -19,18 +19,33 @@
   (export make-uri-collector uri-collect-feed! uri-collect-finish!
           uri-parse
           uri-parse-result? uri-parse-ok? uri-parse-components
-          uri-parse-error-code uri-parse-error-offset)
+          uri-parse-error-code uri-parse-error-offset
+          uri-parse-component-offset
+          uri-parse-validate)
   (import (rnrs)
           (byte-machine runtime)
           (generated uri-scanner)
           (uri components)
-          (uri vocabulary))
+          (uri vocabulary)
+          (uri charset))
 
   (define-record-type uri-parse-result
     (fields (immutable ok? uri-parse-ok?)
             (immutable components uri-parse-components)
             (immutable error-code uri-parse-error-code)
-            (immutable error-offset uri-parse-error-offset)))
+            (immutable error-offset uri-parse-error-offset)
+            ;; A component -> absolute-start-offset alist, holding only the
+            ;; present components; #f on an error result. The shell's half of
+            ;; decision 0024 item 3 (the offset seam), so a core validator's
+            ;; component-relative index rebases to an absolute input offset.
+            (immutable offsets uri-parse-offsets)))
+
+  ;; uri-parse-component-offset : uri-parse-result Symbol -> (Option Nat)
+  ;; The absolute byte offset at which a present component begins in the input,
+  ;; or #f when the component is absent or the parse did not succeed.
+  (define (uri-parse-component-offset r name)
+    (let ((a (uri-parse-offsets r)))
+      (and a (let ((cell (assq name a))) (and cell (cdr cell))))))
 
   ;; --- pure assembly ------------------------------------------------------
 
@@ -76,6 +91,36 @@
        query
        fragment)))
 
+  ;; --- the offset seam (decision 0024 item 3) -----------------------------
+  ;;
+  ;; A component's absolute START offset, from the per-span offsets the shell
+  ;; captured at each span's first fragment. It mirrors `assemble` exactly, so
+  ;; the bytes and the offset of a component always agree on where it begins:
+  ;;   - a mode-3 scheme/segment verdict rebases scheme/path onto the leading
+  ;;     token's start (the token IS the scheme, or is stitched before the path);
+  ;;   - a rooted path (decision 0018) begins one byte BEFORE the path span,
+  ;;     where the dropped "/" was.
+  ;; Absent components contribute no cell, so absent stays distinct from a
+  ;; present-empty component whose (possibly empty) span still fired (0008).
+  (define (span-offset offsets name) (hashtable-ref offsets name #f))
+
+  (define (path-offset offsets rooted? verdict)
+    (cond ((eq? verdict 'segment) (span-offset offsets 'leading-token))
+          (rooted? (let ((s (span-offset offsets 'path))) (and s (- s 1))))
+          (else (span-offset offsets 'path))))
+
+  (define (offset-cell name off) (if off (list (cons name off)) '()))
+
+  (define (assemble-offsets offsets present rooted? verdict)
+    (append
+     (offset-cell 'scheme (if (eq? verdict 'scheme)
+                              (span-offset offsets 'leading-token)
+                              (span-offset offsets 'scheme)))
+     (offset-cell 'authority (span-offset offsets 'authority))
+     (offset-cell 'path (path-offset offsets rooted? verdict))
+     (offset-cell 'query (span-offset offsets 'query))
+     (offset-cell 'fragment (span-offset offsets 'fragment))))
+
   ;; --- the shell ----------------------------------------------------------
   ;;
   ;; A collector is a closure over the parser and the accumulators; it responds
@@ -87,6 +132,7 @@
 
   (define (make-uri-collector mode-sym)
     (let ((table (make-eq-hashtable))
+          (offsets (make-eq-hashtable))
           (present '())
           (rooted? #f)
           (verdict #f))
@@ -95,6 +141,12 @@
           (let ((copy (make-bytevector (- to from))))
             (bytevector-copy! src from copy 0 (- to from))
             (hashtable-update! table name (lambda (fs) (cons copy fs)) '()))
+          ;; The span's absolute start, captured at its FIRST fragment only:
+          ;; the runtime commits `parser-stream-offset` (the fragment's END)
+          ;; before the callback, so the start is that minus the fragment width.
+          ;; Witnessed against known offsets in unit.collect (decision 0024 §3).
+          (when (eq? (hashtable-ref offsets name 'unseen) 'unseen)
+            (hashtable-set! offsets name (- (parser-stream-offset parser) (- to from))))
           callback-continue))
       (define (complete name)
         (lambda (parser context) (set! present (cons name present)) callback-continue))
@@ -124,8 +176,9 @@
             ((finish!)
              (let* ((r (parser-finish! parser)) (err (parser-result-error r)))
                (if err
-                   (make-uri-parse-result #f #f (parser-error-code err) (parser-error-offset err))
-                   (make-uri-parse-result #t (assemble table present rooted? verdict) #f #f))))
+                   (make-uri-parse-result #f #f (parser-error-code err) (parser-error-offset err) #f)
+                   (make-uri-parse-result #t (assemble table present rooted? verdict) #f #f
+                                          (assemble-offsets offsets present rooted? verdict)))))
             (else (assertion-violation 'uri-collector "unknown message" msg)))))))
 
   ;; uri-collect-feed! : Collector Bytevector Nat Nat -> feed-result
@@ -137,4 +190,49 @@
   (define (uri-parse mode-sym bv)
     (let ((c (make-uri-collector mode-sym)))
       (uri-collect-feed! c bv 0 (bytevector-length bv))
-      (uri-collect-finish! c))))
+      (uri-collect-finish! c)))
+
+  ;; --- charset validation (M3, decision 0024) -----------------------------
+  ;;
+  ;; component-bytes : Components Symbol -> (Option Bytevector)
+  ;; The bytes of an M3-validated component (authority is M4's, so it is absent
+  ;; from this map).
+  (define (component-bytes c name)
+    (case name
+      ((scheme)   (uri-components-scheme c))
+      ((path)     (uri-components-path c))
+      ((query)    (uri-components-query c))
+      ((fragment) (uri-components-fragment c))))
+
+  ;; validate-result : uri-parse-result -> (Option uri-parse-result)
+  ;; #f when every present M3 component is charset-valid; else a charset ERROR
+  ;; result (ok? #f, the core code, the ABSOLUTE offset -- the component's start
+  ;; from the offset seam plus the validator's relative index). Components are
+  ;; visited in input order (scheme, path, query, fragment), so the first error
+  ;; is the leftmost; a charset error, like a structural one, does not assemble.
+  (define (validate-result r)
+    (let ((c (uri-parse-components r)))
+      (let loop ((names '(scheme path query fragment)))
+        (if (null? names)
+            #f
+            (let ((bytes (component-bytes c (car names))))
+              (if (not bytes)
+                  (loop (cdr names))
+                  (let-values (((code index) (validate-component (car names) bytes)))
+                    (if code
+                        (make-uri-parse-result
+                         #f #f code
+                         (+ (uri-parse-component-offset r (car names)) index)
+                         #f)
+                        (loop (cdr names))))))))))
+
+  ;; uri-parse-validate : Symbol Bytevector -> uri-parse-result
+  ;; Parse leniently, then JUDGE the component charsets (M3). A structural error
+  ;; passes straight through; an otherwise-valid split whose bytes the ABNF
+  ;; rejects becomes a charset error result. `uri-parse` itself stays the lenient
+  ;; splitter M5/M6/M7 depend on (a malformed "%" is content there, not an error).
+  (define (uri-parse-validate mode-sym bv)
+    (let ((r (uri-parse mode-sym bv)))
+      (if (uri-parse-ok? r)
+          (or (validate-result r) r)
+          r))))
