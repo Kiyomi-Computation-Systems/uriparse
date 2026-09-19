@@ -1931,3 +1931,63 @@ CLOSING decision 0020's last deferred §6.2.2.1 transform. The last M4 slice.
   idempotent under the added fold). — M4 IS FEATURE-COMPLETE (⓪①②③): the validating
   surface AND decision 0020's last normalization gap are closed. AT THE CLOSING-RITUAL
   GATE (AGENTS.md: ALWAYS ask before running the closing ritual).
+
+M4 MERGED (2026-09-19). PR #12 squash-merged to main as 04bf52a; local main
+fast-forwarded (3bfa51e..04bf52a); feat/m4-host-grammar deleted local and remote.
+Merged over a RED linux-amd64 check, confirmed the documented Actions billing refusal
+(decision 0017 — `gh run view`: the job "was not started because recent account
+payments have failed", 2s, so no test ever ran), not a test result; local macOS-arm64
+evidence stands (release 71/71, no-scheme 11/11). The maintainer authorised the
+closing ritual explicitly. The branch was local until the ritual, so the ritual also
+pushed it and opened PR #12; every push went over HTTPS via `gh auth git-credential`
+(the SSH agent stayed broken this session); the API merge and branch-delete were
+unaffected.
+
+REFLECTION. M4 was v0.2's second and last milestone, and its lesson is that the
+project's disciplines are now REPEATABLE, not lucky. The forcing-question pattern held
+a THIRD time: "scanner-side or core-side?" was settled by the code (vocabulary.sls +
+the green vocabulary-tests.sps pin naming the core host codes) before a line of
+validator, and design §6's IPv6-node-count note was again the stale prose the project
+keeps warning about (superseded in place by decision 0025, as 0024 did for charset).
+Placement was not a close call — read the code, not the plan. Three things then
+carried the milestone. First, the oracle discipline reached its full THREE-provenance
+form: the src `(uri host)` (reusing percent's primitives), the test `(uri test
+host-oracle)` (its own byte sets), and the hand-derived corpus (independently refuted
+against the ABNF, all rows agreeing). The merge-gate review found the ONE place this
+mattered — the IPv6 "::"-total ≤7 rule was witnessed only by src↔oracle agreement, a
+TWO-provenance guard a shared 7→8 mutation survives; adding an independent corpus row
+(watched to redden through uri-parse-validate under that mutation) made it three. The
+sharpened rule: "agreement is the check" only holds when a THIRD, independently
+authored artifact guards the shared-bug blind spot. Second, the genuine engineering
+risks — the IPv6 counter (≤8 pieces, one "::", IPv4 tail as 2), the bracket-aware port
+split ([::1]:80), the authority offset rebase, and Slice ③'s host fold that must touch
+ONLY the host (userinfo is case-sensitive) while SKIPPING %XX triplets (§6.2.2.1b keeps
+their hex uppercase) — were each witnessed to fail under mutation before being trusted,
+the byte-level diffs (85 "U"→117 "u"; 70 "F"→102 "f") making the property concrete.
+Third — the recurring catch — the merge-gate found what the per-slice work structurally
+could not (the ::-total independent-witness gap and IPvFuture's zero corpus rows), the
+same family as M2's copy-discipline, M3's leftmost-error, M5's empty-authority: coverage
+a slice cannot see about itself, and now closed. One honesty call worth its own line:
+the README/CHANGELOG "complete §6.2.2.1 normalizer" claim was DEFERRED to the v0.2
+release rather than dropped at M4 merge — the README describes the frozen v0.1.0, and
+M3 set the precedent by merging charset validation without touching it; the code's own
+doc and the flipped test discharge 0020's obligation now, the user-facing claim when
+v0.2 ships. The settled pattern holds to the end of v0.2: per-slice review catches
+within-slice bugs; the merge-gate catches the coverage — and the decision record — a
+single slice cannot see about itself.
+
+NEXT (the v0.2 RELEASE — the M8 analog for v0.2). v0.2's implementation is COMPLETE:
+M3 (charset validation) and M4 (the host grammar + host-case normalization) are both
+merged, so `uri-parse-validate` now judges every component's charset and the whole host
+grammar, and `normalize-components` performs all of §6.2.2.1 (scheme + host case +
+percent). What remains is to RELEASE it, the way M8 released v0.1: reconcile the
+release-scoped docs (drop README.org's "charset and host-grammar validation are v0.2"
+and "not host case" caveats; write the CHANGELOG [Unreleased] → [0.2.0] section
+covering M3 + M4; bump the version), re-measure on the release commit, and cut an
+annotated v0.2.0 tag on disclosed local evidence (decision 0023's amendment governs —
+CI has still never run). Two standing debts carry in: the FIRST FUNDED CI RUN (0017
+item 3, still undischarged — v0.2, like v0.1, would release on macOS-arm64-local
+evidence with the Linux cell billing-refused) and the "RFC 3986 compliant" claim, which
+is now EARNABLE-pending-audit — the validating + normalizing + resolving surface is
+complete, but the full compliance claim needs its own audit, not an automatic grant
+from M4. The tree is clean on main at 04bf52a.
