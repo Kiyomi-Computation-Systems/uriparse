@@ -748,6 +748,14 @@ set(URI_CORPUS_LIB
 set(URI_RATCHET_LIB
     "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/ratchet.sls")
 
+# M3 (decision 0024): the charset oracle and its hand-derived negative corpus.
+# The corpus is AUTHORED (derived from the ABNF), not extracted from the RFC
+# text, so it lives apart from the corpus-provenance-guarded rfc3986/ dir and is
+# gated instead by the cross-check against the oracle.
+set(URI_CHARSET_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/charset")
+set(URI_CHARSET_ORACLE_LIB
+    "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/charset-oracle.sls")
+
 foreach(mode source aot)
   uri_add_scheme_lane(
     NAME uri.unit.corpus.chez.${mode}
@@ -759,6 +767,22 @@ foreach(mode source aot)
             "${CMAKE_CURRENT_LIST_DIR}/common/corpus-tests.sps"
     ENVIRONMENT "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
                 "URI_RATCHET_FILE=${URI_RATCHET_FILE}"
+    TIMEOUT 120
+    LABELS unit)
+endforeach()
+
+# M3 Slice ⓪ (decision 0024): the charset oracle + negative corpus cross-check.
+# Pure test-side -- no src/uri validator exists yet -- so it imports only the
+# harness and the oracle, and reads the corpus from URI_CHARSET_DIR.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.charset-oracle.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/charset-oracle-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_CHARSET_ORACLE_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/charset-oracle-tests.sps"
+    ENVIRONMENT "URI_CHARSET_DIR=${URI_CHARSET_DIR}"
     TIMEOUT 120
     LABELS unit)
 endforeach()
