@@ -21,7 +21,9 @@
           uri-parse-result? uri-parse-ok? uri-parse-components
           uri-parse-error-code uri-parse-error-offset
           uri-parse-component-offset
-          uri-parse-validate)
+          uri-parse-validate
+          uri-parse-authority-form uri-parse-authority-form-validate
+          uri-authority-form-error-codes uri-authority-form-error-code?)
   (import (rnrs)
           (byte-machine runtime)
           (generated uri-scanner)
@@ -248,4 +250,118 @@
     (let ((r (uri-parse mode-sym bv)))
       (if (uri-parse-ok? r)
           (or (validate-result r) r)
-          r))))
+          r)))
+
+  ;; --- authority-form (RFC 9112 §3.2.3, decision 0026) ---------------------
+  ;;
+  ;; A CONNECT request-target is an AUTHORITY-FORM target -- `host:port`, with no
+  ;; scheme and no "//". It has NO RFC 3986 production, so no mode (decision 0004)
+  ;; parses it; but it reuses RFC 3986's own host/port -- it is "an authority in
+  ;; isolation", NOT a separate machine -- so the reach is a SHELL SPLICE: prepend
+  ;; "//", which opens an `authority` span in relative-ref mode, parse, and re-map the
+  ;; offsets by -2. The LENIENT `uri-parse-authority-form` mirrors `uri-parse`; the
+  ;; strict `uri-parse-authority-form-validate` holds the target to RFC 9112 §3.2.3
+  ;; (no userinfo, a real port, a valid host).
+
+  (define SLASH 47) (define AF-COLON 58) (define AF-AT 64) (define AF-LBRK 91)
+
+  ;; The three RFC 9112 authority-form error codes (decision 0026 item 5), living with
+  ;; the parser -- neither scanner codes ((uri vocabulary)) nor RFC 3986 host codes
+  ;; ((uri host)). Each names the §3.2.3 rule it enforces (0009's spelling;
+  ;; `port-required` / `userinfo-forbidden` echo the scanner's `scheme-required` /
+  ;; `scheme-forbidden`).
+  (define uri-authority-form-error-codes
+    '(not-authority-form userinfo-forbidden port-required))
+  (define (uri-authority-form-error-code? x)
+    (and (memq x uri-authority-form-error-codes) #t))
+
+  ;; splice "//" so relative-ref opens an authority over the whole input.
+  (define (splice-slashes bv)
+    (let* ((n (bytevector-length bv)) (out (make-bytevector (fx+ n 2))))
+      (bytevector-u8-set! out 0 SLASH)
+      (bytevector-u8-set! out 1 SLASH)
+      (bytevector-copy! bv 0 out 2 n)
+      out))
+
+  ;; Re-map a spliced result back to the caller's coordinates: every captured offset
+  ;; and the error-offset lose the 2 bytes "//" added. Safe because the authority
+  ;; opens at spliced offset 2, so no offset is < 2 (decision 0026 item 3).
+  (define (unsplice-result r)
+    (if (uri-parse-ok? r)
+        (make-uri-parse-result
+         #t (uri-parse-components r) #f #f
+         (map (lambda (cell) (cons (car cell) (fx- (cdr cell) 2)))
+              (uri-parse-offsets r)))
+        (make-uri-parse-result
+         #f #f (uri-parse-error-code r) (fx- (uri-parse-error-offset r) 2) #f)))
+
+  ;; A parsed authority carrying a path/query/fragment is not authority-form: the
+  ;; input has bytes past the authority. Since the authority starts at offset 0 after
+  ;; unsplicing, the first such byte IS the authority's length.
+  (define (authority-form-trailing? c)
+    (or (let ((p (uri-components-path c))) (and p (fx>? (bytevector-length p) 0)))
+        (and (uri-components-query c) #t)
+        (and (uri-components-fragment c) #t)))
+
+  ;; uri-parse-authority-form : Bytevector -> uri-parse-result
+  ;; The LENIENT structural parse of an RFC 9112 authority-form target: splice, parse
+  ;; in relative-ref mode, unsplice the offsets, and reject only a trailing
+  ;; path/query/fragment as `not-authority-form`. Charsets, a present userinfo, and a
+  ;; missing port are NOT judged here -- exactly like `uri-parse`.
+  (define (uri-parse-authority-form bv)
+    (let ((r (unsplice-result (uri-parse 'relative-ref (splice-slashes bv)))))
+      (if (uri-parse-ok? r)
+          (let ((c (uri-parse-components r)))
+            (if (authority-form-trailing? c)
+                (make-uri-parse-result
+                 #f #f 'not-authority-form
+                 (bytevector-length (uri-components-authority c)) #f)
+                r))
+          r)))
+
+  ;; A userinfo "@" delimits userinfo from the host ONLY when it precedes the host.
+  ;; An IP-literal host opens "["; a "@" INSIDE "[...]" is literal bytes, not a
+  ;; delimiter (RFC 3986 §3.2.2 -- "@" is in no IPv6address / IPvFuture). So a genuine
+  ;; userinfo "@" is one before the first "[" (or with no "[" at all). Returns its
+  ;; index, or #f. This is bracket-aware, unlike a bare first-"@" scan: `[a@b]:443`
+  ;; (a MALFORMED literal, not userinfo) therefore has no userinfo and falls through
+  ;; to validate-authority (→ invalid-userinfo, as M4 reports for http://[a@b]),
+  ;; instead of a misleading userinfo-forbidden.
+  (define (find-first auth b)
+    (let ((n (bytevector-length auth)))
+      (let loop ((i 0))
+        (cond ((fx>=? i n) #f)
+              ((fx=? (bytevector-u8-ref auth i) b) i)
+              (else (loop (fx+ i 1)))))))
+  (define (authority-userinfo-index auth)
+    (let ((at (find-first auth AF-AT)) (lb (find-first auth AF-LBRK)))
+      (and at (or (not lb) (fx<? at lb)) at)))
+
+  ;; uri-parse-authority-form-validate : Bytevector -> uri-parse-result
+  ;; The STRICT RFC 9112 §3.2.3 form: the lenient parse, then -- LEFTMOST-first --
+  ;; `userinfo-forbidden` (authority-form has no userinfo), the RFC 3986 host grammar
+  ;; (`validate-authority`), and `port-required` (authority-form requires a real
+  ;; port -- an empty port `host:` is valid RFC 3986 but not RFC 9112). The authority
+  ;; begins at offset 0, so `validate-authority`'s relative index IS the caller's
+  ;; offset, and `authority-host-span` gives the host end for the port check
+  ;; (decision 0026 item 4).
+  (define (uri-parse-authority-form-validate bv)
+    (let ((r (uri-parse-authority-form bv)))
+      (if (not (uri-parse-ok? r))
+          r                                     ; structural fault already leftmost
+          (let* ((auth (uri-components-authority (uri-parse-components r)))
+                 (uat (authority-userinfo-index auth)))
+            (cond
+              (uat                               ; a genuine userinfo "@" (before any "[")
+               (make-uri-parse-result #f #f 'userinfo-forbidden uat #f))
+              (else
+               (let-values (((code index) (validate-authority auth)))
+                 (cond
+                   (code (make-uri-parse-result #f #f code index #f))
+                   (else
+                    (let-values (((hs he) (authority-host-span auth)))
+                      (if (and (fx<? (fx+ he 1) (bytevector-length auth))
+                               (fx=? (bytevector-u8-ref auth he) AF-COLON))
+                          r
+                          (make-uri-parse-result
+                           #f #f 'port-required (bytevector-length auth) #f)))))))))))))

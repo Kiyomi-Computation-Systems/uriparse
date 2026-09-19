@@ -795,6 +795,11 @@ set(URI_HOST_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/host")
 set(URI_HOST_ORACLE_LIB
     "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/host-oracle.sls")
 
+# M9 (decision 0026): the RFC 9112 §3.2.3 authority-form corpus. Hand-derived (RFC
+# 9112 is not vendored), like host/ and charset/ above; NOT corpus-provenance-guarded.
+# It grades both authority-form entry points; the test reads it directly.
+set(URI_AUTHORITY_FORM_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/authority-form")
+
 # M4 Slice ⓪ (decision 0025): the host oracle + negative corpus cross-check.
 # Pure test-side -- no src/uri host validator exists yet -- so it imports only the
 # harness and the oracle, and reads the corpus from URI_HOST_DIR.
@@ -1141,6 +1146,30 @@ foreach(mode source aot)
             "${CMAKE_CURRENT_LIST_DIR}/common/host-tests.sps"
     ENVIRONMENT "URI_HOST_DIR=${URI_HOST_DIR}"
                 "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+    TIMEOUT 180
+    LABELS unit)
+endforeach()
+
+# --- unit.authority-form: the RFC 9112 §3.2.3 pair (decision 0026, M9) --------
+#
+# Grades the authority-form pair on (uri collect) -- uri-parse-authority-form
+# (lenient) and uri-parse-authority-form-validate (strict) -- against the
+# hand-derived corpus (each row's lenient AND strict verdict, code + absolute
+# offset), plus the -2 splice re-map, the error vocabulary, and the lenient/strict
+# divergence. It drives the whole read stack (the splice runs uri-parse), so it needs
+# URI_COLLECT (which carries collect + host) and the generated parser; the corpus is
+# read directly, so no oracle/corpus harness libs. It reads URI_AUTHORITY_FORM_DIR.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.authority-form.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/authority-form-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
+            ${URI_COLLECT}
+            ${URI_GENERATED_PARSER}
+            "${CMAKE_CURRENT_LIST_DIR}/common/authority-form-tests.sps"
+    ENVIRONMENT "URI_AUTHORITY_FORM_DIR=${URI_AUTHORITY_FORM_DIR}"
     TIMEOUT 180
     LABELS unit)
 endforeach()

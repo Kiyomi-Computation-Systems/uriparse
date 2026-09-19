@@ -1991,3 +1991,191 @@ evidence with the Linux cell billing-refused) and the "RFC 3986 compliant" claim
 is now EARNABLE-pending-audit — the validating + normalizing + resolving surface is
 complete, but the full compliance claim needs its own audit, not an automatic grant
 from M4. The tree is clean on main at 04bf52a.
+
+---
+
+M9 — THE AUTHORITY-FORM PARSE (issue #9, RFC 9112 §3.2.3). Branch
+feat/m9-authority-form.
+
+Plan: decision 0026 (this milestone's record); the brief §"The one hard design
+question" (RFC 9112's four request-target forms) and §"Out of scope" (the WHATWG-URL
+"separate machine" line 0026 distinguishes authority-form from); the design §5 (the
+`(uri collect)` shell). Decisions in force: 0004 (the mode field selects an RFC 3986
+production — authority-form has none, so no mode reaches it), 0009 (an error names the
+rule it enforces + an offset), 0011 (the lenient-parse / separate-validate split this
+mirrors), 0019 (the core/shell owns what the forward-only scanner has no clean
+production for), 0024 (the offset seam — `uri-parse-component-offset`), 0025
+(`(uri host)`'s `validate-authority` / `authority-host-span`, reused here), and NEW
+0026 (authority-form is a shell splice, parsed lenient + validated strict).
+
+Base at start: 616415e (local main == origin/main; M4 merged as 04bf52a, its
+close-out 616415e). Measured environment (2026-09-19, Darwin arm64): Chez 10.4.1
+(tarm64osx), CMake/CTest 4.3.3. Baseline on the branch before any slice: release
+71/71, no-scheme 11/11, 0 failures.
+
+THE MAINTAINER'S TWO SCOPE CALLS (AskUserQuestion, before decision 0026 was written):
+(1) API surface — the LENIENT + VALIDATING PAIR (mirror uri-parse / uri-parse-validate),
+over lenient-only or strict-only; (2) sequencing — FOLD INTO v0.2 (build M9 to main,
+then the v0.2 release tags it with M3 + M4), over tag-v0.2-first. Both recorded in 0026
+(items 2, 7).
+
+WHAT M9 SHIPS (decision 0026): NO new `src/` library — two exports on `(uri collect)`
+plus three authority-form error codes, reusing `(uri host)` and the offset seam.
+  - `uri-parse-authority-form : Bytevector -> uri-parse-result` — the LENIENT structural
+    parse: splice `//`, parse `relative-ref`, re-map offsets by −2, reject a non-empty
+    path / present query / present fragment as `not-authority-form`. Lenient within the
+    authority (userinfo, missing port, charsets NOT judged), like uri-parse.
+  - `uri-parse-authority-form-validate : Bytevector -> uri-parse-result` — the STRICT
+    RFC 9112 form: the lenient parse, then `userinfo-forbidden` (via authority-host-span),
+    then `validate-authority` over the host:port, then `port-required`; leftmost-ordered.
+  - `uri-authority-form-error-codes` / `uri-authority-form-error-code?` — the three new
+    codes (`not-authority-form`, `userinfo-forbidden`, `port-required`), RFC 9112 codes
+    living with the parser, distinct from the scanner and host vocabularies.
+
+THE FORCING QUESTION IS ALREADY ANSWERED — a fourth machine, or the shell splice? The
+splice, and it is not close. Authority-form has NO RFC 3986 production (0004's three
+modes are RFC 3986 productions), but it is NOT a WHATWG-style divergence (the brief
+reserves "a separate machine" for a different normative reference): it reuses RFC 3986's
+own `host`/`port`, so it is "an RFC 3986 authority in isolation." A survey (one Sonnet
+collector over RFC 9112 §3.2.3 + collect.sls/vocabulary.sls + an 11-input splice probe)
+confirmed the mechanics decide it: `//<input>` in relative-ref mode puts the authority
+at offset 2 in EVERY case, no structural error falls in the `//` prefix (so −2 is
+uniform and never negative), and only a trailing `/p` / `?q` / `#f` yields a non-empty
+path/query/fragment. Decision 0019's line extends: the scanner does the coarse split,
+the shell owns the authority-form reach.
+
+EXIT CRITERION: a CONNECT server can parse an authority-form request-target — the
+lenient form returns the components (rejecting non-authority-form input), the `-validate`
+form holds it to RFC 9112 §3.2.3 (no userinfo, real port, valid host). Graded against a
+hand-derived authority-form corpus (valid CONNECT targets + one rejection row per code,
+exact code + ABSOLUTE offset in ORIGINAL coordinates). The −2 re-map invariant and the
+lenient/strict divergence are each mutation-witnessed. This does NOT touch the
+release-scoped README OR CHANGELOG (0026 item 7 — like M3/M4, the CHANGELOG
+`[Unreleased]` is left empty and the v0.2 release consolidates M3 + M4 + M9).
+
+SLICE PLAN (cadence: drive to gates — stop after Slice ⓪ and at the merge gate;
+subagents for the survey (done) and the merge-gate adversarial review):
+
+  ⓪  `uri-parse-authority-form` — the LENIENT parse: the `//` splice, the −2 offset
+     re-map (both the offsets alist and error-offset), and the `not-authority-form`
+     structural floor (reject a present path/query/fragment). The three error codes +
+     their predicate. The hand-derived authority-form corpus + PROVENANCE (labelled,
+     counted apart — 0026 item 6). Witnesses: the −2 re-map (drop it → offsets redden
+     by 2) and the lenient/strict divergence stub (a userinfo input parses lenient).
+     Pure `(rnrs)` shell; source+aot lane; TDD. — GATE.
+  ①  `uri-parse-authority-form-validate` — the STRICT RFC 9112 form: `userinfo-forbidden`
+     (via authority-host-span) → `validate-authority` (host:port) → `port-required`,
+     leftmost-ordered, offsets in ORIGINAL coordinates. Graded over the corpus (every
+     row rejected with its exact code + offset; the valid CONNECT targets accepted by
+     BOTH). Mutation witnesses (the leftmost order; the port-required boundary `host:`
+     vs `host`). CHANGELOG deferred to the v0.2 release (0026 item 7, amended). — MERGE GATE.
+  CLOSE — merge-gate adversarial review (a Workflow) + closing ritual (ask first) +
+  reflection.
+
+SLICE ⓪ OPEN (2026-09-19): ledger seeded; branch feat/m9-authority-form cut from
+616415e; baseline re-measured (release 71/71, no-scheme 11/11, 0 failures); the opening
+survey (Sonnet) came back and the forcing question was settled shell-side against the
+probe (above); decision 0026 written (7 points); issue #10 closed as resolved by M4
+(uri-parse-validate rejects SP/CTL in the authority). AWAITING the maintainer's "Go" to
+drive Slice ⓪ (the lenient parse + corpus + witnesses). — AT THE GATE.
+
+SLICE ⓪ GATE (2026-09-19): the maintainer said "Go through slice one" — drive Slice ⓪
+AND Slice ① to the merge gate (the whole authority-form pair is one interconnected
+shell artifact; a half-built pair is the awkward state, as M4's ①② were).
+
+SLICES ⓪① COMPLETE (2026-09-19). The RFC 9112 §3.2.3 authority-form pair on
+`(uri collect)` — NO new src library, decision 0026.
+  - src/uri/collect.sls — two exports + three error codes. `uri-parse-authority-form`
+    (LENIENT): splice "//" (splice-slashes), parse relative-ref, unsplice every offset
+    by −2 (unsplice-result — the offsets alist AND error-offset), reject a trailing
+    path/query/fragment as `not-authority-form` at the authority's length (auth starts
+    at 0 after unsplicing). `uri-parse-authority-form-validate` (STRICT): the lenient
+    parse, then LEFTMOST — `userinfo-forbidden` (via authority-host-span: host start > 0
+    ⇒ a "@" precedes it, reported there) → `validate-authority` (the RFC 3986 host
+    grammar, reused from M4) → `port-required` (no ":" or an empty port, at the end).
+    `uri-authority-form-error-codes` / `-error-code?` — the three RFC 9112 codes, living
+    with the parser, distinct from the scanner and host vocabularies. All reuse
+    (uri host) (imported since M4); no scanner/grammar/artifact change.
+  - test/conformance/authority-form/corpus.scm (17 rows) + PROVENANCE — hand-derived
+    from §3.2.3 (RFC 9112 is NOT vendored), grading BOTH entry points per row (input
+    lenient strict note), offsets in the caller's coordinates (no "//" prefix, authority
+    at 0). Classes by STRICT outcome: 4 valid CONNECT targets (DNS/IPv6/IPv6+IPv4-tail/
+    IPv4), 3 not-authority-form (trailing path/query/fragment), 4 userinfo-forbidden
+    (`user@host:443`; the two leftmost rows `user@ho st:443`/`user@host` where userinfo
+    beats a host/port fault; and `user@[::1]:443`, a real userinfo before an IP-literal),
+    3 port-required (`host`, `host:` — the empty-port RFC 3986/9112 boundary — and the
+    empty target `""`), 2 invalid-reg-name (`ho st:443`, and `ho st` which pins host <
+    port), 1 invalid-userinfo (`[a@b]:443`, an "@" inside a literal — bracket-aware, NOT
+    userinfo-forbidden). The `:443` empty-host
+    ABNF edge is documented in PROVENANCE, deliberately not a row (0003 — the ABNF
+    permits an empty reg-name). NO fourth oracle: the host grammar rides M4's
+    three-provenance guard; authority-form's own policy is guarded by this table + the
+    mutation witnesses.
+  - test/common/authority-form-tests.sps + the uri.unit.authority-form lane
+    (source+aot); URI_AUTHORITY_FORM_DIR added to test/CMakeLists.txt beside the M4
+    host pair. The test reads the corpus directly (open-file-input-port + get-datum), so
+    the lane needs URI_COLLECT + the generated parser but no oracle/corpus harness libs.
+  FOUR MUTATION WITNESSES (each rebuilt — the source lane fingerprints the .sls, so an
+  in-place edit needs `make build` to reach the assertion, not the provenance guard):
+  (1) the −2 re-map dropped (−2 → −0) → "authority offset is 0" reddens "expected 0, got
+  2"; (2) the userinfo guard disabled (`(fx>? hs 0)` → `#f`) → `user@ho st:443` reports
+  the host fault (invalid-reg-name @7) instead of the LEFTMOST userinfo-forbidden @4, and
+  the other userinfo rows flip — the leftmost order is load-bearing; (3) the port
+  boundary loosened (`fx<?` → `fx<=?`) → `host:` (empty port) wrongly passes strict
+  (RFC 3986 accepts an empty *DIGIT port; RFC 9112 does not) — the corpus + divergence
+  rows redden; (4) the `not-authority-form` floor disabled (`(and #f ...)`) → the
+  trailing path/query/fragment rows redden under BOTH functions. Each reverted; a
+  15-input probe over both functions confirmed every verdict before the corpus was
+  written. GRADED: release 73/73 (+2 authority-form lanes over the 71 baseline),
+  no-scheme 11/11, 0 failures. CHANGELOG deferred to the v0.2 release (0026 item 7). — AT
+  THE MERGE GATE (cadence: stop). Next: the merge-gate adversarial review (a Workflow),
+  then the closing ritual (ask first).
+
+M9 MERGE-GATE VERIFICATION (2026-09-19). A five-dimension adversarial review Workflow
+(Ultracode): reviewers over RFC 9112/3986 correctness, offset correctness, splice edge
+inputs, shell wiring/regression, and test/decision fidelity, each finding fed to a
+default-refute verifier — 10 agents, ~974k subagent tokens. Result: 5 confirmed findings,
+0 refuted; the offsets, splice-edges, and wiring dimensions found no CODE defect in the
+validator itself beyond the one below.
+  A PROCESS NOTE FIRST: one adversarial-verify agent errored on its OWN output schema
+  (StructuredOutput retry cap — it kept omitting the required `evidence` field), which
+  dropped its finding from the aggregated result. That finding was the SOLE code defect,
+  from the rfc-correctness dimension; it was recovered by reading the workflow
+  journal.jsonl (the per-agent record) rather than trusting the summary — the discipline
+  the workflow tool itself names. Lesson banked: a verify-agent schema failure can
+  silently swallow a real finding; check the journal when agents_error > 0.
+  ONE CODE DEFECT (should-fix, rfc-correctness), FIXED: the strict userinfo pre-check
+  used a bare first-"@" scan (via authority-host-span's host start), so a "@" INSIDE an
+  IP-literal — `[a@b]:443`, `[v1.x@y]:443` — mis-fired `userinfo-forbidden` at the
+  bracketed "@" instead of deferring to the host grammar. Fixed with a BRACKET-AWARE rule
+  (a genuine userinfo "@" is one before the first "[", per RFC 3986 §3.2.2 — an "@" in a
+  literal is not a delimiter); `[a@b]:443` now falls through to validate-authority →
+  invalid-userinfo@0 (as M4 reports for http://[a@b]), while `user@[::1]:443` (a real
+  userinfo before the "[") stays userinfo-forbidden@4. Two corpus rows added (both
+  directions), WITNESSED: dropping the bracket guard reddens `[a@b]:443` (got
+  userinfo-forbidden@2, expected invalid-userinfo@0). Decision 0026 item 4 amended.
+  ONE COVERAGE GAP (should-fix, test-fidelity), CLOSED: the leftmost host < port link was
+  UNPINNED — a validator that checked port-required BEFORE validate-authority passed all
+  14 rows yet returned port-required@5 for `ho st` (bad host, no port) instead of the
+  leftmost invalid-reg-name@2. The two existing leftmost rows only pinned userinfo > host
+  and userinfo > port (both short-circuit on userinfo-forbidden). Added the `ho st` row
+  (bad host, NO port), WITNESSED: the port-before-host reorder now reddens it. PROVENANCE's
+  "pin userinfo -> host -> port" overclaim softened to name which row pins which link.
+  THREE RECORD NITS, FIXED: (1) the ledger EXIT CRITERION said the CHANGELOG `[Unreleased]`
+  "gains M9's entry", contradicting the amended 0026 item 7 (and the slice plan 17 lines
+  down) — reconciled to "left empty, consolidated at the v0.2 release"; (2) the ledger
+  class enumeration summed to 13 for a 14-row corpus (the empty-target row dropped, port
+  counted as 2 not 3) — rewritten, now accurate for the 17-row corpus; (3) decision 0026
+  item 4(b) described `validate-authority` running "over the host:port tail only" after a
+  userinfo fault, a step the code does not perform (it short-circuits) — rewritten to
+  match, folding in the bracket-aware correction. GRADED after the fixes: release 73/73,
+  no-scheme 11/11, 0 failures; authority-form corpus 17 rows / 87 checks. SIX mutation
+  witnesses total (the four from Slices ⓪①, plus bracket-awareness and the host < port
+  reorder). — STILL AT THE MERGE GATE. Next: the closing ritual (ask first).
+
+THE RECURRING MERGE-GATE LESSON HELD, TWICE OVER. The per-slice work could not see either
+gap about itself: a real CODE defect (the bracketed-"@" misfire — an edge no corpus row
+reached) AND a coverage hole (host < port unpinned — every green row survived the reorder).
+Same family as M2's copy discipline, M3's leftmost error, M4's ::-total and IPvFuture, M5's
+empty authority. And a new wrinkle: the adversarial VERIFIER can drop a finding on its own
+schema error, so the journal — not the summary — is the source of truth when an agent errors.
