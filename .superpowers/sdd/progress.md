@@ -1157,3 +1157,60 @@ round-trips (checked, recorded).
 Evidence after fixes: property.round-trip 27 cases / 96 checks (was 25/82);
 release 63/63, no-scheme 11/11. The review found the CODE sound; the fixes were
 one measured claim, one corrected justification, and doc reconciliation.
+
+M7 MERGED (2026-09-18). PR #5 squash-merged to main as 05aa2d8; local main
+fast-forwarded (f414d90..05aa2d8); feat/m7-round-trip deleted local and remote.
+Merged on a RED linux-amd64 check, confirmed as the documented Actions billing
+refusal (decision 0017 — a completed/failure run at ~5s, the 0-step shape M2/M5/
+M6 also merged over: `gh run view` reports steps=0, so no test ever executed),
+not a test result — local evidence stands in its place (release 63/63, no-scheme
+11/11, property.round-trip 27/96). The maintainer authorised the closing ritual
+explicitly. (Operational note, not a repo fact: the SSH agent failed for the
+whole back half of this session, so the branch push and the main fast-forward
+went over HTTPS via `gh auth git-credential`; the API merge and branch-delete
+were unaffected.)
+
+REFLECTION. M7 was the milestone with NO new code — decision 0021 shipped §5.3
+recompose at M6, so M7's entire deliverable was a property lane and decision
+0022. That made its one hazard epistemic, not mechanical: the risk was not a
+wrong line but a property STATED so it could not fail. Three moments bear that
+out. First, the survey reshaped the invariant before a lane existed: the brief's
+"reaches a fixed point" reads like normalize idempotence, but normalize is
+provably NOT idempotent over v0.1's non-validating domain (`%%341 → %41 → A`), so
+a `normalize(normalize x) == normalize x` lane would have been a false universal
+that a single input reddens. The property is a ONE-STEP parse∘recompose identity
+on the once-normalized components — derived from the RFC and the actual code, not
+transcribed from the brief's prose, the same oracle-from-RFC discipline that held
+at M5/M6 turned on the property statement itself. Second, the vacuity theme
+recurred, sharper than ever: Slice ⓪'s review found the normalize-delta smoke was
+DECORATIVE — the round trip is inherently blind to a normalize that does nothing,
+so `normalize := identity` survived the whole lane — the M7 face of "a test green
+for the wrong reason" (M2 copy-discipline, M5 empty-authority, M6's three unobserved
+resolve paths). The fix named the ONE fault the property can catch (a normalize
+that decodes a RESERVED octet into a delimiter) and pinned it with teeth (`%23`
+in a query, `%2F` in an authority), so the lane now states its own blind spot
+rather than hiding it. Third — the milestone's most valuable catch, and a new
+kind — the merge-gate corrected reasoning INSIDE an already-accepted decision:
+0022 justified not-hardening recompose with "hardening would corrupt §5.2.2
+resolution," which is wrong (a scheme-absent §4.2 guard never fires on a
+resolution target, which always carries a scheme) and had already propagated to
+the user-facing CHANGELOG. The real reason is RFC fidelity: §5.3 deliberately
+omits §4.2's `./`, and that disambiguation is the reference PRODUCER's job (a
+v0.2 serializer above recompose). A record being accepted did not make it
+correct; the adversarial pass read the justification, not just the code, and the
+same gate measured the "holds in every mode" claim that had been asserted from
+mode `uri` alone (added a positive relative-reference group, verified against the
+live stack). The settled pattern across M2/M5/M6 extends: the per-slice review
+catches within-library bugs, and the merge-gate catches what a single library —
+or a single decision record — cannot see about itself.
+
+NEXT (M8 — release v0.1). This was the last IMPLEMENTATION milestone; the v0.1
+arc is complete — the generic split (M2), the pure core percent/normalize (M5),
+§5.4 resolution at 42/42 (M6), and the round-trip property measured (M7). M8 is
+release, not code: cut and tag v0.1, reconcile the README status/caveats and the
+CHANGELOG's [Unreleased] into a dated release section, and decide what the
+version's honest claim is (a resolution-first, non-validating splitter+resolver;
+host grammar and charset validation are v0.2 per decision 0011). The one standing
+external fact to carry in: CI has still never run (decision 0017), so v0.1's
+evidence is macOS arm64 local — the release notes must say so in the body, not a
+footnote. No M7 debt carried forward — the tree is clean on main at 05aa2d8.
