@@ -787,6 +787,30 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
+# M4 (decision 0025): the host-grammar oracle and its hand-derived negative
+# corpus. Same discipline as the charset pair above: AUTHORED from the ABNF (§3.2),
+# apart from the corpus-provenance-guarded rfc3986/ dir, gated by the cross-check
+# against the oracle.
+set(URI_HOST_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/host")
+set(URI_HOST_ORACLE_LIB
+    "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/host-oracle.sls")
+
+# M4 Slice ⓪ (decision 0025): the host oracle + negative corpus cross-check.
+# Pure test-side -- no src/uri host validator exists yet -- so it imports only the
+# harness and the oracle, and reads the corpus from URI_HOST_DIR.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.host-oracle.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/host-oracle-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_HOST_ORACLE_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/host-oracle-tests.sps"
+    ENVIRONMENT "URI_HOST_DIR=${URI_HOST_DIR}"
+    TIMEOUT 120
+    LABELS unit)
+endforeach()
+
 # --- The M2 pure seam ------------------------------------------------------
 #
 # The first product code (decision 0008, 0004, 0009): the vocabulary the
