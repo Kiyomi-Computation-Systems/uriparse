@@ -1203,6 +1203,42 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
+# --- conformance.abnf-differential: the RFC 3986 audit, Slice ① (decision 0028) --
+#
+# The DIFFERENTIAL: uri-parse-validate ⇄ (uri test abnf-oracle) over a broad space
+# (0028 item 3) -- the §1.1.2 / §5.4 positives (both accept), the M3 charset + M4
+# host negative corpora (both reject), an EXHAUSTIVE sweep of every length-0..5 word
+# over a 12-byte reduced alphabet in all three modes (~814k input×mode pairs), and a
+# hand+agent adversarial corpus of the DEEP structures the length bound cannot reach
+# (each carrying its ABNF verdict, a third independent reading). Any disagreement
+# reddens naming it. It drives the whole read stack, so it needs URI_COLLECT + the
+# generated parser + the generator sources, plus all three oracle libs and the corpus
+# harness lib; it reads the four corpus dirs. The authored adversarial corpus lives
+# in its own dir (like charset/ and host/), apart from the provenance-guarded rfc3986/.
+set(URI_DIFFERENTIAL_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/differential")
+
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.conformance.abnf-differential.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/abnf-differential-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
+            ${URI_COLLECT}
+            ${URI_GENERATED_PARSER}
+            ${URI_ABNF_ORACLE_LIB}
+            ${URI_CHARSET_ORACLE_LIB}
+            ${URI_HOST_ORACLE_LIB}
+            ${URI_CORPUS_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/abnf-differential-tests.sps"
+    ENVIRONMENT "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+                "URI_CHARSET_DIR=${URI_CHARSET_DIR}"
+                "URI_HOST_DIR=${URI_HOST_DIR}"
+                "URI_DIFFERENTIAL_DIR=${URI_DIFFERENTIAL_DIR}"
+    TIMEOUT 180
+    LABELS unit)
+endforeach()
+
 # The corpus is DERIVED from the vendored RFC text (decision 0005). This lane
 # re-derives it and compares, so a hand edit to a vector -- the one thing that
 # would make a green lane meaningless -- reddens instead. It runs the same
