@@ -1,9 +1,21 @@
 # Changelog
 
-All notable changes to this project are documented here. This project has not
-been released; everything below is unreleased work toward v0.1.
+All notable changes to this project are documented here. The format is based on
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
+adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-09-19
+
+Released on macOS arm64 evidence only. The Linux CI cell is configured and
+committed but has **never run** (decision 0017), so every count below is measured
+on macOS arm64 (Chez Scheme 10.4.1, machine-type tarm64osx; CMake/CTest 4.3.3)
+and nowhere else: the complete selection is 63/63 and the no-Scheme layer 11/11,
+0 failures, re-measured on the release commit. v0.1.0 is a resolution-first,
+**non-validating** URI splitter and a complete pure core — it is **not** "RFC
+3986 compliant" and accepts bytes the ABNF rejects; charset validation and the
+host grammar are v0.2 (decisions 0011, 0023, and the README caveats).
 
 ### M7 — the round-trip property
 
@@ -133,3 +145,6 @@ been released; everything below is unreleased work toward v0.1.
   including the eight that make M1's exit criterion true — a comparator that
   always agrees, and a ratchet that fails in only one direction, are both
   caught.
+
+[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/releases/tag/v0.1.0
