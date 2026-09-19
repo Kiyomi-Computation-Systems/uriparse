@@ -2179,3 +2179,52 @@ reached) AND a coverage hole (host < port unpinned — every green row survived 
 Same family as M2's copy discipline, M3's leftmost error, M4's ::-total and IPvFuture, M5's
 empty authority. And a new wrinkle: the adversarial VERIFIER can drop a finding on its own
 schema error, so the journal — not the summary — is the source of truth when an agent errors.
+
+M9 MERGED (2026-09-19). PR #13 squash-merged to main as a58e606; local main fast-forwarded
+(616415e..a58e606); feat/m9-authority-form deleted local and remote; issue #9 auto-closed by
+the merge ("Closes #9"). Merged over a RED linux-amd64 check, confirmed the documented
+Actions billing refusal (decision 0017 — `gh run view` + the jobs API: "The job was not
+started because recent account payments have failed", 0 steps, 3s, 20:23:24→20:23:27), not a
+test result; local macOS-arm64 evidence stands (release 73/73, no-scheme 11/11). The
+maintainer authorised the closing ritual explicitly. Every push went over HTTPS via
+`gh auth git-credential` (the SSH agent stayed broken this whole session); the API merge and
+branch-delete were unaffected.
+
+REFLECTION. M9 was a small, additive milestone born from a sibling repo's issue (#9), and
+its lessons are about REACH and DISCIPLINE, not size. Three things stand out. First, the
+forcing-question pattern held a FOURTH time — "a fourth machine, or a shell splice?" was
+settled by the code and an 11-input probe, not the plan: authority-form has no RFC 3986
+production (decision 0004's three modes are RFC 3986 productions), but it REUSES RFC 3986's
+own host/port, so it is "an authority in isolation", not a WHATWG-style separate machine
+(the brief's out-of-scope line). The `//` splice through the existing relative-ref machine
+was the honest reach, and decision 0019's core/shell-owns-the-authority seam paid off:
+authority-form validation is a thin policy on top of M4's `(uri host)` (validate-authority,
+authority-host-span), with NO host.sls or scanner change. Second, the lenient/validate PAIR
+extended decision 0011's split (uri-parse / uri-parse-validate) to a new entry point cleanly
+— the same "lenient splitter + separate validator" shape, now for a request-target form.
+Third — and the milestone's real teacher — the merge gate again caught what the slice could
+not see about itself, TWICE: a genuine CODE defect (the bracketed-"@" misfire, an edge no
+corpus row reached, that mis-fired userinfo-forbidden inside an IP-literal) AND a coverage
+hole (host < port unpinned, which every green row survived). Both fixed and witnessed. The
+NEW, transferable lesson is one layer up: the adversarial VERIFIER itself dropped that code
+defect from the aggregated result on its OWN output-schema error — so when a review workflow
+reports agents_error > 0, the per-agent journal.jsonl, not the summary, is the source of
+truth. The workflow-authoring reference says as much for empty results; M9 is the case where
+it mattered for a NON-empty, wrong-because-incomplete result. The disciplines held to the
+end of v0.2's feature work: oracle/corpus from the spec, every property witnessed failing,
+and the merge gate as the backstop for what a single slice is blind to.
+
+NEXT (the v0.2 RELEASE — unchanged, now three milestones deep). v0.2's implementation is
+COMPLETE: M3 (charset validation), M4 (the host grammar + host-case normalization), and M9
+(authority-form) are all merged. `uri-parse-validate` judges every component and the whole
+host grammar; `normalize-components` performs all of §6.2.2.1; and `(uri collect)` now also
+parses RFC 9112 authority-form targets (lenient + strict). What remains is to RELEASE it, the
+way M8 released v0.1: reconcile the release-scoped docs (drop README.org's "validation is
+v0.2" / "not host case" caveats AND note the new authority-form entry points; write the
+CHANGELOG [Unreleased] → [0.2.0] section covering M3 + M4 + M9; bump the version), re-measure
+on the release commit, and cut an annotated v0.2.0 tag on disclosed local evidence (decision
+0023's amendment governs — CI has still never run). The two standing debts carry in unchanged:
+the FIRST FUNDED CI RUN (0017 item 3, still undischarged) and the "RFC 3986 compliant" claim,
+EARNABLE-pending-audit — now with an even larger validating/normalizing/resolving/authority-
+form surface, but still needing its own audit, not an automatic grant. The tree is clean on
+main at a58e606.
