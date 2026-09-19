@@ -133,6 +133,55 @@
         (check "empty ref path present" (uri-component-present?
                                          (uri-components-path (uri-parse-components (parse 'relative-ref "")))))))))
 
+;;; --- the offset seam (decision 0024 item 3, M3 Slice ①) ------------------
+;;; Each present component's ABSOLUTE start offset, so a core charset validator's
+;;; component-relative index rebases to an input offset. Witnessed here against
+;;; hand-counted offsets before it is trusted -- especially the three path
+;;; shapes, whose base is NOT the raw path-span mark (a rooted "/" was dropped, a
+;;; mode-3 leading token was stitched on).
+(harness-group "offsets"
+  (lambda ()
+    (define (off mode s c) (uri-parse-component-offset (parse mode s) c))
+    (harness-case "the components of a full absolute URI"
+      (lambda ()
+        (check-equal "scheme@0"    (off 'uri "http://a/b/c/d;p?q" 'scheme) 0)
+        (check-equal "authority@7" (off 'uri "http://a/b/c/d;p?q" 'authority) 7)
+        (check-equal "path@8"      (off 'uri "http://a/b/c/d;p?q" 'path) 8)
+        (check-equal "query@17"    (off 'uri "http://a/b/c/d;p?q" 'query) 17)
+        (check-equal "no fragment" (off 'uri "http://a/b/c/d;p?q" 'fragment) #f)))
+    (harness-case "an empty path, then a fragment"
+      (lambda ()
+        (check-equal "empty path@8" (off 'uri "http://a#x" 'path) 8)
+        (check-equal "fragment@9"   (off 'uri "http://a#x" 'fragment) 9)))
+    (harness-case "a rooted path begins at the dropped slash, one before its span"
+      (lambda ()
+        (check-equal "rooted path@5" (off 'uri "http:/p" 'path) 5)
+        (check-equal "no authority"  (off 'uri "http:/p" 'authority) #f)))
+    (harness-case "an empty authority's absolute path is NOT rooted (the // owned the slash)"
+      (lambda ()
+        (check-equal "empty authority@7" (off 'uri "http:///p" 'authority) 7)
+        (check-equal "abs path@7"        (off 'uri "http:///p" 'path) 7)))
+    (harness-case "a rootless path"
+      (lambda ()
+        (check-equal "rootless path@7" (off 'uri "mailto:fred@ex.com" 'path) 7)))
+    (harness-case "mode-3 verdicts rebase onto the leading token"
+      (lambda ()
+        (check-equal "scheme verdict scheme@0" (off 'uri-reference "g:h" 'scheme) 0)
+        (check-equal "scheme verdict path@2"   (off 'uri-reference "g:h" 'path) 2)
+        (check-equal "segment verdict path@0"  (off 'uri-reference "g/h" 'path) 0)))
+    (harness-case "a relative reference: rooted path and a relative authority"
+      (lambda ()
+        (check-equal "rel rooted path@0" (off 'relative-ref "/b/c?q" 'path) 0)
+        (check-equal "rel query@5"       (off 'relative-ref "/b/c?q" 'query) 5)
+        (check-equal "rel authority@2"   (off 'relative-ref "//h/p" 'authority) 2)
+        (check-equal "rel path@3"        (off 'relative-ref "//h/p" 'path) 3)))
+    (harness-case "offsets are absolute, so a byte-at-a-time feed gives the same"
+      (lambda ()
+        (define (doff mode s c) (uri-parse-component-offset (drip mode s) c))
+        (check-equal "drip path@8"    (doff 'uri "http://a/b/c/d;p?q" 'path) 8)
+        (check-equal "drip query@17"  (doff 'uri "http://a/b/c/d;p?q" 'query) 17)
+        (check-equal "drip rooted@5"  (doff 'uri "http:/p" 'path) 5)))))
+
 ;;; --- errors surface, they do not assemble -------------------------------
 (harness-group "errors"
   (lambda ()

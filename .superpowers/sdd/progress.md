@@ -1523,3 +1523,25 @@ computed ok? eagerly, raising instead of a graceful diagnostic on an out-of-scop
 component (fixed by the same hoist); and an unused `code` binding in oracle-scan's
 scheme branch (scoped it to path/query/fragment). Re-measured after fixes: release
 65/65, no-scheme 11/11.
+
+SLICE ① COMPLETE (2026-09-19). The OFFSET SEAM in (uri collect) — the shell's
+half of decision 0024 item 3, so a core validator's component-relative index can
+rebase to an absolute input offset. No validator yet (Slice ②); no charset logic.
+The collector captures each present span's absolute start at its FIRST fragment
+(the runtime commits parser-stream-offset — the fragment's END — before the data
+callback, so the start is that minus the fragment width), and `assemble-offsets`
+mirrors `assemble` to give each component's start: a mode-3 scheme/segment verdict
+rebases onto the leading token, and a rooted path (0018) begins one byte BEFORE
+its span, where the dropped "/" was. Exposed as uri-parse-component-offset :
+result symbol -> (Option Nat), keeping absent (#f) distinct from present-empty (a
+captured offset). uri-parse-result gained an internal offsets alist (present
+components only); uri-components is UNCHANGED (offsets live on the shell's result,
+not the seam type). THE FORMULA WAS WITNESSED, NOT ASSUMED: a probe printed the
+computed offsets for nine inputs and every one matched a hand count (scheme@0,
+authority@7, path@8, query@17; the rooted "http:/p" path@5; the empty-authority
+"http:///p" path@7 which is NOT rooted; mode-3 "g:h" scheme@0/path@2 and "g/h"
+path@0). Then the unit.collect "offsets" group pins all three path shapes + the
+absent cases + feed-invariance (dripped byte-at-a-time gives the same absolute
+offsets). MUTATION WITNESS: dropping the rooted "-1" reddened three checks
+(rooted path@5→6, rel rooted@0→1, drip rooted@5→6), then reverted. Evidence:
+release 65/65, no-scheme 11/11, 0 failures.
