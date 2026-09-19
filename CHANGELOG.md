@@ -5,6 +5,27 @@ been released; everything below is unreleased work toward v0.1.
 
 ## [Unreleased]
 
+### M7 — the round-trip property
+
+- **`property.round-trip`** — RFC 3986's round-trip property, now measured: for
+  every committed URI, `parse → normalize (§6.2.2) → recompose (§5.3) → parse`
+  reaches a fixed point (the re-parsed, normalized components equal the first
+  normalized components, keeping absent `#f` distinct from present-empty). It is
+  a **one-step** identity on the once-normalized components, **not** a normalize
+  fixed point — normalization is not idempotent over v0.1's non-validating domain
+  (`%%341 → %41 → A`), pinned as such (decision 0022).
+- Graded over the normative corpora (the 8 §1.1.2 examples and the 42 §5.4
+  targets), plus hand vectors that put a real §6.2.2 delta and the full
+  empty/absent matrix through the loop (including the §3.2 case `http:///p` vs
+  `http:/p`). No new core library — `(uri recompose)` shipped at M6.
+- The **§4.2 / §3.3 recompose boundary** is pinned as documented expected
+  non-round-trips: `(uri recompose)` is a faithful inverse of parse for every
+  parse output, but a hand-built relative path with a colon-first segment or a
+  `//`-leading no-authority path does not survive it. §5.3 omits §4.2's `./` on
+  purpose; adding it would diverge from the RFC's recomposition algorithm, and
+  that disambiguation is a reference producer's job — a v0.2 serializer above
+  recompose, not the generic renderer (decision 0022).
+
 ### M6 — dot segments and reference resolution
 
 - **`(uri path)`** — the two path routines §5.2 resolution refers to, as pure
