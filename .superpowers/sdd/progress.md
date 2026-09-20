@@ -2891,3 +2891,33 @@ whenever the maintainer wants the uri-parse-result-validate export stated in a t
 is currently merged-but-unreleased, exactly as M3/M4/#11 were between their merges and v0.2/v0.3).
 Housekeeping: the superseded WIP branch feat/conformance-audit (115764d, pre-#11 base) is still
 present locally and can be pruned. The tree is clean on main at ea02cf7.
+
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
+v0.4 RELEASE SEED (2026-09-20; "lets make a release"). NEXT direction (4). The arc since v0.3.0
+(tag on aae178e) is ONE merged change — issue #18 (uri-parse-result-validate, ea02cf7). As with
+v0.2/v0.3 the only work is the release ACT; its two non-mechanical questions are the evidence basis
+and the claim. Evidence: CI STILL never run (the #18 PR's linux-amd64 was the 0017 billing refusal,
+0 steps ~3s), so macOS-arm64-local, 77/77 + 11/11, re-measured at the release commit. Claim: NO NEW
+claim — uri-parse-result-validate IS the same audited recognizer (0030) reached from a parse
+result, so v0.4 carries v0.3's scoped conformance claim UNCHANGED and states the export as a new
+CAPABILITY, not a broadening. Bump is MINOR (0.3.0 → 0.4.0): a new backward-compatible export, no
+behaviour change — the same reasoning that made uri-collector-reset! minor for v0.3 (0031 item 2).
+
+v0.4 RECONCILIATION DONE (branch chore/release-v0.4.0, off main babbac4). CMakeLists VERSION
+0.3.0 → 0.4.0. README.org: status → v0.4.0 (2026-09-20); the summary gains uri-parse-result-validate
+alongside uri-collector-reset! (the per-connection-reuse story) and the API-reference sentence names
+it; the conformance sentence, the "not a blanket compliant" caveat, the CI quote, strict-resolution,
+round-trip §4.2/§3.3, not-portable, normalize-no-dot-segments all kept VERBATIM (none touched by #18).
+CHANGELOG.md: [Unreleased] → [0.4.0] - 2026-09-20 (preamble discloses CI-never-run + billing refusal
++ 77/77 & 11/11 + "no new conformance claim"; one feature section in the measured mutation-witness
+voice), fresh [Unreleased], version links updated. Frozen [0.3.0]/[0.2.0]/[0.1.0] untouched. Decision
+0033 written (7 items; successor to 0023→0027→0031). The release act adds no src, no lane, no algorithm.
+
+AWAITING (0033 items 6-7, maintainer-gated). The release-verification gate is a fresh re-measure AT
+the reconciliation commit (ctest --preset release + --preset no-scheme, each --no-tests=error) —
+expected 77/77 and 11/11 since the commit is doc-only, but RE-RUN not asserted; this session's mode
+blocks the build, so the maintainer runs it. Then the publish steps under the "lets make a release"
+ratification: PR → squash-merge → annotated tag v0.4.0 on the merge commit (message carries the
+re-measured counts + CI disclosure) → push tag, all over SSH (fixed this session). A GitHub Release
+is optional (body = the CHANGELOG [0.4.0] section verbatim). — AT THE RELEASE GATE.
