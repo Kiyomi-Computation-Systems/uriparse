@@ -1,0 +1,67 @@
+test/conformance/differential/ -- PROVENANCE
+
+adversarial.scm -- the RFC 3986 conformance audit's DIFFERENTIAL adversarial
+corpus (decision 0028 item 3d, Slice ①).
+
+AUTHORED, NOT EXTRACTED
+-----------------------
+Like test/conformance/charset/ (M3) and test/conformance/host/ (M4) -- and
+unlike test/conformance/rfc3986/, which is DERIVED from the vendored RFC text by
+cmake/UriCorpus.cmake and guarded by uri.harness.corpus-provenance -- this file
+is HAND-DERIVED from the ABNF (test/conformance/rfc3986/rfc3986.abnf). RFC 3986
+lists no invalid URIs, so there is nothing to extract. It therefore lives in its
+own directory, apart from the provenance-guarded rfc3986/, and is not
+byte-for-byte re-derivable; its guard is different (below).
+
+WHAT IT IS FOR
+--------------
+The differential lane (test/common/abnf-differential-tests.sps) runs an
+EXHAUSTIVE sweep of every string of length 0..5 over a 12-byte reduced alphabet
+in all three modes -- ~814k input x mode pairs -- which covers the short-string
+boundary space completely but cannot reach the DEEP, STRUCTURED inputs where a
+lenient-split-then-validate parser is most likely to diverge from Appendix A: a
+full IPv6 literal, an IPv4 octet on its 0/255 boundary, a long or truncated
+pct-encoded run, a multi-segment path whose colon lands past the first segment, a
+userinfo/host/port split with empty components, a scheme longer than the sweep
+bound, nested query/fragment delimiters, and control/high bytes a length-bounded
+ASCII sweep will not synthesize. This corpus is those inputs.
+
+HOW IT IS GUARDED (the third reading)
+-------------------------------------
+Each row carries its ABNF-correct verdict (accept | reject). The lane checks that
+verdict against BOTH the product (uri-parse-validate) AND the independent oracle
+((uri test abnf-oracle)). Because the oracle and the product are two readings of
+the same ABNF, they could in principle share a blind spot; this hand verdict is a
+THIRD, independent reading that reddens against whichever of the two the ABNF
+agrees with (decisions 0005 / 0012). A wrong verdict here does not pass quietly --
+it reddens on the correct side, which is the row doing its job.
+
+CONTENTS (2026-09-19)
+---------------------
+213 rows: 118 accept, 95 reject.
+  by mode: 171 uri, 27 relative-ref, 15 uri-reference.
+  21 rows are #vu8(...) bytevectors: 19 carry a control or > 0x7F byte a string
+  literal cannot hold; the other 2 (adversarial.scm:244, :251) pin a raw SP (0x20)
+  whose trailing/interior placement a bytevector makes explicit and edit-safe.
+
+Two provenances, both HAND-DERIVED from Appendix A:
+  - 60 rows authored directly at Slice ① seed, grouped by production with a
+    one-line ABNF justification per row.
+  - 153 rows from the Slice ① adversarial-probe Workflow (decision 0028 item 3d):
+    eight per-production probe agents proposed deep vectors, and a SEPARATE
+    verify pass independently re-derived each verdict from Appendix A and
+    default-refuted any it could not confirm (all 157 proposed were confirmed; 4
+    intra-batch duplicates were dropped on merge). Every surviving verdict was
+    then run against both the product and the oracle: all agree.
+
+A row is (mode input expect note): mode is uri / relative-ref / uri-reference;
+input is a STRING (its UTF-8 bytes) or a #vu8(...) bytevector; expect is
+accept | reject; note is the short Appendix-A justification.
+
+THE VERDICT THIS CORPUS HELPED EARN
+-----------------------------------
+Over the exhaustive sweep, the §1.1.2 / §5.4 positive corpora, the M3 charset and
+M4 host negative corpora, and all 213 rows here, uri-parse-validate and the
+independent oracle AGREE on every verdict, and both match this corpus's hand ABNF
+reading. No deviation was found. See the ledger (.superpowers/sdd/progress.md) and
+decision 0028 for the recorded verdict.

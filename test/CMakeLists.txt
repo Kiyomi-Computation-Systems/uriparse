@@ -816,6 +816,35 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
+# --- The RFC 3986 conformance audit, Slice ⓪ (decision 0028) ----------------
+#
+# The whole-URI oracle + its self-tests, graded on its OWN before any differential
+# against the product (that is the audit's Slice ①). (uri test abnf-oracle) reads
+# RFC 3986 Appendix A's STRUCTURAL grammar and COMPOSES the two audited component
+# oracles (charset + host), so the lane carries all three oracle libs plus the
+# corpus harness lib: the self-tests accept the §1.1.2 / §5.4 positives (read
+# through (uri test corpus)) and reject a hand-built structural negative set. Pure
+# test-side, like the charset/host-oracle lanes above -- no src validator is
+# imported -- and it reads the positive corpora from URI_CORPUS_DIR.
+set(URI_ABNF_ORACLE_LIB
+    "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/abnf-oracle.sls")
+
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.abnf-oracle.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/abnf-oracle-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_CHARSET_ORACLE_LIB}
+            ${URI_HOST_ORACLE_LIB}
+            ${URI_ABNF_ORACLE_LIB}
+            ${URI_CORPUS_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/abnf-oracle-tests.sps"
+    ENVIRONMENT "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+    TIMEOUT 120
+    LABELS unit)
+endforeach()
+
 # --- The M2 pure seam ------------------------------------------------------
 #
 # The first product code (decision 0008, 0004, 0009): the vocabulary the
@@ -1170,6 +1199,42 @@ foreach(mode source aot)
             ${URI_GENERATED_PARSER}
             "${CMAKE_CURRENT_LIST_DIR}/common/authority-form-tests.sps"
     ENVIRONMENT "URI_AUTHORITY_FORM_DIR=${URI_AUTHORITY_FORM_DIR}"
+    TIMEOUT 180
+    LABELS unit)
+endforeach()
+
+# --- conformance.abnf-differential: the RFC 3986 audit, Slice ① (decision 0028) --
+#
+# The DIFFERENTIAL: uri-parse-validate ⇄ (uri test abnf-oracle) over a broad space
+# (0028 item 3) -- the §1.1.2 / §5.4 positives (both accept), the M3 charset + M4
+# host negative corpora (both reject), an EXHAUSTIVE sweep of every length-0..5 word
+# over a 12-byte reduced alphabet in all three modes (~814k input×mode pairs), and a
+# hand+agent adversarial corpus of the DEEP structures the length bound cannot reach
+# (each carrying its ABNF verdict, a third independent reading). Any disagreement
+# reddens naming it. It drives the whole read stack, so it needs URI_COLLECT + the
+# generated parser + the generator sources, plus all three oracle libs and the corpus
+# harness lib; it reads the four corpus dirs. The authored adversarial corpus lives
+# in its own dir (like charset/ and host/), apart from the provenance-guarded rfc3986/.
+set(URI_DIFFERENTIAL_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/differential")
+
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.conformance.abnf-differential.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/abnf-differential-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
+            ${URI_COLLECT}
+            ${URI_GENERATED_PARSER}
+            ${URI_ABNF_ORACLE_LIB}
+            ${URI_CHARSET_ORACLE_LIB}
+            ${URI_HOST_ORACLE_LIB}
+            ${URI_CORPUS_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/abnf-differential-tests.sps"
+    ENVIRONMENT "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+                "URI_CHARSET_DIR=${URI_CHARSET_DIR}"
+                "URI_HOST_DIR=${URI_HOST_DIR}"
+                "URI_DIFFERENTIAL_DIR=${URI_DIFFERENTIAL_DIR}"
     TIMEOUT 180
     LABELS unit)
 endforeach()

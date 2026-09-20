@@ -2438,3 +2438,240 @@ Slice ⓪ (the independent whole-URI abnf-oracle + its self-tests). The three si
 filed this session — #9, #10, #11 — are all now resolved and merged; chez-http-server can drop
 all three workarounds and consume main. The tree is clean on main at a1b9176 (v0.2.0 stays the
 latest tag; #11 is post-v0.2, unreleased).
+
+---
+
+THE RFC 3986 CONFORMANCE AUDIT — earning (or refusing) the claim v0.2 deferred. Branch
+feat/rfc3986-conformance-audit (a FRESH branch from the post-#11 main; it SUPERSEDES the stale
+WIP feat/conformance-audit / commit 115764d, which was based on the pre-#11 main dee40d8 and
+can be pruned at the maintainer's convenience — its two files, decision 0028 and the ledger
+seed, are re-authored here on the correct base).
+
+Plan: the audit decision 0027 item 4 deferred. Decisions in force: 0003 (adjudicate against
+the ABNF, not a popular library), 0005/0012 (oracle-from-the-RFC, independent of the code;
+agreement is the check; abnfgen/mutator are the deferred generators), 0011 (uri-parse is
+lenient; validation is uri-parse-validate), 0024/0025 (the M3 charset + M4 host oracles this
+audit composes), 0026 (M9 authority-form is RFC 9112 — OUT of scope), 0027 (the release that
+deferred the claim), and 0028 (the audit charter: recognizer-equivalence, an independent
+whole-URI oracle, earned only if clean).
+
+Base at start: beb8952 (a1b9176 = the #11 merge; beb8952 = the #11 close-out; local main ==
+origin/main; v0.2.0 released as f359743, tagged v0.2.0 and still the latest tag; #11 is
+post-v0.2, unreleased). Measured environment (2026-09-19, Darwin arm64): Chez 10.4.1
+(tarm64osx). Pre-audit baseline INHERITED from main (no product source changed on this
+branch): release lists 73 tests; the existing pure-oracle lanes run green (host-oracle: 10
+cases / 67 checks / 0 failures, re-run this session).
+
+THE FORCING QUESTION, AND WHY THE AUDIT HAS SUBTLE TEETH. "RFC 3986 compliant" for a
+validating parser means RECOGNIZER-EQUIVALENCE: uri-parse-validate accepts a bytevector in
+mode `uri` iff it is a `URI` (Appendix A), etc. (0028 item 1). An armchair probe found the
+OBVIOUS gaps already closed — the scheme first-char ALPHA rule holds (`1abc:x`, `+x:y`,
+`ht!tp:x` all rejected invalid-scheme), and even `uri-reference "1abc:x"` (neither a valid
+URI nor a valid relative-ref) is rejected. So M3/M4 are more conformant than a naive read
+suggests; the audit is NOT a bug-hunt for the obvious but a rigorous recognizer-equivalence
+check for SUBTLE deviations in the lenient-split × component-validation interaction. The
+existing charset/host oracles are COMPONENT-level; the untested questions are STRUCTURAL
+(path-type-per-context, the mode→production mapping, empty/edge shapes), so the audit's new
+oracle must recognize a WHOLE URI.
+
+WHAT THE AUDIT SHIPS (decision 0028): NO README/CHANGELOG claim-flip at merge (that rides a
+release, 0028 item 6). Test artifacts + any confirmed src fixes + the recorded verdict:
+  - `(uri test abnf-oracle)` — an INDEPENDENT whole-URI recognizer of URI / URI-reference /
+    relative-ref, the STRUCTURAL grammar composed with the existing charset/host oracles
+    (0028 item 2). A fourth, structural reading of the ABNF, product-independent.
+  - a DIFFERENTIAL lane — uri-parse-validate ⇄ the oracle over positives, negatives,
+    exhaustive small sweeps, adversarial boundary corpora, and generated valids (0028 item 3).
+  - each disagreement adjudicated against the ABNF → product fix (witnessed) / oracle fix /
+    documented deviation (0028 item 4); the recorded VERDICT (0028 item 5).
+
+SLICE PLAN (cadence: drive to gates — stop after Slice ⓪ and at the merge gate; a Workflow
+for the differential's per-production probing + adversarial adjudication):
+
+  ⓪  `(uri test abnf-oracle)` — the independent whole-URI recognizer (structural grammar +
+     the composed component oracles) + its SELF-tests: it must ACCEPT every positive corpus
+     (§1.1.2, §5.4 base/refs/targets) and REJECT a hand-built structural negative set (bad
+     scheme-first-char, a path-type-per-context violation, a mode-production mismatch, the
+     uri-reference disambiguation), mutation-witnessed. NO differential against the product
+     yet (the oracle is graded on its own first, as the corpus loader was — 0005). — GATE.
+  ①  the DIFFERENTIAL AUDIT — run uri-parse-validate ⇄ the oracle over the broad space
+     (0028 item 3); catalog every disagreement; adjudicate each against the ABNF; fix
+     confirmed product bugs (witnessed); the VERDICT emerges (clean, or the residual
+     deviations). A Workflow drives the per-production probing and the adversarial
+     adjudication (default-refute a claimed deviation). — MERGE GATE.
+  CLOSE — merge-gate adversarial review + the recorded verdict + closing ritual (ask first)
+  + reflection.
+
+SLICE ⓪ DONE (2026-09-19). The whole-URI oracle and its self-tests, graded on the oracle's OWN.
+  - test/support/harness/uri/test/abnf-oracle.sls — `(uri test abnf-oracle)`, exports
+    oracle-recognize? (mode symbol + bytevector → boolean) and oracle-recognize-string?. A
+    recursive-descent recognizer of RFC 3986 Appendix A's STRUCTURE: it peels [ "#" fragment ]
+    then [ "?" query ] by the ABNF's own unambiguous greedy split (query/fragment carry no "#",
+    hier-part/relative-part carry neither), then matches the front as `scheme ":" hier-part`
+    (URI) or `relative-part` (relative-ref). The five path-types are predicates over the path
+    range (empty / abempty / absolute / rootless / noscheme), and the ONE structural fork is
+    path-rootless (colon-bearing, a URI's) vs path-noscheme (first-segment-no-colon, a
+    relative-ref's) — the whole URI/relative-ref disambiguation. It DEFERS every charset
+    question to the two audited component oracles: `only (uri test charset-oracle) oracle-scan`
+    for scheme/path/query/fragment (also the leading-ALPHA and non-empty scheme rules), and
+    `only (uri test host-oracle) oracle-scan-authority` for the "//" authority (split at the
+    first "/", exact because userinfo/host/port admit no "/"). `only` imports because the two
+    component oracles share the ABNF byte-set names and would otherwise collide. PURE.
+  - test/common/abnf-oracle-tests.sps — unit.abnf-oracle, graded two ways (0005): ACCEPT every
+    positive (the §1.1.2 examples as both uri and uri-reference; the §5.4 base + 43 targets as
+    uri; the §5.4 43 references as uri-reference — all read through (uri test corpus)), plus
+    explicit per-path-type / per-mode positives and the divergence trio (g:h and a:/b are URIs,
+    are NOT relative-refs, are URI-references through the URI arm); REJECT a hand-built
+    structural negative set, one class per case (bad/empty/space scheme; mode↔production
+    mismatch; invalid authority; per-component charset fault in path/query/fragment; a raw
+    non-ASCII byte). 12 cases / 142 checks / 0 failures.
+  - test/CMakeLists.txt — the uri.unit.abnf-oracle.chez.{source,aot} lane, modeled on the
+    charset/host-oracle lanes: pure test-side (harness + all three oracle libs + the corpus
+    harness lib), reads URI_CORPUS_DIR, LABELS unit. Registering it takes the release
+    selection from 73 to 75 (a source + an aot twin).
+
+  VERIFICATION UNDER A BUILD-BLOCKED SESSION (disclosed, not waived — the honesty the ledger
+  owes). This session's permission mode auto-DENIES `make` / `cmake --build` / `cmake` configure
+  as potentially-destructive, so the CMake reconfigure that would register the new lane under
+  CTest, and the AOT compile, could not run here. `ctest` (run/list) and direct `chez` execution
+  ARE permitted, so the SOURCE lane was verified by invoking the exact command the CMake lane
+  wraps — the chez-source launcher with `--library-root test/support/harness`, an empty
+  object-guard, `--program …/abnf-oracle-tests.sps`, `URI_CORPUS_DIR` on the environment — which
+  is source-mode-identical to `uri.unit.abnf-oracle.chez.source`. Result: status=0, 12 cases /
+  142 checks / 0 failures. CONFIRMED UNDER A FULL BUILD (2026-09-19): the maintainer ran
+  `make test-all` after Slice ⓪ landed — the registered release suite passed with the new lane
+  and its AOT twin included (73 → 75 tests green), so the CTest registration and the compiled
+  twin are verified, not pending.
+
+  MUTATION WITNESSES (watched to fail via the direct source lane, then reverted; the two
+  load-bearing structural decisions). (1) The URI/relative-ref FORK: dropping path-noscheme's
+  first-segment-no-colon check (→ #t) made the oracle accept "g:h" and "a:/b" as relative-refs
+  and "http://a" too — 5 failures across the disambiguation and mode-mismatch cases, status=1.
+  (2) The SCHEME GATE: dropping `charset-ok? 'scheme` from scheme-hier? made it accept "1abc:x",
+  ":x", "a b:c" as URIs (and "1abc:x" as a URI-reference) — 4 failures, status=1. Both reverted;
+  re-run green (12/142/0), no mutation markers left in source. — AT THE GATE.
+
+SLICE ① DONE (2026-09-19) -- THE DIFFERENTIAL, AND ITS VERDICT: CLEAN. uri-parse-validate ⇄
+(uri test abnf-oracle) over a broad space; every input×mode where they disagree would redden.
+  - test/common/abnf-differential-tests.sps -- the differential lane. Four input sources
+    (0028 item 3): (a) the §1.1.2 / §5.4 positives (both accept); (b) the M3 charset + M4 host
+    negative corpora (both reject); (c) an EXHAUSTIVE sweep of every length-0..5 word over the
+    12-byte reduced alphabet {a 1 ; . : / ? # [ ] @ %} in all three modes -- 271,453 words ×
+    3 = ~814k input×mode pairs, the short-string boundary space covered COMPLETELY; (d) the
+    adversarial corpus of deep structures the length bound cannot reach, each carrying its
+    ABNF verdict as a THIRD independent reading (guards a shared oracle/product blind spot,
+    0005/0012). MAXLEN=5 committed (len-6 measured clean at 12s but heavy for a lane; len-5 is
+    1.2s); the bound is both DISCLOSED (an unconditional `uri-harness: coverage ...` line
+    naming alphabet/maxlen/compared, emitted every run) and ASSERTED (the loop's tally is
+    checked EQUAL to an independently-computed expected total, so a silent cap reddens rather
+    than passing byte-identically) -- 0028 consequences, hardened at the merge gate below.
+  - test/conformance/differential/adversarial.scm (+ PROVENANCE) -- 213 rows (118 accept /
+    95 reject; 171 uri, 27 relative-ref, 15 uri-reference; 21 are #vu8 control/high-byte
+    vectors). 60 hand-authored at the seed; 153 from the Slice ① probe Workflow. Its own dir,
+    apart from the provenance-guarded rfc3986/ (authored, like charset/ and host/).
+  - test/CMakeLists.txt -- the uri.conformance.abnf-differential.chez.{source,aot} lane
+    (drives the whole read stack + all three oracle libs + the corpus lib; reads the four
+    corpus dirs). Registering it takes the release selection 75 → 77.
+
+THE ADVERSARIAL PROBE (decision 0028 item 3d, Ultracode Workflow). Eight per-production probe
+agents (scheme, authority-split, ip-literal, ipv4/reg-name/pct, path-fork, pct-encoding,
+query/fragment, edge+bytes) each generated deep vectors targeting the lenient-split ×
+component-validation seam; a SEPARATE verify pass per family independently re-derived every
+verdict from Appendix A and default-refuted anything it could not confirm. 16 agents, 0 errors:
+157 proposed, 157 confirmed, 0 refuted, 4 intra-dups dropped on merge → 153 added. Each was
+then run through the differential.
+
+THE RESULT: CLEAN. Over the exhaustive sweep, both positive corpora, both negative corpora,
+and all 213 adversarial rows, uri-parse-validate AGREES with the independent oracle on EVERY
+verdict, and both match the corpus's hand ABNF reading. ZERO deviations. The audit had teeth
+(any of the 153 hostile vectors, or any of the ~814k swept words, could have exposed a product
+bug) and found none. So over the audited space uri-parse-validate is RECOGNIZER-EQUIVALENT to
+RFC 3986 Appendix A per mode -- the property "RFC 3986 conformant (validation)" names (0028
+item 1). Adjudication (0028 item 4) had nothing to adjudicate: no disagreement arose.
+
+MUTATION WITNESSES (a clean differential that cannot fail is not evidence; watched to fail via
+the direct source lane, then reverted). (1) The SWEEP detector: dropping the oracle's scheme
+charset gate made it accept invalid-scheme inputs the product rejects -- the sweep reddened
+naming the exact words (":", "1:", ";:", ".:", ...), status=1. (2) The CORPUS third-reading
+detector: flipping one row's ABNF verdict (a://999.1.1.1 accept→reject) reddened BOTH the
+oracle-vs-ABNF and product-vs-ABNF checks for that row (the shared-blind-spot guard bites even
+when oracle and product agree with each other), status=1. Both reverted; re-run green (8 cases
+/ 714 checks / 0 failures), no mutation markers left.
+
+VERIFICATION UNDER THE BUILD-BLOCKED SESSION (disclosed). Same constraint as Slice ⓪: the
+cmake reconfigure that registers the new differential lane and the AOT compile are auto-denied
+this session, so the differential was verified by the chez-source launcher directly (source-
+mode-identical: harness + src + byte-machine roots, the four corpus dirs on the environment) --
+status=0, 8 cases / 714 checks / 0 failures. The maintainer's `make test-all` after Slice ⓪
+already confirmed the abnf-oracle lanes register and compile (73 → 75); the differential lane
+(+2) needs a fresh `make build` + `ctest --preset release` to bring the registered suite to 77
+and compile its AOT twin. Nothing about the evidence is provisional -- only the new lane's
+CTest registration and compiled twin await that build.
+
+AT THE MERGE GATE. Next: the merge-gate adversarial review -- pointed at the AUDIT ARTIFACTS
+themselves (could a hole make the "clean" verdict FALSE? -- an oracle bug that mirrors a
+product bug, a sweep alphabet that misses a decisive byte, a differential that does not compare
+what it claims, a wrong corpus verdict, a mis-wired lane, an over-claiming record) -- then a
+decision recording the verdict and the ledger close-out. The README/CHANGELOG "conformant"
+claim-flip is NOT in this milestone (0028 item 6): it rides a subsequent release, gated as
+0027/0023 gate release claims. Publish steps (push, PR, merge) remain per-action maintainer-
+gated (0023 point 7).
+
+SLICE ① MERGE-GATE REVIEW (2026-09-19). An adversarial review Workflow (Ultracode) pointed NOT
+at the product but at the AUDIT ARTIFACTS: could a hole make the "clean" verdict FALSE or
+overclaimed? Six dimensions -- oracle-correctness, shared-blindspot (an input both oracle AND
+product get wrong the same way), coverage-gap, harness-vacuity, corpus-fidelity, record-and-lane
+-- each finding adversarially VERIFIED with a real Chez probe (default-refute). 10 agents, 0
+errors: 4 findings, 0 refuted, 4 confirmed (1 major, 2 minor, 1 nit).
+
+THE VERDICT SURVIVED. The high-value dimensions found NOTHING that falsifies "clean": no oracle
+misreading of the ABNF, no shared oracle/product blind spot, no wrong corpus verdict, no missing
+decisive byte, no mis-wired lane. So the product result -- uri-parse-validate is
+recognizer-equivalent to Appendix A over the audited space -- STANDS. Every confirmed finding was
+about the HARNESS's integrity/disclosure or a record, not the audit outcome.
+
+THE MERGE-GATE LESSON, POINTED AT ME AGAIN. The major finding: I asserted an INTEGRITY property
+that was FALSE. The ledger, decision 0028, and the .sps header all claimed the sweep's coverage
+bound was "DISCLOSED in the summary line, not silent" -- but a passing `check` prints only its
+LABEL, and only on FAILURE, so the compared count and MAXLEN were NEVER emitted; worse, nothing
+ASSERTED the count, so a silently-capped sweep (MAXLEN set to 0) produced a byte-identical
+passing summary, indistinguishable from full coverage. The review proved it by running a
+MAXLEN=0 copy to the same SHA-256 as the real run. The "~814k / disclosed" framing was
+overclaimed exactly the way the review was told to hunt. (This rhymes with the #11 gate lesson:
+there I mis-asserted "unobservable"; here I mis-asserted "disclosed" -- both times an unverified
+claim ABOUT the evidence, refuted by a run.)
+
+THE FIXES (all mutation-witnessed or re-run green).
+  1. (major + its minor record twin) test/common/abnf-differential-tests.sps: the vacuous
+     `(check "compared N" #t)` is replaced by `(check-equal ... compared EXPECTED-COMPARISONS)`,
+     where EXPECTED-COMPARISONS = 3 × Σ 12^k (k=0..MAXLEN) = 814359 is derived INDEPENDENTLY of
+     the loop -- so a silent cap reddens (WITNESSED: capping the loop to len 2 while EXPECTED
+     stays at MAXLEN=5 fails "expected 814359, got 471", status=1). And an unconditional
+     `uri-harness: coverage sweep=exhaustive alphabet=12 maxlen=5 modes=3 compared=814359` line
+     is emitted every run (via the exported adapter-flush-output), so the disclosure the records
+     promise now exists. The header, the ledger, and (below) decision 0028's wording are
+     corrected to describe BOTH mechanisms.
+  2. (minor) the positives and negatives groups gained non-emptiness guards (like the adversarial
+     group already had): a corpus reduced to a well-formed-but-empty form now reddens instead of
+     passing with zero checks.
+  3. (nit) PROVENANCE corrected: of the 21 #vu8 rows, 19 carry a control/>0x7F byte and 2 pin a
+     raw SP (0x20) -- not "all 21 control-or-high".
+  RE-GRADED green after the fixes: unit.abnf-oracle 12 cases / 142 checks; conformance.abnf-
+  differential 9 cases / 718 checks (the +1 case / +4 checks are the new count assertion and the
+  four non-emptiness guards); 0 failures; the coverage line emits compared=814359.
+
+THE RECORDED VERDICT: decision 0030. Over the exhaustive length-0..5 sweep (814,359 input×mode
+pairs, ASSERTED complete), the §1.1.2/§5.4 positives, the M3/M4 negatives, and 213 ABNF-verified
+adversarial rows, uri-parse-validate is RECOGNIZER-EQUIVALENT to RFC 3986 Appendix A per mode,
+with ZERO deviations, and the differential's failure detectors and its coverage assertion are
+mutation-witnessed. Per 0028 item 5a the claim "RFC 3986 conformant (validation)" is EARNED and
+becomes claimable -- but the README/CHANGELOG flip RIDES THE NEXT RELEASE (0028 item 6), it is
+NOT in this milestone's merge. Boundaries kept honest (decision 0030): this is RECOGNITION
+equivalence (accept/reject), not error-code/offset equivalence (separately gated by M3/M4); the
+exhaustive part is bounded at length 5 / a 12-byte alphabet, with deeper structures covered by
+the targeted 213-row adversarial corpus, not exhaustively.
+
+AT THE MERGE GATE (post-review, clean). Remaining to reach a merged state: the maintainer's
+`make build` + `ctest --preset release` to register/compile the two new lanes (unit.abnf-oracle
+already confirmed at 75; +conformance.abnf-differential source+aot → 77) and the closing ritual
++ publish (push, PR, merge), all per-action maintainer-gated (0023 point 7). No product code
+changed in the whole audit; it is purely additive test artifacts + records.
