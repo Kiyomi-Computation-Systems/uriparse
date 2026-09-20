@@ -294,4 +294,129 @@
                  (uri-components=? (uri-parse-components (uri-collect-finish! c))
                                    (uri-parse-components (parse 'uri "http://h/x")))))))))
 
+;;; --- validation over a parse result (issue #18, decision 0032) -----------
+;;; `uri-parse-result-validate` lifts the post-parse judgement out of
+;;; `uri-parse-validate` and names it, so a REUSED collector's `uri-collect-finish!`
+;;; result reaches the SAME audited recognizer (decisions 0024/0025, audited clean at
+;;; 0028/0030) without a re-parse. Pinned here in layers:
+;;;   - the DELEGATION: `uri-parse-validate` routes its judgement through
+;;;     `uri-parse-result-validate` (a version that stopped delegating diverges);
+;;;   - the REUSE PATH (the #11/#18 point): a validated RESET-reused collector's result
+;;;     equals the one-shot -- this actually calls `uri-collector-reset!` and so also
+;;;     witnesses that the offset seam survives a reset;
+;;;   - the IDENTITY semantics: a valid or already-errored result returns UNCHANGED (eq?).
+;;; The two equivalence checks route BOTH their sides through the same `validate-result`,
+;;; so they cannot catch a bug INSIDE it (a wrong code or offset is produced on both sides
+;;; and cancels). The checks with teeth for the judgement itself are therefore the two
+;;; INDEPENDENT hardcoded expectations below -- one per arm of `validate-result` (the
+;;; charset arm and the authority/host arm), each with its ABSOLUTE offset rebased through
+;;; the seam (decision 0032; the merge-gate rule -- a property no check verifies is not
+;;; pinned).
+(harness-group "validation over a parse result (uri-parse-result-validate)"
+  (lambda ()
+    (define (offsets r)                    ; the five component offsets, so a rebased offset reddens
+      (map (lambda (c) (uri-parse-component-offset r c))
+           '(scheme authority path query fragment)))
+    (define (result=? a b)                 ; ok-for-ok, components+offsets or code+offset
+      (and (eq? (uri-parse-ok? a) (uri-parse-ok? b))
+           (if (uri-parse-ok? a)
+               (and (uri-components=? (uri-parse-components a) (uri-parse-components b))
+                    (equal? (offsets a) (offsets b)))
+               (and (eq? (uri-parse-error-code a) (uri-parse-error-code b))
+                    (equal? (uri-parse-error-offset a) (uri-parse-error-offset b))))))
+    ;; A stateful throwaway per mode -- authority + query + fragment (and a scheme verdict
+    ;; for uri-reference) -- so the reset below must clear REAL span/offset/verdict state
+    ;; before `str` is parsed on the same collector.
+    (define throwaway '((uri           . "http://a/p?q=1#top")
+                        (relative-ref  . "//h/a?q#f")
+                        (uri-reference . "g:h?q#f")))
+    (define (reuse-validate mode str)      ; parse a throwaway, RESET, then parse+validate `str`
+      (let ((c (make-uri-collector mode))
+            (p (string->utf8 (cdr (assq mode throwaway))))
+            (bv (string->utf8 str)))
+        (uri-collect-feed! c p 0 (bytevector-length p)) (uri-collect-finish! c)
+        (uri-collector-reset! c)           ; the issue #11 reuse path -- NOT a fresh collector
+        (uri-collect-feed! c bv 0 (bytevector-length bv))
+        (uri-parse-result-validate (uri-collect-finish! c))))
+    ;; A spread of inputs: valid, charset-invalid, authority-invalid, and structural-error,
+    ;; across all three modes. The equivalence checks compare product to product, so they
+    ;; hold whatever exact code/offset each input yields -- they guard DIVERGENCE between the
+    ;; entry points, not the judgement's absolute correctness (the hardcoded cases do that).
+    (define cases
+      '((uri           . "http://a/b/c/d;p?q")   ; valid, full absolute
+        (uri           . "http://a/b^c")          ; charset: ^ is not a pchar
+        (uri           . "http://[a@b]/p")        ; authority: '@' splits userinfo/host, userinfo invalid
+        (uri           . "foo/bar")               ; structural: scheme-required (never assembles)
+        (relative-ref  . "/b/c?q")                ; valid rooted
+        (relative-ref  . "a/b^c")                 ; charset: ^ in a later segment
+        (relative-ref  . "g:h")                   ; structural: scheme-forbidden
+        (uri-reference . "http://a/b?q#f")        ; valid full via the URI arm
+        (uri-reference . "g:h")                   ; valid, verdict scheme
+        (uri-reference . "g^h")))                 ; charset: verdict segment, ^ in the path
+    (harness-case "delegation: uri-parse-validate routes its judgement through uri-parse-result-validate"
+      ;; Guards THE DELEGATION only -- both sides share validate-result, so a bug inside it
+      ;; cancels. A uri-parse-validate that stopped delegating (or split the parse) diverges.
+      (lambda ()
+        (for-each
+         (lambda (row)
+           (let* ((mode (car row)) (str (cdr row)) (bv (string->utf8 str)))
+             (check (string-append (symbol->string mode) " " str)
+                    (result=? (uri-parse-validate mode bv)
+                              (uri-parse-result-validate (uri-parse mode bv))))))
+         cases)))
+    (harness-case "the point: a validated RESET-reused collector result == the one-shot (issue #11 path)"
+      ;; Genuinely resets and reuses a collector, then validates its finish! result. A
+      ;; reset! that corrupted the span or offset seam would diverge from the one-shot here.
+      (lambda ()
+        (for-each
+         (lambda (row)
+           (let* ((mode (car row)) (str (cdr row)))
+             (check (string-append (symbol->string mode) " " str)
+                    (result=? (reuse-validate mode str)
+                              (uri-parse-validate mode (string->utf8 str))))))
+         cases)))
+    (harness-case "a valid result comes back UNCHANGED -- the argument itself (eq?)"
+      (lambda ()
+        (let ((r (uri-parse 'uri (string->utf8 "http://a/b/c/d;p?q"))))
+          (check "the parse is ok" (uri-parse-ok? r))
+          (check "eq? -- no copy, no new record" (eq? r (uri-parse-result-validate r))))))
+    (harness-case "a structural error passes straight through -- the argument itself (eq?)"
+      (lambda ()
+        (let ((r (uri-parse 'uri (string->utf8 "foo/bar"))))   ; scheme-required, components #f
+          (check "the parse errored" (not (uri-parse-ok? r)))
+          (check "eq? -- an error result is not re-judged" (eq? r (uri-parse-result-validate r)))
+          (check-equal "still scheme-required" (uri-parse-error-code (uri-parse-result-validate r))
+                       'scheme-required))))
+    ;; --- the two independent hardcoded pins (one per arm of validate-result) ----------
+    ;; These are the checks that pin the JUDGEMENT itself against a constant, on BOTH the
+    ;; fresh and (for the charset arm) the reset-reused paths -- the equivalence checks
+    ;; above cannot, since both their sides share the code under test.
+    (harness-case "the charset arm: a bad pchar, pinned on the fresh AND the reset-reused paths"
+      (lambda ()
+        ;; path "/b^c" starts at offset 8 (after "http://a"); ^ is its byte 2 -> absolute 10.
+        (let ((fresh  (uri-parse-result-validate (uri-parse 'uri (string->utf8 "http://a/b^c"))))
+              (reused (reuse-validate 'uri "http://a/b^c")))
+          (check "fresh: the lenient parse is ok (uri-parse stays a splitter)"
+                 (uri-parse-ok? (uri-parse 'uri (string->utf8 "http://a/b^c"))))
+          (check "fresh: NOT ok after validation" (not (uri-parse-ok? fresh)))
+          (check-equal "fresh: the charset code, named per production"
+                       (uri-parse-error-code fresh) 'invalid-pchar)
+          (check-equal "fresh: the ABSOLUTE offset of the bad byte, through the seam"
+                       (uri-parse-error-offset fresh) 10)
+          (check "reused: NOT ok after validation" (not (uri-parse-ok? reused)))
+          (check-equal "reused: same code" (uri-parse-error-code reused) 'invalid-pchar)
+          (check-equal "reused: same ABSOLUTE offset -- the seam survives reset!"
+                       (uri-parse-error-offset reused) 10))))
+    (harness-case "the authority/host arm: a non-numeric port, rebased through the authority offset"
+      (lambda ()
+        ;; authority "h:x" starts at offset 7; the bad port byte x is its index 2 -> absolute 9.
+        ;; This is validate-result's OTHER branch (validate-authority), pinned by a constant so
+        ;; a broken authority-arm rebasing cannot pass silently (it did before this case existed).
+        (let ((r (uri-parse-result-validate (uri-parse 'uri (string->utf8 "http://h:x/p")))))
+          (check "NOT ok after validation" (not (uri-parse-ok? r)))
+          (check-equal "the host-grammar code (the validate-authority arm)"
+                       (uri-parse-error-code r) 'invalid-port)
+          (check-equal "the ABSOLUTE offset, rebased through the authority seam"
+                       (uri-parse-error-offset r) 9))))))
+
 (harness-finish)
