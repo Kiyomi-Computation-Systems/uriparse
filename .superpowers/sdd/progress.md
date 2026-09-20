@@ -2914,10 +2914,39 @@ CHANGELOG.md: [Unreleased] → [0.4.0] - 2026-09-20 (preamble discloses CI-never
 voice), fresh [Unreleased], version links updated. Frozen [0.3.0]/[0.2.0]/[0.1.0] untouched. Decision
 0033 written (7 items; successor to 0023→0027→0031). The release act adds no src, no lane, no algorithm.
 
-AWAITING (0033 items 6-7, maintainer-gated). The release-verification gate is a fresh re-measure AT
-the reconciliation commit (ctest --preset release + --preset no-scheme, each --no-tests=error) —
-expected 77/77 and 11/11 since the commit is doc-only, but RE-RUN not asserted; this session's mode
-blocks the build, so the maintainer runs it. Then the publish steps under the "lets make a release"
-ratification: PR → squash-merge → annotated tag v0.4.0 on the merge commit (message carries the
-re-measured counts + CI disclosure) → push tag, all over SSH (fixed this session). A GitHub Release
-is optional (body = the CHANGELOG [0.4.0] section verbatim). — AT THE RELEASE GATE.
+v0.4.0 RELEASED (2026-09-20). PR #20 squash-merged to main as 611b04b; local main fast-forwarded
+(babbac4..611b04b); chore/release-v0.4.0 deleted local and remote; annotated tag v0.4.0 (799f6e2)
+placed on 611b04b and pushed over SSH (dereferences to 611b04b, confirmed). The release-verification
+gate (0033 item 6) is met by a FRESH re-measure at the reconciliation commit: the maintainer ran
+release 77/77 and no-scheme 11/11 — 0 failures, macOS arm64, Chez 10.4.1 tarm64osx, CMake/CTest
+4.3.3. Merged and tagged over the RED linux-amd64 check, re-confirmed the decision-0017 billing
+refusal (0 steps, ~3s), not a test result. Every push over SSH (fixed this session; the HTTPS
+`gh auth git-credential` workaround is retired unless SSH breaks again). A GitHub Release was NOT
+auto-cut (0033 item 7); its body, if the maintainer wants one, is the CHANGELOG [0.4.0] section
+verbatim. Commit lineage on main: aae178e (v0.3) → 69d2a84 (v0.3 close-out) → ea02cf7 (#18) →
+babbac4 (#18 close-out) → 611b04b (v0.4 release). Tags: v0.1.0, v0.2.0, v0.3.0, v0.4.0 (611b04b).
+
+REFLECTION. The release template held a FOURTH time (0023 → 0027 → 0031 → 0033): structural doc
+reconciliation, an honest claim, the never-run-CI amendment disclosed, a re-measure at the tagged
+commit, publish steps per-action gated. What made v0.4 easy was what v0.3 earned: v0.3 STATED the
+conformance claim, so v0.4 had NO new claim to make — uri-parse-result-validate is the same audited
+recognizer (0030) reached from a parse result, a new CAPABILITY not a broadening, and the release
+said exactly that. The house rule "a property is measured or it is not claimed" now cuts both ways:
+it stopped v0.1/v0.2 from over-claiming, and here it kept v0.4 from re-claiming — the discipline is
+symmetric. The one judgement was semver: a new backward-compatible export is MINOR (0.3.0 → 0.4.0),
+the same call as uri-collector-reset! for v0.3, applied mechanically. The diff was surgical and
+verified so (README: status + two added sentences, every frozen claim/caveat verbatim; CHANGELOG:
+one new dated block + link updates, frozen entries untouched).
+
+NEXT (v0.4 is DONE; what reopens is a SEPARATE choice, not a v0.4 gap — 0033 consequences). The
+chez-http-server sibling asks on the parse/validate surface are now ALL resolved and RELEASED
+(#9/#10/#11 + the audit + result-level validation); a per-connection server reuses a collector AND
+validates its finish! result with no re-parse, on the audited recognizer, from a tagged release.
+The open directions, each its own decision: (1) the FIRST FUNDED CI RUN — discharges 0017 item 3
+and its two never-executed predictions, replacing the macOS-arm64-local disclosure every release
+so far (v0.1–v0.4) has carried with cross-platform evidence; (2) v0.4+ TOOLING — the deferred
+abnfgen positive generator / host-aware mutator (0012), or a relative-reference serializer above
+recompose (0022); (3) the OPTIONAL result/collector-level authority-form validator deferred by 0032
+item 4, if a CONNECT-target-reuse request ever measures the need; (4) the next SIBLING request.
+Housekeeping: the superseded WIP branch feat/conformance-audit (115764d, pre-#11 base) is still
+present locally and can be pruned. The tree is clean on main at 611b04b, tagged v0.4.0.
