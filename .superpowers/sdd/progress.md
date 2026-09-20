@@ -2850,10 +2850,44 @@ reworded. The 3 REFUTED were cosmetic (a comment's IP-literal mislabel, a pre-ed
 in the ADR Context, the authority-form "under-validation" which is the CORRECT RFC 3986 verdict and
 is deferred by 0032 item 4). Post-fix `unit.collect` is 60/187, 0 failures.
 
-AWAITING THE PR GATE (0023 point 7 — push + PR are outward-facing publish steps, per-action
-maintainer-gated). The work is committed on feat/parse-result-validate; main is unchanged at
-69d2a84. Next, on approval: push over HTTPS (`gh auth git-credential`, SSH still broken) and open
-a `feat:` PR against main; then the merge gate (maintainer runs the registered suite — the
-release selection is unchanged at 77, no new lane — and squash-merges). The ledger close-out
-(MERGED + REFLECTION + NEXT) is a separate docs(sdd) commit after merge, per the #11 precedent
-(beb8952). — AT THE PR GATE.
+ISSUE #18 MERGED (2026-09-20). PR #19 squash-merged to main as ea02cf7; issue #18 auto-closed by
+"Closes #18". SSH was FIXED mid-flight (the maintainer's machine), so the push and the main sync
+went over SSH — the `gh auth git-credential` HTTPS workaround is retired for now (revisit only if
+SSH breaks again). The merge gate: the maintainer ran the registered suite green — 77/77, 0
+failures (the release selection is unchanged at 77; no new lane, unit.collect already covered the
+new checks). Merged over the RED linux-amd64 check, re-confirmed the decision-0017 billing refusal
+(0 steps, ~3s, "recent account payments have failed" annotation) — not a test result. Local main
+fast-forwarded 69d2a84 → ea02cf7; feat/parse-result-validate deleted local and remote. Commit
+lineage on main: … → aae178e (v0.3 release) → 69d2a84 (v0.3 close-out) → ea02cf7 (#18). Tags
+unchanged (v0.1.0, v0.2.0, v0.3.0); #18 is post-v0.3.0 and UNRELEASED.
+
+REFLECTION. A small, honest additive: one export, a 4-line function, a behaviour-preserving
+one-line refactor of uri-parse-validate. The real value was the review, which for the THIRD time
+(merge-gate audit → v0.3 → here) caught the same class of defect — a property asserted in prose
+that no check verified ([[verify-and-emit-integrity-claims]]). Twice-over here: a "reused
+collector" case that never called uri-collector-reset! (byte-identical to the one-shot path,
+because uri-parse IS make+feed+finish), and two equivalence checks that routed both sides through
+the same validate-result and so could not catch a bug inside it — the verifier witnessed an
+authority-arm offset bug passing the ENTIRE suite. The fix was the lesson applied: make the reuse
+path actually reset, and add INDEPENDENT hardcoded pins — one per arm of validate-result (charset
+invalid-pchar@10 on both the fresh and reset-reused paths; authority invalid-port@9 through the
+authority seam) — then witness that the authority pin catches the exact bug that had passed. The
+equivalence checks stay, honestly re-scoped to what they guard (delegation + divergence between the
+entry points), not the judgement's absolute correctness. Product-to-product equivalence is a
+divergence guard, never a correctness proof when both sides share the code under test — the pattern
+to keep reaching for is an INDEPENDENT reference (a hardcoded constant, an oracle), the same
+discipline M3/M4 and the audit already use.
+
+NEXT (#18 is DONE and merged; nothing outstanding). #18 closes the last-known chez-http-server
+sibling ask on the parse/validate surface (#9/#10/#11 + the audit + now result-level validation);
+a per-connection server reuses a collector AND validates its finish! result with no re-parse, on
+the audited recognizer. The open directions are unchanged and each its own decision, NOT a #18 gap:
+(1) the FIRST FUNDED CI RUN — discharges 0017 item 3 and its two never-executed predictions,
+replacing the macOS-arm64-local disclosure every release has carried; (2) v0.3+ TOOLING — the
+deferred abnfgen positive generator / host-aware mutator (0012), or a relative-reference serializer
+above recompose (0022); (3) the OPTIONAL result/collector-level authority-form validator deferred
+by 0032 item 4, if a CONNECT-target-reuse request ever measures the need; (4) a v0.3.1/v0.4 release
+whenever the maintainer wants the uri-parse-result-validate export stated in a tag + CHANGELOG (it
+is currently merged-but-unreleased, exactly as M3/M4/#11 were between their merges and v0.2/v0.3).
+Housekeeping: the superseded WIP branch feat/conformance-audit (115764d, pre-#11 base) is still
+present locally and can be pruned. The tree is clean on main at ea02cf7.
