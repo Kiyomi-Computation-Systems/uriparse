@@ -6,6 +6,45 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-20
+
+Released on macOS arm64 evidence only. The Linux CI cell is configured and committed
+but has **still never run** (decisions 0017, 0033) — the #18 PR's `linux-amd64` check
+was the billing refusal (0 steps, ~3s, "recent account payments have failed"), not a
+run — so every count below is measured on macOS arm64 (Chez Scheme 10.4.1, machine-type
+tarm64osx; CMake/CTest 4.3.3) and nowhere else: the complete selection is 77/77 and the
+no-Scheme layer 11/11, 0 failures, re-measured on the release commit. v0.4.0 adds
+**result-level validation** (`uri-parse-result-validate`), so a server holding one
+collector per connection (`uri-collector-reset!`, v0.3) can validate its
+`uri-collect-finish!` result with no re-parse. It states **no new conformance claim**:
+the export is the SAME audited recognizer (RFC 3986 Appendix A recognizer-equivalence
+per mode, decision 0030) reached from a parse result — the scoped claim and every
+boundary read exactly as v0.3.0 (decision 0033).
+
+### `uri-parse-result-validate` — validate a parse result without re-parsing
+
+- **`uri-parse-result-validate`** on `(uri collect)` — `uri-parse-result ->
+  uri-parse-result` — applies the audited component charset (M3) and host grammar (M4)
+  judgement to an already-parsed result: an error result passes straight through
+  unchanged (the argument itself), a valid result returns itself, and an otherwise-valid
+  split whose bytes the ABNF rejects becomes a leftmost-first validation error with its
+  absolute offset. `uri-parse-validate` is now `(uri-parse-result-validate (uri-parse
+  mode bv))` — behaviour-preserving, outcome-identical for every input (decision 0032).
+- The point (issue #18): validation is a pure function of the result — its components
+  and its offset seam — so a REUSED collector's `uri-collect-finish!` result reaches the
+  same audited verdict as a fresh `uri-parse`, with no re-parse and no second
+  implementation. The measured gap it closes (a 46-byte origin-form target): 3680 B on a
+  fresh collector, 1584 B on a reset one.
+- No product algorithm changed — one additive export and a one-line refactor. New
+  `unit.collect` checks pin the delegation, the reset-reused validation path, the
+  `eq?` identity semantics, and two INDEPENDENT hardcoded expectations, one per arm of
+  the judgement (charset `invalid-pchar`@10 on both the fresh and reset-reused paths;
+  authority `invalid-port`@9 through the authority seam), mutation-witnessed. A
+  merge-gate review caught two "asserted-but-unpinned" test gaps — a reuse case that
+  never reset, and tautological equivalence checks that shared the code under test — and
+  they were fixed with the independent pins. No new lane; the release selection is
+  unchanged at 77.
+
 ## [0.3.0] - 2026-09-20
 
 Released on macOS arm64 evidence only. The Linux CI cell is configured and committed
@@ -263,7 +302,8 @@ host grammar are v0.2 (decisions 0011, 0023, and the README caveats).
   always agrees, and a ratchet that fails in only one direction, are both
   caught.
 
-[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/releases/tag/v0.1.0
