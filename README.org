@@ -12,7 +12,7 @@ An RFC 3986 URI parser for Chez Scheme, in portable R6RS.
 ✨ *AI Disclosure:* LLMs are used extensively in the planning and development of this project.
 #+end_quote
 
-** Status: v0.2.0 — released 2026-09-19
+** Status: v0.3.0 — released 2026-09-20
 
 The scanner splits a URI reference into five components — scheme, authority,
 path, query, fragment — for all three modes (M2), and ~(uri collect)~ assembles
@@ -29,21 +29,31 @@ IPv4address / IP-literal → IPv6address / IPvFuture, and port (M4); ~(uri norma
 now folds *host* case too, completing RFC 3986 §6.2.2.1 (M4); and
 ~uri-parse-authority-form~ parses an RFC 9112 authority-form ~host:port~ CONNECT
 target (M9). ~uri-parse~ itself stays lenient — validation is the separate
-~uri-parse-validate~ pass. Standing behind it all (M1): the RFC's own vectors, the
+~uri-parse-validate~ pass. That validation is now *audited*: ~uri-parse-validate~
+is recognizer-equivalent to RFC 3986 Appendix A per mode — it accepts a byte
+string iff the bytes are that production — over an exhaustive small-input sweep,
+the normative corpora, and an adversarial corpus, with **zero deviations**
+([[file:.plans/decisions/0028-the-rfc-3986-conformance-audit-is-recognizer-equivalence-against-an-independent-whole-uri-oracle.md][decision 0028]],
+[[file:.plans/decisions/0030-the-rfc-3986-conformance-audit-is-clean-recognition-equivalence-is-earned.md][decision 0030]]).
+For a server reusing one parser per connection, ~uri-collector-reset!~ returns a
+collector to its just-constructed state in place, with no reallocation (issue #11).
+Standing behind it all (M1): the RFC's own vectors, the
 loader that reads them, the comparator, the two-way ratchet, and the harness and
 build layer.
 
 What this project will *not* claim until it is measured:
 
-- Not yet "RFC 3986 compliant". ~uri-parse-validate~ now validates every
-  component's charset (M3) and the whole host grammar (M4), and ~uri-parse~
-  stays a lenient splitter *by design* — it accepts bytes the ABNF rejects, and
-  that split between the two entry points is the point, not a gap. But
-  "compliant" as a blanket claim is a whole-ABNF conformance audit this project
-  has not yet run, so it is not claimed — earnable and nearer, not granted
+- Not a blanket "RFC 3986 compliant". The *validation* recognizer is now audited
+  conformant (above) — but that claim is *scoped*, not a whole-library grant. It
+  is RECOGNITION (accept/reject) equivalence per mode, not an
+  error-code/offset-equivalence claim (those are the M3/M4 lanes' own gates); the
+  exhaustive sweep is bounded (length 5, a 12-byte alphabet), with deeper
+  structures covered adversarially, not exhaustively; and ~uri-parse~ ITSELF stays
+  a lenient splitter *by design* — it accepts bytes the ABNF rejects, and that
+  split between the two entry points is the point, not a gap
   ([[file:.plans/decisions/0024-charset-validation-is-the-cores-over-the-split-components.md][decision 0024]],
   [[file:.plans/decisions/0025-the-host-grammar-is-the-cores-over-the-opaque-authority.md][decision 0025]],
-  [[file:.plans/decisions/0027-v02-releases-as-annotated-tag-still-on-never-run-ci-and-defers-the-compliance-claim.md][decision 0027]]).
+  [[file:.plans/decisions/0030-the-rfc-3986-conformance-audit-is-clean-recognition-equivalence-is-earned.md][decision 0030]]).
 - ~(uri normalize)~ does not remove dot-segments. It applies all of RFC 3986
   §6.2.2.1 — *scheme* case, *host* case (M4), uppercase hex, decode unreserved —
   but dot-segment removal is reference resolution's job (§5.2.4), and lives in

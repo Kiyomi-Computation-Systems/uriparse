@@ -6,6 +6,60 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-20
+
+Released on macOS arm64 evidence only. The Linux CI cell is configured and committed
+but has **still never run** (decisions 0017, 0031), so every count below is measured
+on macOS arm64 (Chez Scheme 10.4.1, machine-type tarm64osx; CMake/CTest 4.3.3) and
+nowhere else: the complete selection is 77/77 and the no-Scheme layer 11/11, 0
+failures, re-measured on the release commit. v0.3.0 is the **first release to state an
+RFC 3986 conformance claim** — `uri-parse-validate` is **audited recognizer-equivalent**
+to RFC 3986 Appendix A per mode — and it adds **per-connection collector reuse**
+(`uri-collector-reset!`). The claim is *scoped*: it is recognition (accept/reject)
+equivalence, not error-code/offset; the exhaustive part is bounded (length 5, a 12-byte
+alphabet) with deeper structures covered adversarially; and `uri-parse` itself stays
+lenient by design. It is **not** a blanket whole-library "RFC 3986 compliant" (decision
+0031).
+
+### The RFC 3986 conformance audit — recognition-equivalence, verdict clean
+
+- **`(uri test abnf-oracle)`** — an INDEPENDENT whole-URI recognizer of RFC 3986
+  Appendix A's structural grammar (the `scheme ":" hier-part` / `relative-part` split,
+  the five path-types, and the URI / relative-ref fork — `path-rootless` vs the
+  colon-forbidden `path-noscheme`), composing the audited M3 charset and M4 host
+  component oracles for every charset question. Read from the ABNF, not from the
+  product it grades (decisions 0005, 0028).
+- **The differential** — `uri-parse-validate` ⇄ the oracle over an EXHAUSTIVE
+  length-0..5 sweep of a 12-byte reduced alphabet in all three modes (814,359
+  input×mode pairs, the count asserted equal to an independently computed total so a
+  silent cap reddens and the bound is disclosed on a coverage line), the §1.1.2 / §5.4
+  positive corpora (both accept), the M3 / M4 negative corpora (both reject), and 213
+  deep adversarial vectors each carrying its ABNF verdict as a THIRD independent
+  reading. **Zero deviations**: `uri-parse-validate` is recognizer-equivalent to
+  Appendix A per mode, as shipped in v0.2.0 (decision 0030).
+- The adversarial vectors came from an eight-production adversarial probe with every
+  verdict independently re-derived from Appendix A; a merge-gate review aimed at the
+  audit artifacts themselves confirmed the verdict (no oracle bug, no shared blind
+  spot, no wrong corpus verdict) and hardened the sweep's coverage into an asserted,
+  disclosed invariant. Both failure detectors are mutation-witnessed. No product code
+  changed — the audit is additive test artifacts and records; the release selection
+  grew 75 → 77 (two lanes, source and aot).
+
+### `uri-collector-reset!` — per-connection collector reuse
+
+- **`uri-collector-reset!`** on `(uri collect)` returns a collector to its
+  just-constructed state IN PLACE — `parser-reset!` (preserving the embedder-chosen
+  mode), and the span table, the offset table, and the verdict flags cleared — with no
+  reallocation, so a server can hold one collector per connection instead of allocating
+  a parser and two `eq-hashtable`s per request (issue #11, decision 0029). `uri-parse`
+  and the one-shot path are unchanged; a reset-and-reparse is byte-identical to a fresh
+  collector, pinned in both the components and the offsets, across all three modes and
+  across the rooted and verdict transitions.
+- Measured once, not a standing lane (decision 0016): ~6.4× on a short target. Six
+  mutation witnesses; the merge-gate review corrected a false "verdict unobservable"
+  claim (the verdict reset IS observable through the path offset) and added the
+  witnessing reuse row that proves it.
+
 ## [0.2.0] - 2026-09-19
 
 Released on macOS arm64 evidence only. The Linux CI cell is configured and committed
@@ -209,6 +263,7 @@ host grammar are v0.2 (decisions 0011, 0023, and the README caveats).
   always agrees, and a ratchet that fails in only one direction, are both
   caught.
 
-[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/releases/tag/v0.1.0
