@@ -22,7 +22,7 @@
           uri-parse-result? uri-parse-ok? uri-parse-components
           uri-parse-error-code uri-parse-error-offset
           uri-parse-component-offset
-          uri-parse-validate
+          uri-parse-validate uri-parse-result-validate
           uri-parse-authority-form uri-parse-authority-form-validate
           uri-authority-form-error-codes uri-authority-form-error-code?)
   (import (rnrs)
@@ -262,17 +262,32 @@
                          #f)
                         (loop (cdr names))))))))))
 
+  ;; uri-parse-result-validate : uri-parse-result -> uri-parse-result
+  ;; JUDGE an already-parsed result (issue #18, decision 0032). Returns the result
+  ;; UNCHANGED -- the argument itself -- when it is not `ok?` (a structural error
+  ;; passes straight through; its components are #f and are not re-judged) or when
+  ;; every present component is valid; otherwise the validation ERROR result
+  ;; `validate-result` produces. This is the post-parse half of `uri-parse-validate`,
+  ;; lifted to a public seam so a REUSED collector (decision 0029) can be validated:
+  ;; `(uri-parse-result-validate (uri-collect-finish! c))` gives the same audited
+  ;; verdict (M3/M4, audited clean at 0028/0030) with no re-parse and no second
+  ;; implementation. Validation is a pure function of the result -- its components
+  ;; and its offset seam -- so a reused-collector result and a fresh `uri-parse`
+  ;; result validate identically.
+  (define (uri-parse-result-validate r)
+    (if (uri-parse-ok? r)
+        (or (validate-result r) r)
+        r))
+
   ;; uri-parse-validate : Symbol Bytevector -> uri-parse-result
   ;; Parse leniently, then JUDGE the component charsets and the authority host
   ;; grammar (M3, M4). A structural error passes straight through; an otherwise-
   ;; valid split whose bytes the ABNF rejects becomes a validation error result.
   ;; `uri-parse` itself stays the lenient splitter M5/M6/M7 depend on (a malformed
-  ;; "%" is content there, not an error).
+  ;; "%" is content there, not an error). The judgement is `uri-parse-result-validate`
+  ;; over a fresh one-shot parse (decision 0032).
   (define (uri-parse-validate mode-sym bv)
-    (let ((r (uri-parse mode-sym bv)))
-      (if (uri-parse-ok? r)
-          (or (validate-result r) r)
-          r)))
+    (uri-parse-result-validate (uri-parse mode-sym bv)))
 
   ;; --- authority-form (RFC 9112 §3.2.3, decision 0026) ---------------------
   ;;
