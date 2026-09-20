@@ -2801,3 +2801,59 @@ from chez-http-server (which can now consume main by gitlink: #9/#10/#11 all res
 uri-parse-validate is audited conformant). Housekeeping: the superseded WIP branch
 feat/conformance-audit (115764d, pre-#11 base) is still present and can be pruned. The tree is
 clean on main at aae178e, tagged v0.3.0.
+
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
+ISSUE #18 SEED (2026-09-19). The next SIBLING request from chez-http-server, NEXT direction (3).
+A server validates every request-target through `uri-parse-validate`, which builds a FRESH
+collector every call; #11's `uri-collector-reset!` saved that allocation only on the un-validated
+streaming path, because the audited recognizer was reachable ONLY through `uri-parse-validate`
+(the internal `validate-result` — a pure function OF a parse result — was not exported). The
+issue measured the cost (Darwin arm64, v0.3.0): a 46-byte origin-form target is 3680 B / ~1.2 µs
+fresh vs 1584 B / ~0.5 µs reset — a cost the validating server could not avoid. The additive ask:
+export `uri-parse-result-validate : uri-parse-result -> uri-parse-result` (the post-parse
+judgement, named), and redefine `uri-parse-validate` over it, so a reused collector's
+`uri-collect-finish!` result reaches the SAME audited verdict (0028/0030) with no re-parse and no
+second implementation. Decision 0032 written (5 items). Item 4 DEFERS a result/collector-level
+authority-form validator (the issue's optional part, "Not needed for v1"). No new library, no
+scanner/grammar change, no README/CHANGELOG at merge (rides the next release, per the 0029
+precedent).
+
+ISSUE #18 WORK DONE (branch feat/parse-result-validate). TDD: the new `unit.collect` group was
+written first and witnessed RED (unbound identifier), then the src landed and it went GREEN.
+src/uri/collect.sls: +1 export, the new 4-line `uri-parse-result-validate` (`(if (uri-parse-ok? r)
+(or (validate-result r) r) r)` — a structural error's #f components pass straight through), and
+`uri-parse-validate` reduced to `(uri-parse-result-validate (uri-parse mode-sym bv))` —
+behaviour-preserving. The new function was MUTATION-WITNESSED three ways (skip-judgement →
+the charset pin reddens; fresh-record-on-success → the eq? identity reddens; drop-delegation →
+both equivalence checks redden on the invalid rows). Behaviour-preservation confirmed across the
+whole dependent surface (all measured on the source lane, Chez 10.4.1 tarm64osx): collect 60/187,
+charset 8/1243, host 10/191, authority-form 7/87, grammar 84/553, resolution 47/94, round-trip
+27/96, abnf-differential 9/718 (814,359 sweep) — every one 0 failures.
+
+ISSUE #18 MERGE-GATE REVIEW (Ultracode workflow, 4 dims × review→adversarial-verify, 10 agents).
+3 findings CONFIRMED, 3 REFUTED. The two MAJOR findings were the SAME merge-gate trap as the audit
+(see [[verify-and-emit-integrity-claims]]): (a) the "reused collector, validated" case built a
+FRESH collector and never called `uri-collector-reset!` — and since `uri-parse` IS make+feed+finish,
+it was byte-for-byte the one-shot path, so the central #11 property was asserted in prose but
+exercised by NO check; (b) both equivalence checks route both sides through the same
+`validate-result`, so a bug INSIDE it cancels — the verifier witnessed an authority-arm offset bug
+passing the ENTIRE suite. Fixes: `reuse-validate` now genuinely resets and reuses a collector; the
+equivalence prose is re-scoped to what it actually guards (the delegation + divergence, not the
+judgement); and TWO independent hardcoded pins were added, one per arm of `validate-result`
+(charset invalid-pchar@10 on BOTH the fresh and reset-reused paths; authority invalid-port@9,
+rebased through the authority seam). The authority pin was witnessed to catch the exact bug that
+passed before (offset 9→14 reddens it; the equivalence checks stay green, proving where the teeth
+are). The MINOR finding (decision 0032 mis-attributed `(uri charset)`/`(uri host)` imports to the
+`unit.collect` LANE rather than the `(uri collect)` LIBRARY — R6RS import is not transitive) was
+reworded. The 3 REFUTED were cosmetic (a comment's IP-literal mislabel, a pre-edit line citation
+in the ADR Context, the authority-form "under-validation" which is the CORRECT RFC 3986 verdict and
+is deferred by 0032 item 4). Post-fix `unit.collect` is 60/187, 0 failures.
+
+AWAITING THE PR GATE (0023 point 7 — push + PR are outward-facing publish steps, per-action
+maintainer-gated). The work is committed on feat/parse-result-validate; main is unchanged at
+69d2a84. Next, on approval: push over HTTPS (`gh auth git-credential`, SSH still broken) and open
+a `feat:` PR against main; then the merge gate (maintainer runs the registered suite — the
+release selection is unchanged at 77, no new lane — and squash-merges). The ledger close-out
+(MERGED + REFLECTION + NEXT) is a separate docs(sdd) commit after merge, per the #11 precedent
+(beb8952). — AT THE PR GATE.
