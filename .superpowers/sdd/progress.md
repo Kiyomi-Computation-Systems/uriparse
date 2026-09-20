@@ -2715,3 +2715,54 @@ re-measure at the tag commit, publish steps per-action maintainer-gated). What i
 main since v0.2.0: #11 (uri-collector-reset!, a1b9176) and this audit (66929c2). The version
 bump, README/CHANGELOG reconciliation (now ADDING the earned validation-conformance claim with
 its recognition/normalization boundary), and the tag are the next milestone.
+
+---
+
+THE v0.3.0 RELEASE — the first to STATE an RFC 3986 conformance claim. Branch
+chore/release-v0.3.0.
+
+Plan: the release act for the arc since v0.2.0, checklist derived from decision 0023 as
+amended by 0027, now 0031 (the v0.3 successor). Decisions in force: 0017 (CI never run — each
+release needs its own amendment), 0023/0027 (the v0.1/v0.2 templates), 0029 (#11 —
+uri-collector-reset!), 0030 (the audit VERDICT — recognition-equivalence earned), 0031 (the
+v0.3 release: minor bump, STATE the earned validation-conformance claim scoped to recognition,
+still-never-run CI disclosed).
+
+Base: 2cf9de5 (local main == origin/main; v0.2.0 = f359743, tagged). Unreleased since v0.2.0:
+#11 (uri-collector-reset!, a1b9176 — the one src change, an additive export) and the RFC 3986
+conformance audit (66929c2 — test artifacts + records only). The maintainer ran make test-all
+and confirmed 77/77 before the audit merge.
+
+VERSION: 0.2.0 → 0.3.0 (MINOR — uri-collector-reset! is a new backward-compatible export; no
+existing behaviour changed). The (uri …) libraries stay unversioned.
+
+THE HEADLINE (decision 0031 item 4): v0.3 is where the "RFC 3986 compliant" claim decision
+0027 DEFERRED gets stated — precisely. The audit (0030) proved uri-parse-validate
+recognizer-equivalent to Appendix A per mode, so v0.3 STATES "RFC 3986 conformant
+(validation)", scoped: recognition (accept/reject) not error-code/offset; exhaustive bounded +
+adversarial; uri-parse stays lenient by design. NOT a blanket whole-library "RFC 3986
+compliant".
+
+DOC RECONCILIATION DONE (release act — no algorithm, no lane, no src change in the release
+commit; 0031 item 1):
+  - CMakeLists.txt VERSION 0.2.0 → 0.3.0.
+  - README.org: status → v0.3.0 (2026-09-20); summary gains the audit result (audited
+    recognizer-equivalent, zero deviations) and uri-collector-reset!; the v0.2 "not yet RFC
+    3986 compliant" caveat REWRITTEN from a deferral into a scoped boundary (the validation
+    recognizer is conformant; the blanket claim is not granted — recognition not
+    error-code/offset, bounded+adversarial, uri-parse lenient). CI-not-run quote, strict
+    resolution, round-trip §4.2/§3.3 boundary, not-portable, normalize-no-dot-segments kept
+    verbatim.
+  - CHANGELOG.md: [Unreleased] → [0.3.0] - 2026-09-20 (preamble discloses CI-never-run + the
+    77/77 & 11/11 counts + the scoped claim; an audit section and an uri-collector-reset!
+    section in the measured mutation-witness voice), fresh [Unreleased], version links updated.
+  - decision 0031 written (7 items).
+
+AWAITING (0031 items 6-7, maintainer-gated). The release-verification gate is a fresh
+re-measure AT the reconciliation commit (ctest --preset release + --preset no-scheme, each
+--no-tests=error) — expected 77/77 and 11/11 since the commit is doc-only, but RE-RUN not
+asserted; this session's mode blocks the build, so the maintainer runs it. Then the publish
+steps under the "lets cut a release" ratification: PR → squash-merge → annotated tag v0.3.0 on
+the merge commit (message carries the re-measured counts + CI disclosure) → push tag, all over
+HTTPS. A GitHub Release is optional (body = the CHANGELOG [0.3.0] section verbatim). — AT THE
+RELEASE GATE.
