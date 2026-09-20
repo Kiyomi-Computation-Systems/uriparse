@@ -2675,3 +2675,43 @@ AT THE MERGE GATE (post-review, clean). Remaining to reach a merged state: the m
 already confirmed at 75; +conformance.abnf-differential source+aot → 77) and the closing ritual
 + publish (push, PR, merge), all per-action maintainer-gated (0023 point 7). No product code
 changed in the whole audit; it is purely additive test artifacts + records.
+
+THE RFC 3986 CONFORMANCE AUDIT — MERGED (2026-09-20). PR #16 squash-merged to main as
+66929c2; local main fast-forwarded (beb8952..66929c2); feat/rfc3986-conformance-audit deleted
+local and remote; the superseded WIP feat/conformance-audit (115764d) left for pruning. The
+maintainer RAN THE FULL REGISTERED SUITE (make test-all) and confirmed 77/77 green — the
+release selection grew 75 → 77 with uri.unit.abnf-oracle and uri.conformance.abnf-differential
+(source+aot) — BEFORE authorising the squash-merge, so the merge rests on real full-suite
+evidence, not a source-lane-only claim. Merged over the RED linux-amd64 check, re-confirmed the
+decision-0017 billing refusal (0 steps, 3s, "recent account payments have failed" annotation),
+not a test result. Every push over HTTPS via `gh auth git-credential` (SSH still broken); the
+origin/main tracking ref went stale after the push and was re-synced with fetch + update-ref
+(the recurring HTTPS-push quirk).
+
+REFLECTION. The audit did what an audit must: it could have failed and did not. Zero product
+deviations across ~814k exhaustive comparisons, both corpora, and 213 ABNF-verified adversarial
+vectors — uri-parse-validate is recognizer-equivalent to RFC 3986 Appendix A per mode, earned
+honestly (decision 0030), not granted. Four things carried it. (1) The oracle is INDEPENDENT
+(a structural reading of Appendix A composing the audited M3/M4 component oracles), so
+agreement is evidence, not tautology; (2) the adversarial corpus is a THIRD reading with its
+own ABNF verdicts, guarding the one way a two-reading differential can lie (a shared blind
+spot); (3) the 8-production adversarial-probe Workflow tried hard to break equivalence with
+deep structures the length bound cannot reach, and every one of its 153 verdicts was
+independently re-derived before use; (4) earn-only-if-clean kept the milestone from being a
+rubber stamp. The merge-gate lesson landed on me a THIRD time this session, same shape as #11:
+I asserted an integrity property ABOUT the evidence ("coverage is disclosed") that a run
+refuted — a passing check prints nothing, and nothing asserted the count, so a silent cap was
+invisible. The fix made the property real (assert the count against an independent total;
+emit it unconditionally) and mutation-witnessed. Banked: an unverified claim about the
+evidence is as much a defect as a wrong line of product code, and the only cure is a run —
+[[verify-and-emit-integrity-claims]].
+
+NEXT: CUT A RELEASE (maintainer's request). The audit earned "RFC 3986 conformant (validation)"
+(decision 0030), and unlike M3/M4/M9 whose claims waited for v0.2, this claim is now claimable
+and wants a release to carry it (0028 item 6 / 0027 / 0023 gate the flip to a release). The
+release template is decision 0023 as amended by 0027 (annotated tag, structural doc
+reconciliation, honest claim from the decision records, CI-never-ran amendment disclosed,
+re-measure at the tag commit, publish steps per-action maintainer-gated). What is unreleased on
+main since v0.2.0: #11 (uri-collector-reset!, a1b9176) and this audit (66929c2). The version
+bump, README/CHANGELOG reconciliation (now ADDING the earned validation-conformance claim with
+its recognition/normalization boundary), and the tag are the next milestone.
