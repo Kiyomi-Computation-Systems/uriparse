@@ -2766,3 +2766,38 @@ steps under the "lets cut a release" ratification: PR → squash-merge → annot
 the merge commit (message carries the re-measured counts + CI disclosure) → push tag, all over
 HTTPS. A GitHub Release is optional (body = the CHANGELOG [0.3.0] section verbatim). — AT THE
 RELEASE GATE.
+
+v0.3.0 RELEASED (2026-09-20). PR #17 squash-merged to main as aae178e; local main
+fast-forwarded (2cf9de5..aae178e); chore/release-v0.3.0 deleted local and remote; annotated
+tag v0.3.0 (7fe6688) placed on aae178e and pushed over HTTPS. The release-verification gate
+(0031 item 6) is met by a FRESH re-measure at the reconciliation commit: the maintainer ran
+release 77/77, and no-scheme 11/11 was re-run this session (the no-scheme layer's specs execute
+against the source tree and nothing in it changed) — 0 failures, macOS arm64, Chez 10.4.1
+tarm64osx, CMake/CTest 4.3.3. Merged and tagged over the RED linux-amd64 check, re-confirmed the
+decision-0017 billing refusal (0 steps), not a test result. Every push over HTTPS via `gh auth
+git-credential` (SSH still broken). A GitHub Release was NOT auto-cut (0031 item 7 — the gitlink
+pin needs only the pushed tag); its body, if the maintainer wants one, is the CHANGELOG [0.3.0]
+section verbatim.
+
+REFLECTION. v0.3 is the release the whole conformance thread was pointed at. The template held a
+THIRD time (0023 → 0027 → 0031): structural doc reconciliation, an honest claim drawn straight
+from the decision records, the never-run-CI amendment disclosed, a re-measure at the tagged
+commit, publish steps per-action gated. The one act with real judgment was STATING a conformance
+claim for the first time — and stating it PRECISELY: "RFC 3986 conformant (validation)", scoped
+to recognition (not error-code/offset), bounded exhaustive + adversarial, uri-parse still lenient
+by design, explicitly NOT a blanket whole-library "compliant". The house rule "a property is
+measured or it is not claimed" ran its full course here: v0.2 said the compliance claim was
+"earnable, not granted" and deferred it to an audit; the audit ran, came back clean (0030), and
+v0.3 states exactly what it earned and no more. The deferral discipline paid off yet again —
+M3/M4/M9 claims rode v0.2, the audit's claim rode v0.3, and no released tag ever over-claimed.
+
+NEXT (v0.3 is DONE; what reopens is a SEPARATE choice, not a v0.3 gap — 0031 consequences). Three
+directions, each its own decision: (1) the FIRST FUNDED CI RUN — discharging 0017 item 3 and its
+two never-executed predictions, replacing the macOS-arm64-local disclosure that every release so
+far has carried with cross-platform evidence; (2) v0.3+ TOOLING — the deferred abnfgen positive
+generator and host-aware mutator (0012), now optional standing tooling the clean audit did not
+require, or a relative-reference serializer above recompose (0022); (3) the next SIBLING request
+from chez-http-server (which can now consume main by gitlink: #9/#10/#11 all resolved, and
+uri-parse-validate is audited conformant). Housekeeping: the superseded WIP branch
+feat/conformance-audit (115764d, pre-#11 base) is still present and can be pruned. The tree is
+clean on main at aae178e, tagged v0.3.0.
