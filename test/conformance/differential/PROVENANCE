@@ -40,8 +40,9 @@ CONTENTS (2026-09-19)
 ---------------------
 213 rows: 118 accept, 95 reject.
   by mode: 171 uri, 27 relative-ref, 15 uri-reference.
-  21 rows are #vu8(...) bytevectors carrying control or > 0x7F bytes a string
-  literal cannot hold.
+  21 rows are #vu8(...) bytevectors: 19 carry a control or > 0x7F byte a string
+  literal cannot hold; the other 2 (adversarial.scm:244, :251) pin a raw SP (0x20)
+  whose trailing/interior placement a bytevector makes explicit and edit-safe.
 
 Two provenances, both HAND-DERIVED from Appendix A:
   - 60 rows authored directly at Slice ① seed, grouped by production with a

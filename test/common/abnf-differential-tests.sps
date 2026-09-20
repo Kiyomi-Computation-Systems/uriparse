@@ -22,8 +22,12 @@
 ;;;       THIRD independent reading -- guarding the shared blind spot the oracle and
 ;;;       product could share (decisions 0005 / 0012).
 ;;;
-;;; The sweep's bound is DISCLOSED, not silent (0028 consequences): the summary
-;;; line prints how many input x mode pairs were compared and at what MAXLEN.
+;;; The sweep's bound is DISCLOSED and ASSERTED, never silently capped (0028
+;;; consequences). Two mechanisms, because a passing `check` prints nothing: (1) the
+;;; actual comparison count is checked EQUAL to an independently-computed expected
+;;; total, so a silently-shrunk sweep reddens rather than passing byte-identically;
+;;; and (2) an unconditional `uri-harness: coverage ...` line naming the alphabet,
+;;; MAXLEN, and the compared count is emitted on every run, pass or fail.
 (import (rnrs)
         (uri test harness)
         (uri test corpus)
@@ -84,6 +88,12 @@
       (let ((bv (string->utf8 s)))
         (check (string-append "oracle accepts " label) (oracle-accepts? mode bv))
         (check (string-append "product accepts " label) (product-accepts? mode bv))))
+    ;; A loader that returned a well-formed-but-empty corpus would make the cases
+    ;; below pass with zero checks; assert the sources are populated first.
+    (harness-case "the positive corpora loaded non-empty"
+      (lambda ()
+        (check "§1.1.2 examples non-empty" (> (length examples) 0))
+        (check "§5.4 vectors non-empty" (> (length rows) 0))))
     (harness-case "§1.1.2 examples (uri and uri-reference)"
       (lambda ()
         (for-each (lambda (u)
@@ -112,12 +122,16 @@
       (check (string-append "product rejects " label) (not (product-accepts? mode bv))))
     (harness-case "M3 charset negative corpus"
       (lambda ()
-        (for-each (lambda (v) (both-reject (cs:nv-note v) (cs:nv-mode v) (cs:nv-input v)))
-                  (cs:negative-load (charset-path "negative.scm")))))
+        (let ((rows (cs:negative-load (charset-path "negative.scm"))))
+          (check "charset negative corpus non-empty" (> (length rows) 0))
+          (for-each (lambda (v) (both-reject (cs:nv-note v) (cs:nv-mode v) (cs:nv-input v)))
+                    rows))))
     (harness-case "M4 host negative corpus"
       (lambda ()
-        (for-each (lambda (v) (both-reject (hs:nv-note v) (hs:nv-mode v) (hs:nv-input v)))
-                  (hs:negative-load (host-path "negative.scm")))))))
+        (let ((rows (hs:negative-load (host-path "negative.scm"))))
+          (check "host negative corpus non-empty" (> (length rows) 0))
+          (for-each (lambda (v) (both-reject (hs:nv-note v) (hs:nv-mode v) (hs:nv-input v)))
+                    rows))))))
 
 ;; --- (c) the exhaustive small sweep --------------------------------------
 ;;
@@ -127,6 +141,16 @@
 ;; 0..MAXLEN over this alphabet is fed to both, in all three modes.
 (define ALPHABET (map char->integer (string->list "a1;.:/?#[]@%")))
 (define MAXLEN 5)
+
+;; The number of input x mode pairs a full sweep MUST compare: 3 modes times the
+;; count of words of every length 0..MAXLEN over the alphabet (sum of |A|^k). Derived
+;; here, independently of the loop, so the loop's own tally can be asserted against
+;; it -- a silently-capped sweep then reddens instead of passing byte-identically.
+(define EXPECTED-COMPARISONS
+  (* (length MODES)
+     (let loop ((k 0) (sum 0))
+       (if (fx>? k MAXLEN) sum
+           (loop (fx+ k 1) (+ sum (expt (length ALPHABET) k)))))))
 
 ;; enumerate every length-`len` word over ALPHABET, calling `on-word` on a shared
 ;; buffer (read synchronously, so no per-word copy; a disagreement copies before
@@ -162,9 +186,18 @@
                      (set! disagreements
                            (cons (disagreement-note mode (copy-bytes buf)) disagreements))))
                  MODES))))
-          (check (string-append "compared " (number->string compared)
-                                " input x mode pairs (alphabet=12, len 0.."
-                                (number->string MAXLEN) ")") #t)
+          ;; DISCLOSE the coverage unconditionally (a passing check prints nothing).
+          (display (string-append
+                    "uri-harness: coverage sweep=exhaustive alphabet="
+                    (number->string (length ALPHABET))
+                    " maxlen=" (number->string MAXLEN)
+                    " modes=" (number->string (length MODES))
+                    " compared=" (number->string compared)))
+          (newline)
+          (adapter-flush-output)
+          ;; ASSERT the sweep compared the whole space -- a silent cap reddens here.
+          (check-equal "the sweep compared the full length-0..MAXLEN space"
+                       compared EXPECTED-COMPARISONS)
           (if (null? disagreements)
               (check "no product/oracle disagreement over the swept space" #t)
               (for-each (lambda (d) (check-fail "SWEEP DISAGREEMENT" d))

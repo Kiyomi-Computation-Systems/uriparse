@@ -2560,7 +2560,10 @@ SLICE ① DONE (2026-09-19) -- THE DIFFERENTIAL, AND ITS VERDICT: CLEAN. uri-par
     adversarial corpus of deep structures the length bound cannot reach, each carrying its
     ABNF verdict as a THIRD independent reading (guards a shared oracle/product blind spot,
     0005/0012). MAXLEN=5 committed (len-6 measured clean at 12s but heavy for a lane; len-5 is
-    1.2s); the bound is DISCLOSED in the summary line, not silent (0028 consequences).
+    1.2s); the bound is both DISCLOSED (an unconditional `uri-harness: coverage ...` line
+    naming alphabet/maxlen/compared, emitted every run) and ASSERTED (the loop's tally is
+    checked EQUAL to an independently-computed expected total, so a silent cap reddens rather
+    than passing byte-identically) -- 0028 consequences, hardened at the merge gate below.
   - test/conformance/differential/adversarial.scm (+ PROVENANCE) -- 213 rows (118 accept /
     95 reject; 171 uri, 27 relative-ref, 15 uri-reference; 21 are #vu8 control/high-byte
     vectors). 60 hand-authored at the seed; 153 from the Slice ① probe Workflow. Its own dir,
@@ -2612,3 +2615,63 @@ decision recording the verdict and the ledger close-out. The README/CHANGELOG "c
 claim-flip is NOT in this milestone (0028 item 6): it rides a subsequent release, gated as
 0027/0023 gate release claims. Publish steps (push, PR, merge) remain per-action maintainer-
 gated (0023 point 7).
+
+SLICE ① MERGE-GATE REVIEW (2026-09-19). An adversarial review Workflow (Ultracode) pointed NOT
+at the product but at the AUDIT ARTIFACTS: could a hole make the "clean" verdict FALSE or
+overclaimed? Six dimensions -- oracle-correctness, shared-blindspot (an input both oracle AND
+product get wrong the same way), coverage-gap, harness-vacuity, corpus-fidelity, record-and-lane
+-- each finding adversarially VERIFIED with a real Chez probe (default-refute). 10 agents, 0
+errors: 4 findings, 0 refuted, 4 confirmed (1 major, 2 minor, 1 nit).
+
+THE VERDICT SURVIVED. The high-value dimensions found NOTHING that falsifies "clean": no oracle
+misreading of the ABNF, no shared oracle/product blind spot, no wrong corpus verdict, no missing
+decisive byte, no mis-wired lane. So the product result -- uri-parse-validate is
+recognizer-equivalent to Appendix A over the audited space -- STANDS. Every confirmed finding was
+about the HARNESS's integrity/disclosure or a record, not the audit outcome.
+
+THE MERGE-GATE LESSON, POINTED AT ME AGAIN. The major finding: I asserted an INTEGRITY property
+that was FALSE. The ledger, decision 0028, and the .sps header all claimed the sweep's coverage
+bound was "DISCLOSED in the summary line, not silent" -- but a passing `check` prints only its
+LABEL, and only on FAILURE, so the compared count and MAXLEN were NEVER emitted; worse, nothing
+ASSERTED the count, so a silently-capped sweep (MAXLEN set to 0) produced a byte-identical
+passing summary, indistinguishable from full coverage. The review proved it by running a
+MAXLEN=0 copy to the same SHA-256 as the real run. The "~814k / disclosed" framing was
+overclaimed exactly the way the review was told to hunt. (This rhymes with the #11 gate lesson:
+there I mis-asserted "unobservable"; here I mis-asserted "disclosed" -- both times an unverified
+claim ABOUT the evidence, refuted by a run.)
+
+THE FIXES (all mutation-witnessed or re-run green).
+  1. (major + its minor record twin) test/common/abnf-differential-tests.sps: the vacuous
+     `(check "compared N" #t)` is replaced by `(check-equal ... compared EXPECTED-COMPARISONS)`,
+     where EXPECTED-COMPARISONS = 3 × Σ 12^k (k=0..MAXLEN) = 814359 is derived INDEPENDENTLY of
+     the loop -- so a silent cap reddens (WITNESSED: capping the loop to len 2 while EXPECTED
+     stays at MAXLEN=5 fails "expected 814359, got 471", status=1). And an unconditional
+     `uri-harness: coverage sweep=exhaustive alphabet=12 maxlen=5 modes=3 compared=814359` line
+     is emitted every run (via the exported adapter-flush-output), so the disclosure the records
+     promise now exists. The header, the ledger, and (below) decision 0028's wording are
+     corrected to describe BOTH mechanisms.
+  2. (minor) the positives and negatives groups gained non-emptiness guards (like the adversarial
+     group already had): a corpus reduced to a well-formed-but-empty form now reddens instead of
+     passing with zero checks.
+  3. (nit) PROVENANCE corrected: of the 21 #vu8 rows, 19 carry a control/>0x7F byte and 2 pin a
+     raw SP (0x20) -- not "all 21 control-or-high".
+  RE-GRADED green after the fixes: unit.abnf-oracle 12 cases / 142 checks; conformance.abnf-
+  differential 9 cases / 718 checks (the +1 case / +4 checks are the new count assertion and the
+  four non-emptiness guards); 0 failures; the coverage line emits compared=814359.
+
+THE RECORDED VERDICT: decision 0030. Over the exhaustive length-0..5 sweep (814,359 input×mode
+pairs, ASSERTED complete), the §1.1.2/§5.4 positives, the M3/M4 negatives, and 213 ABNF-verified
+adversarial rows, uri-parse-validate is RECOGNIZER-EQUIVALENT to RFC 3986 Appendix A per mode,
+with ZERO deviations, and the differential's failure detectors and its coverage assertion are
+mutation-witnessed. Per 0028 item 5a the claim "RFC 3986 conformant (validation)" is EARNED and
+becomes claimable -- but the README/CHANGELOG flip RIDES THE NEXT RELEASE (0028 item 6), it is
+NOT in this milestone's merge. Boundaries kept honest (decision 0030): this is RECOGNITION
+equivalence (accept/reject), not error-code/offset equivalence (separately gated by M3/M4); the
+exhaustive part is bounded at length 5 / a 12-byte alphabet, with deeper structures covered by
+the targeted 213-row adversarial corpus, not exhaustively.
+
+AT THE MERGE GATE (post-review, clean). Remaining to reach a merged state: the maintainer's
+`make build` + `ctest --preset release` to register/compile the two new lanes (unit.abnf-oracle
+already confirmed at 75; +conformance.abnf-differential source+aot → 77) and the closing ritual
++ publish (push, PR, merge), all per-action maintainer-gated (0023 point 7). No product code
+changed in the whole audit; it is purely additive test artifacts + records.
