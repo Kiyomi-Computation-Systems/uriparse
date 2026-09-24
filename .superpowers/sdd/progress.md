@@ -2950,3 +2950,47 @@ recompose (0022); (3) the OPTIONAL result/collector-level authority-form validat
 item 4, if a CONNECT-target-reuse request ever measures the need; (4) the next SIBLING request.
 Housekeeping: the superseded WIP branch feat/conformance-audit (115764d, pre-#11 base) is still
 present locally and can be pruned. The tree is clean on main at 611b04b, tagged v0.4.0.
+
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
+ISSUE #21 SEED (2026-09-24). The next SIBLING request from chez-http-server (NEXT direction (4)).
+Its M2.3 core keeps the request-target as a SPAN `[start, end)` of the socket's buffer. Per-request
+allocation must not grow with the target's length (its decision 0002, second amendment). It judges
+origin-form's path and query with `(uri charset)`'s `validate-component`, not the collector:
+RFC 9112's absolute-path is `1*( "/" segment )`, but a collector reads a leading `//` as an
+authority (`//a@b:c/d` → uri-parse-validate 'uri-reference answers invalid-port@6).
+`validate-component` took only a whole bytevector, so the server COPIED each part first. Issue
+measured on v0.4.0: validate-component allocates 0 B, while the copy costs 16/80/512 B at 2/46/500
+bytes, the only length-dependent cost. The additive ask: an optional `start`/`end`, with the index
+relative to start. A ranged validate-authority is optional ("not needed for v1").
+Decision 0034 written (7 items). Item 6 DEFERS the ranged validate-authority, per the 0032 item 4
+precedent. No new library, no lane registration change, and no README/CHANGELOG at merge (rides the
+next release, 0032 item 5).
+
+ISSUE #21 WORK DONE (branch feat/validate-component-range, off main 102c8c9). TDD: a new
+`validate-component over a range` group in the already-registered unit.charset lane was written
+FIRST and witnessed RED (all 5 new cases: "incorrect number of arguments 4"). Then src landed and it
+went GREEN. src/uri/charset.sls: `validate-component` became a case-lambda (2/3/4 args) over one
+`validate-span`, with a range guard (fixnums, 0 ≤ start ≤ end ≤ length, else assertion-violation).
+validate-scheme and validate-content now take `s e`, report `(fx- i s)`, and bound the pct guard by
+`e`. The two-argument call is the ranged call with the default range: one implementation, no second
+one to drift. The group has four parts. (1) Oracle agreement under HOSTILE surroundings: 4
+components × 15 shapes × 7 surroundings, where `" "` trips a scan from 0 or to the buffer end,
+`"41"` completes a `%`/`%4` cut at end, and a valid prefix shifts absolute off relative; the tally is
+checked. (2) Hardcoded pins, independent of the oracle
+([[equivalence-tests-need-an-independent-reference]]). (3) Refusal of `(1 0)` and `(0 9)` on "a b".
+(4) Allocation length-independence: 2 B vs 4000 B spans over 1000 calls. MUTATION-WITNESSED: 14
+mutants, each asserted to land, ALL redden. Raw measure: 0 B/call at 2/46/500/4000 bytes (the 160 B
+read is the statistics call itself, identical at 0 calls). Source lane: unit.charset 13 cases, 1270
+checks, 0 failures. Registered suite re-measured on this tree (2026-09-24, Darwin arm64, Chez 10.4.1
+tarm64osx, CMake/CTest 4.3.3): release 77/77, no-scheme 11/11, 0 failures. The count is unchanged
+at 77, since there is no new lane; unit.charset.chez.aot carries the allocation check compiled.
+
+THE TEST-AUTHORING TRAP, CAUGHT BY ITS OWN MUTANTS. The first refusal case passed with the range
+guard DELETED (M8/M9/M10 survived). Its thunk returned validate-component's TWO values into
+check-raises' single-value `(list 'returned (thunk))`, and Chez raises an &assertion for that on its
+own, so `assertion-violation?` matched whatever the range was. It had also "passed" in the RED run,
+where the arity error is an &assertion too. Fix: the thunk returns ONE value (the verdict list).
+Now M8 reddens both rows, M9 reddens (1 0), and M10 reddens (0 9). A negative start or a non-fixnum
+is ALSO refused by R6RS's own bounds/fixnum checks: a structural guarantee, not a witness for the
+guard, and recorded as such in 0034.

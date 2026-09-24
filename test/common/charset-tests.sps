@@ -80,6 +80,121 @@
                 (set! bad (cons (list b1 b2) bad)))))
           (check-equal "no %XY disagreements over 256x256" bad '()))))))
 
+;; --- validate-component over a range (issue #21, decision 0034) ------------
+;; An embedder holding a component as [start, end) of a larger bytevector (a
+;; server's request-target, still in the buffer the socket filled) judges it in
+;; place. The ranged verdict is the verdict on the span ALONE: nothing outside
+;; [start, end) is read, and the index is relative to start.
+(harness-group "validate-component over a range"
+  (lambda ()
+    (define (bytes s) (string->utf8 s))
+    (define (verdict component bv . range)
+      (call-with-values (lambda () (apply validate-component component bv range)) list))
+    (harness-case "the oracle's verdict on the span alone, whatever surrounds it"
+      (lambda ()
+        ;; Each surrounding is hostile to one way of reading outside the span:
+        ;; " " is invalid in every component (a scan from 0, or on to the
+        ;; buffer's end, trips on it); "41" completes a "%" or "%4" cut off at
+        ;; end (a pct guard bounded by the buffer's length accepts it); a valid
+        ;; prefix moves every absolute index off the relative one.
+        (let ((components '(scheme path query fragment))
+              (shapes '("" "a" "abc" "%" "%4" "x%" "%AB" "%AG" "a%20b" "/a/b"
+                        ":@" "?" "a b" "1a" "a.b-c+d"))
+              (surroundings '(("" . "") (" " . "") ("" . " ") (" " . " ")
+                              ("" . "41") ("%" . "41") ("ab" . "4 ")))
+              (tried 0)
+              (bad '()))
+          (for-each
+           (lambda (component)
+             (for-each
+              (lambda (s)
+                (for-each
+                 (lambda (around)
+                   (let* ((start (bytevector-length (bytes (car around))))
+                          (span (bytes s))
+                          (end (+ start (bytevector-length span)))
+                          (buf (bytes (string-append (car around) s (cdr around)))))
+                     (set! tried (+ tried 1))
+                     (unless (equal? (verdict component buf start end)
+                                     (call-with-values
+                                      (lambda () (oracle-scan component span)) list))
+                       (set! bad (cons (list component (car around) s (cdr around))
+                                       bad)))))
+                 surroundings))
+              shapes))
+           components)
+          (check-equal "every (component, shape, surrounding) was judged" tried
+                       (* (length components) (length shapes) (length surroundings)))
+          (check-equal "no disagreements" bad '()))))
+    (harness-case "pinned: a request line, judged in place"
+      (lambda ()
+        ;; "GET /over/there?name=ferret HTTP/1.1": path [4,15), query [16,27).
+        (let ((line (bytes "GET /over/there?name=ferret HTTP/1.1")))
+          (check-equal "path span" (verdict 'path line 4 15) '(#f #f))
+          (check-equal "query span" (verdict 'query line 16 27) '(#f #f))
+          (check-equal "the whole line is no path" (verdict 'path line) '(invalid-pchar 3)))
+        ;; RFC 9112 origin-form is absolute-path, so "//a@b:c/d" is one; a
+        ;; uri-reference parse reads that "//" as an authority instead.
+        (check-equal "origin-form path span"
+                     (verdict 'path (bytes "GET //a@b:c/d HTTP/1.1") 4 13) '(#f #f))
+        (let ((r (uri-parse-validate 'uri-reference (bytes "//a@b:c/d"))))
+          (check-equal "the collector's reading of the same bytes"
+                       (list (uri-parse-error-code r) (uri-parse-error-offset r))
+                       '(invalid-port 6)))))
+    (harness-case "pinned: the edges of the range"
+      (lambda ()
+        (let ((bv (bytes "/a%41")))
+          (check-equal "a triple cut by end is malformed, at its %"
+                       (verdict 'path bv 0 4) '(invalid-pct-encoded 2))
+          (check-equal "a lone % at end" (verdict 'path bv 0 3) '(invalid-pct-encoded 2))
+          (check-equal "the whole triple" (verdict 'path bv 0 5) '(#f #f)))
+        (check-equal "a span ending at the buffer's end"
+                     (verdict 'fragment (bytes "#x%4") 1 4) '(invalid-pct-encoded 1))
+        (check-equal "the index is relative to start"
+                     (verdict 'path (bytes "xx/a b") 2 6) '(invalid-pchar 2))
+        (check-equal "an empty span is an empty path" (verdict 'path (bytes "a b") 1 1) '(#f #f))
+        (check-equal "an empty span is no scheme" (verdict 'scheme (bytes "http") 2 2)
+                     '(invalid-scheme 0))
+        (check-equal "scheme: the span's first byte is the ALPHA"
+                     (verdict 'scheme (bytes "1http:") 1 5) '(#f #f))
+        (check-equal "scheme: a non-ALPHA first byte of the span"
+                     (verdict 'scheme (bytes "a1b") 1 3) '(invalid-scheme 0))
+        (check-equal "scheme: a later bad byte, relative"
+                     (verdict 'scheme (bytes "xa_b") 1 4) '(invalid-scheme 1))
+        (check-equal "start alone runs to the end" (verdict 'path (bytes " /a b") 1)
+                     '(invalid-pchar 2))
+        (check-equal "start alone, valid" (verdict 'query (bytes " a=1") 1) '(#f #f))))
+    (harness-case "a range outside the bytevector is refused"
+      (lambda ()
+        ;; "a b": a scan that trusted a bad range would stop at the space and
+        ;; answer, rather than raise. The thunk returns ONE value (the verdict
+        ;; list): two values into check-raises would raise on their own and
+        ;; pass whatever the range.
+        (let ((bv (bytes "a b")))
+          (for-each
+           (lambda (range)
+             (check-raises (string-append "range " (adapter-value->string range))
+                           assertion-violation?
+                           (lambda () (apply verdict 'path bv range))))
+           '((1 0) (0 9) (4) (-1 2) (0 1.5) (x 2)))
+          (check-equal "[length, length) is the empty span, not an error"
+                       (verdict 'path bv 3 3) '(#f #f)))))
+    (harness-case "judging a span allocates nothing that grows with its length"
+      (lambda ()
+        ;; The point of the range (issue #21): keeping a component as a span
+        ;; must not cost a per-byte copy to judge it.
+        (let* ((buf (make-bytevector 4096 97))            ; "aaaa..."
+               (reps 1000)
+               (allocated
+                (lambda (len)
+                  (validate-component 'path buf 0 len)    ; warm
+                  (let ((before (adapter-bytes-allocated)))
+                    (do ((i 0 (+ i 1))) ((= i reps))
+                      (validate-component 'path buf 0 len))
+                    (- (adapter-bytes-allocated) before)))))
+          (check-equal "a 2-byte span and a 4000-byte span allocate alike"
+                       (allocated 2) (allocated 4000)))))))
+
 ;; --- the negative corpus: rejected, with the exact code and absolute offset --
 (harness-group "the negative corpus is rejected, exactly"
   (lambda ()

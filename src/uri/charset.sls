@@ -58,45 +58,59 @@
 
   ;; --- the validator -------------------------------------------------------
   ;;
-  ;; validate-component : Symbol Bytevector -> (values (Option Symbol) (Option Nat))
+  ;; validate-component : Symbol Bytevector [Nat [Nat]] -> (values (Option Symbol) (Option Nat))
   ;;
   ;; #f #f when every byte of the component is valid; else the core error code
   ;; and the COMPONENT-RELATIVE index of the first offending position. A
   ;; malformed pct-encoded is reported at the "%" that opens it. The shell
   ;; ((uri collect)) rebases the index to an absolute input offset (0024 item 3).
-  (define (validate-component component bv)
+  ;;
+  ;; The component is bv[start, end), by default the whole bytevector, so an
+  ;; embedder can judge a span of a larger buffer in place without copying it
+  ;; (decision 0034). Nothing outside [start, end) is read: a "%" whose HEXDIGs
+  ;; lie past end is malformed. The index is relative to start. A range that is
+  ;; not within the bytevector is an assertion violation.
+  (define validate-component
+    (case-lambda
+      ((component bv) (validate-span component bv 0 (bytevector-length bv)))
+      ((component bv start) (validate-span component bv start (bytevector-length bv)))
+      ((component bv start end) (validate-span component bv start end))))
+
+  (define (validate-span component bv start end)
+    (unless (and (fixnum? start) (fixnum? end)
+                 (fx<=? 0 start) (fx<=? start end) (fx<=? end (bytevector-length bv)))
+      (assertion-violation 'validate-component
+                           "not a range within the bytevector" start end))
     (case component
-      ((scheme) (validate-scheme bv))
-      ((path)     (validate-content 'invalid-pchar    path-literal? bv))
-      ((query)    (validate-content 'invalid-query    query/fragment-literal? bv))
-      ((fragment) (validate-content 'invalid-fragment query/fragment-literal? bv))
+      ((scheme) (validate-scheme bv start end))
+      ((path)     (validate-content 'invalid-pchar    path-literal? bv start end))
+      ((query)    (validate-content 'invalid-query    query/fragment-literal? bv start end))
+      ((fragment) (validate-content 'invalid-fragment query/fragment-literal? bv start end))
       (else (assertion-violation 'validate-component
                                  "not an M3-validated component" component))))
 
   ;; scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ): non-empty, ALPHA first.
-  (define (validate-scheme bv)
-    (let ((n (bytevector-length bv)))
-      (cond ((fx=? n 0) (values 'invalid-scheme 0))
-            ((not (alpha? (bytevector-u8-ref bv 0))) (values 'invalid-scheme 0))
-            (else
-             (let loop ((i 1))
-               (cond ((fx=? i n) (values #f #f))
-                     ((scheme-rest? (bytevector-u8-ref bv i)) (loop (fx+ i 1)))
-                     (else (values 'invalid-scheme i))))))))
+  (define (validate-scheme bv s e)
+    (cond ((fx=? s e) (values 'invalid-scheme 0))
+          ((not (alpha? (bytevector-u8-ref bv s))) (values 'invalid-scheme 0))
+          (else
+           (let loop ((i (fx+ s 1)))
+             (cond ((fx=? i e) (values #f #f))
+                   ((scheme-rest? (bytevector-u8-ref bv i)) (loop (fx+ i 1)))
+                   (else (values 'invalid-scheme (fx- i s))))))))
 
   ;; path / query / fragment: a literal byte, or "%" HEXDIG HEXDIG.
-  (define (validate-content code literal? bv)
-    (let ((n (bytevector-length bv)))
-      (let loop ((i 0))
-        (cond ((fx=? i n) (values #f #f))
-              ((fx=? (bytevector-u8-ref bv i) PERCENT)
-               (if (valid-pct-triple? bv i n)
-                   (loop (fx+ i 3))
-                   (values 'invalid-pct-encoded i)))
-              ((literal? (bytevector-u8-ref bv i)) (loop (fx+ i 1)))
-              (else (values code i))))))
+  (define (validate-content code literal? bv s e)
+    (let loop ((i s))
+      (cond ((fx=? i e) (values #f #f))
+            ((fx=? (bytevector-u8-ref bv i) PERCENT)
+             (if (valid-pct-triple? bv i e)
+                 (loop (fx+ i 3))
+                 (values 'invalid-pct-encoded (fx- i s))))
+            ((literal? (bytevector-u8-ref bv i)) (loop (fx+ i 1)))
+            (else (values code (fx- i s))))))
 
-  ;; "%" at i, then two bytes that exist and are both HEXDIG. hex-digit-value
+  ;; "%" at i, then two bytes before n that are both HEXDIG. hex-digit-value
   ;; returns a number (possibly 0, which is truthy) or #f, so it is the test.
   (define (valid-pct-triple? bv i n)
     (and (fx<? (fx+ i 2) n)
