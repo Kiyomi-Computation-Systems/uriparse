@@ -3162,3 +3162,33 @@ the bounds and `(uri range)`, with the guard's mutants run against BOTH lanes; A
 non-guard charset mutants of #21 were re-run, and all redden. unit.charset source: 14 cases, 1274
 checks. unit.host source: 15 cases, 247 checks. Release 77/77, no-scheme 11/11, 0 failures (2026-09-25, Darwin
 arm64, Chez 10.4.1).
+
+ISSUE #24 MERGED (2026-09-25). PR #25 squash-merged to main as 7d19f9b, pinned to the tested head
+cfe5c96 by --match-head-commit. The merged tree 8085011 is byte-identical to the tested tree. Issue
+#24 was auto-closed by "Closes #24". Merged over the RED linux-amd64 check, re-confirmed as the
+decision-0017 billing refusal: 0 steps, no runner, ~3s. Merge gate: release 77/77 and no-scheme
+11/11, measured locally on that tree. feat/authority-range was deleted local and remote. Lineage
+on main: … → 4d95118 (v0.5 release) → e0aa810 (v0.5 close-out) → 7d19f9b (#24). Tags are
+unchanged (v0.1.0 to v0.5.0), so #24 is post-v0.5.0 and UNRELEASED.
+
+REFLECTION. The #21 template transferred almost mechanically, because the discipline it earned was
+applied from the first commit rather than rediscovered at the gate: who-checked refusal, an
+independent oracle for the verdict, hand-derived pins where there was no oracle (host bounds), and
+hostile surroundings. The mutation run did its job twice, in two different ways. First, it found
+two MISSING surroundings (A5, A9): a hostile byte only matters where the code would look for it,
+and my first list covered the obvious delimiters but not "a delimiter right after an empty host" or
+"invalid bytes before a later delimiter". Second, it found one EQUIVALENT mutant, and the review's
+cleanup (one split instead of two) made it disappear. That is the useful lesson: an equivalent
+mutant in duplicated code is often a sign that the duplicate carries a check the other copy
+already makes observable. Merge the copies and the mutant becomes witnessable. The review this
+time found no bug, only structure. The three structural cleanups (one guard, one split, one test
+toolkit) each remove a way for two copies to drift, and each drift would have been a silent
+contract break between the ranged judges.
+
+NEXT (#24 is DONE and merged). chez-http-server can land its RFC 9112 §3.2 invalid-Host-value rule
+once it consumes a uriparse carrying 7d19f9b. The open directions are each their own decision:
+(1) a release stating the ranged (uri host) procedures (the maintainer asked for one, next);
+(2) the FIRST FUNDED CI RUN (0017 item 3);
+(3) the result-level authority-form validator (0032 item 4), if a request measures the need;
+(4) tooling (0012, 0022);
+(5) the next sibling request.
