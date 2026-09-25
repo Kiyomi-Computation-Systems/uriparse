@@ -27,7 +27,7 @@
 (library (uri host)
   (export uri-host-error-codes uri-host-error-code? validate-authority
           authority-host-span)
-  (import (rnrs) (uri percent))
+  (import (rnrs) (uri percent) (uri range))
 
   ;; The CORE host error vocabulary (decision 0025 item 6): each the RFC's own ABNF
   ;; spelling (0009 item 1), living with the core, out of (uri vocabulary).
@@ -191,37 +191,64 @@
 
   ;; --- validate-authority --------------------------------------------------
   ;;
-  ;; validate-authority : Bytevector -> (values (Option Symbol) (Option Nat))
+  ;; validate-authority : Bytevector [Nat [Nat]] -> (values (Option Symbol) (Option Nat))
   ;;
   ;; #f #f when the authority is valid (an EMPTY authority is valid: empty host);
   ;; else the first fault code and its authority-RELATIVE index. Split userinfo at
   ;; the single "@" first, then host/port bracket-aware. userinfo → host → port,
   ;; left to right, so the first fault is the leftmost.
-  (define (validate-authority bv)
-    (define n (bytevector-length bv))
-    (let* ((at (find-byte bv 0 n AT))
-           (hp (if at (fx+ at 1) 0)))
-      (let-values (((uc ui) (if at (validate-userinfo bv 0 at) (values #f #f))))
-        (if uc (values uc ui)                       ; userinfo is leftmost
-            (cond
-              ((fx>=? hp n) (values #f #f))          ; empty host (e.g. "user@", "")
-              ((fx=? (u8 bv hp) LBRK)
-               (let ((close (find-byte bv (fx+ hp 1) n RBRK)))
-                 (if (not close) (values 'invalid-ip-literal hp)   ; unterminated "["
-                     (let ((ic (ip-literal-interior bv (fx+ hp 1) close)))
-                       (cond (ic (values ic hp))                    ; report at "["
-                             ((fx=? (fx+ close 1) n) (values #f #f)) ; no port
-                             ((fx=? (u8 bv (fx+ close 1)) COLON)
-                              (validate-port bv (fx+ close 2) n))
-                             (else (values 'invalid-ip-literal hp))))))) ; stray after "]"
-              (else
-               (let ((colon (find-byte bv hp n COLON)))
-                 (if colon
-                     (let-values (((hc hi) (validate-reg-name bv hp colon)))
-                       (if hc (values hc hi) (validate-port bv (fx+ colon 1) n)))
-                     (validate-reg-name bv hp n)))))))))
+  ;;
+  ;; The authority is bv[start, end), by default the whole bytevector, so an
+  ;; embedder can judge a span of a larger buffer in place without copying it
+  ;; (decision 0036). Nothing outside [start, end) is read, and the index is
+  ;; relative to start. A range not within the bytevector is an assertion violation.
+  (define validate-authority
+    (case-lambda
+      ((bv) (authority-fault bv 0 (bytevector-length bv)))   ; relative = absolute
+      ((bv start) (validate-authority bv start (bytevector-length bv)))
+      ((bv start end)
+       (check-range 'validate-authority bv start end)
+       (let-values (((code i) (authority-fault bv start end)))
+         (values code (and i (fx- i start)))))))
 
-  ;; authority-host-span : Bytevector -> (values Nat Nat)
+  ;; authority-split : Bytevector Nat Nat -> (values (Option Nat) Nat Symbol (Option Nat))
+  ;;
+  ;; The bracket-aware split of the authority bv[s, e) (decision 0025 item 4): the
+  ;; ONE split validate-authority and authority-host-span both read, so the host
+  ;; one bounds is the host the other judges. Its values, as indices IN bv: the
+  ;; first "@" (#f if none); the host start hp (after that "@", else s); the host's
+  ;; kind -- 'empty when hp = e, 'ip-literal when a "[" opens it, else 'reg-name;
+  ;; and its delimiter -- the first "]" after hp for an ip-literal, the first ":"
+  ;; from hp for a reg-name, #f when there is none (always #f for 'empty).
+  (define (authority-split bv s e)
+    (let* ((at (find-byte bv s e AT))
+           (hp (if at (fx+ at 1) s)))
+      (cond ((fx>=? hp e) (values at hp 'empty #f))
+            ((fx=? (u8 bv hp) LBRK)
+             (values at hp 'ip-literal (find-byte bv (fx+ hp 1) e RBRK)))
+            (else (values at hp 'reg-name (find-byte bv hp e COLON))))))
+
+  ;; The first fault in the authority bv[s, e) and its index IN bv, or #f #f.
+  (define (authority-fault bv s e)
+    (let-values (((at hp kind delim) (authority-split bv s e)))
+      (let-values (((uc ui) (if at (validate-userinfo bv s at) (values #f #f))))
+        (cond
+          (uc (values uc ui))                                ; userinfo is leftmost
+          ((eq? kind 'empty) (values #f #f))                 ; e.g. "user@", ""
+          ((eq? kind 'ip-literal)
+           (if (not delim) (values 'invalid-ip-literal hp)   ; unterminated "["
+               (let ((ic (ip-literal-interior bv (fx+ hp 1) delim)))
+                 (cond (ic (values ic hp))                   ; report at "["
+                       ((fx=? (fx+ delim 1) e) (values #f #f)) ; no port
+                       ((fx=? (u8 bv (fx+ delim 1)) COLON)
+                        (validate-port bv (fx+ delim 2) e))
+                       (else (values 'invalid-ip-literal hp)))))) ; stray after "]"
+          (delim                                             ; reg-name ":" port
+           (let-values (((hc hi) (validate-reg-name bv hp delim)))
+             (if hc (values hc hi) (validate-port bv (fx+ delim 1) e))))
+          (else (validate-reg-name bv hp e))))))
+
+  ;; authority-host-span : Bytevector [Nat [Nat]] -> (values Nat Nat)
   ;;
   ;; The [start, end) of the HOST within an authority, by the SAME bracket-aware
   ;; split as validate-authority (decision 0025 item 4): the host begins after the
@@ -230,15 +257,24 @@
   ;; (uri normalize) to case-fold only the host (§6.2.2.1a) -- userinfo is
   ;; case-sensitive and port is digits. Structural and total (v0.1 is lenient), so
   ;; an unterminated "[" yields the span to the end.
-  (define (authority-host-span bv)
-    (define n (bytevector-length bv))
-    (let* ((at (find-byte bv 0 n AT))
-           (hp (if at (fx+ at 1) 0)))
-      (cond
-        ((fx>=? hp n) (values hp hp))                     ; empty host
-        ((fx=? (u8 bv hp) LBRK)
-         (let ((close (find-byte bv (fx+ hp 1) n RBRK)))
-           (if close (values hp (fx+ close 1)) (values hp n))))
-        (else
-         (let ((colon (find-byte bv hp n COLON)))
-           (values hp (or colon n))))))))
+  ;;
+  ;; The authority is bv[start, end), by default the whole bytevector (decision
+  ;; 0036): nothing outside it is read, and both bounds are relative to start, like
+  ;; validate-authority's index. A range not within the bytevector is an assertion
+  ;; violation.
+  (define authority-host-span
+    (case-lambda
+      ((bv) (host-span bv 0 (bytevector-length bv)))          ; relative = absolute
+      ((bv start) (authority-host-span bv start (bytevector-length bv)))
+      ((bv start end)
+       (check-range 'authority-host-span bv start end)
+       (let-values (((hs he) (host-span bv start end)))
+         (values (fx- hs start) (fx- he start))))))
+
+  ;; The host's bounds IN bv, within the authority bv[s, e).
+  (define (host-span bv s e)
+    (let-values (((at hp kind delim) (authority-split bv s e)))
+      (case kind
+        ((empty) (values hp hp))
+        ((ip-literal) (values hp (if delim (fx+ delim 1) e)))  ; "]" inclusive, else to e
+        (else (values hp (or delim e)))))))

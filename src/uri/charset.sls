@@ -17,7 +17,7 @@
 (library (uri charset)
   (export uri-charset-error-codes uri-charset-error-code?
           validate-component)
-  (import (rnrs) (uri percent))
+  (import (rnrs) (uri percent) (uri range))
 
   ;; The CORE error vocabulary (decision 0024 item 5): each names the ABNF
   ;; production that failed, in the RFC's own spelling (0009 item 1), and lives
@@ -93,10 +93,7 @@
                                  "not an M3-validated component" component))))
 
   (define (judge-range judge bv start end)
-    (unless (and (fixnum? start) (fixnum? end)
-                 (fx<=? 0 start) (fx<=? start end) (fx<=? end (bytevector-length bv)))
-      (assertion-violation 'validate-component
-                           "not a range within the bytevector" start end))
+    (check-range 'validate-component bv start end)
     (judge bv start end))
 
   (define (validate-path bv s e) (validate-content 'invalid-pchar path-literal? bv s e))

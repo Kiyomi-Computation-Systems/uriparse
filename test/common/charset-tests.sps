@@ -12,7 +12,8 @@
         (uri collect)
         (uri components)
         (uri test charset-oracle)
-        (uri test corpus))
+        (uri test corpus)
+        (uri test ranged))
 
 (define (charset-path name)
   (string-append (adapter-environment-variable "URI_CHARSET_DIR") "/" name))
@@ -89,7 +90,7 @@
   (lambda ()
     (define (bytes s) (string->utf8 s))
     (define (verdict component bv . range)
-      (call-with-values (lambda () (apply validate-component component bv range)) list))
+      (apply results-of validate-component component bv range))
     (harness-case "the oracle's verdict on the span alone, whatever surrounds it"
       (lambda ()
         ;; Each surrounding is hostile to one way of reading outside the span:
@@ -97,8 +98,7 @@
         ;; buffer's end, trips on it); "41" completes a "%" or "%4" cut off at
         ;; end (a pct guard bounded by the buffer's length accepts it); a valid
         ;; prefix moves every absolute index off the relative one.
-        (let ((components '(scheme path query fragment))
-              (shapes '("" "a" "abc" "%" "%4" "x%" "%AB" "%AG" "a%20b" "/a/b"
+        (let ((shapes '("" "a" "abc" "%" "%4" "x%" "%AB" "%AG" "a%20b" "/a/b"
                         ":@" "?" "a b" "1a" "a.b-c+d"))
               (surroundings '(("" . "") (" " . "") ("" . " ") (" " . " ")
                               ("" . "41") ("%" . "41") ("ab" . "4 ")))
@@ -107,20 +107,13 @@
            (lambda (component)
              (for-each
               (lambda (s)
-                (for-each
-                 (lambda (around)
-                   (let* ((start (bytevector-length (bytes (car around))))
-                          (span (bytes s))
-                          (end (+ start (bytevector-length span)))
-                          (buf (bytes (string-append (car around) s (cdr around)))))
-                     (unless (equal? (verdict component buf start end)
-                                     (call-with-values
-                                      (lambda () (oracle-scan component span)) list))
-                       (set! bad (cons (list component (car around) s (cdr around))
-                                       bad)))))
-                 surroundings))
+                (for-each-placement surroundings s
+                 (lambda (around buf start end)
+                   (unless (equal? (verdict component buf start end)
+                                   (results-of oracle-scan component (bytes s)))
+                     (set! bad (cons (list component around s) bad))))))
               shapes))
-           components)
+           '(scheme path query fragment))
           (check-equal "no disagreements" bad '()))))
     (harness-case "pinned: a request line, judged in place"
       (lambda ()
@@ -164,17 +157,13 @@
       (lambda ()
         ;; "a b": a scan that trusted a bad range would stop at the space and
         ;; answer, rather than raise. The thunk returns ONE value (the verdict
-        ;; list): two values into check-raises would raise on their own and
-        ;; pass whatever the range. The raise must name validate-component: a
-        ;; primitive's own bounds or fixnum check is an &assertion too.
-        (define (refused-by-validate-component? c)
-          (and (assertion-violation? c) (who-condition? c)
-               (eq? (condition-who c) 'validate-component)))
+        ;; list), and the raise must name validate-component (see (uri test
+        ;; ranged) for why each).
         (let ((bv (bytes "a b")))
           (for-each
            (lambda (range)
              (check-raises (string-append "range " (adapter-value->string range))
-                           refused-by-validate-component?
+                           (raised-by? 'validate-component)
                            (lambda () (apply verdict 'path bv range))))
            '((1 0) (0 9) (4) (-1 2) (0 1.5) (x 2)))
           (check-equal "[length, length) is the empty span, not an error"
@@ -182,8 +171,7 @@
     (harness-case "an unknown component is named before the range or the bytevector"
       (lambda ()
         (define (names-the-component? c)
-          (and (assertion-violation? c) (who-condition? c)
-               (eq? (condition-who c) 'validate-component)
+          (and ((raised-by? 'validate-component) c)
                (equal? (condition-irritants c) '(authority))))
         (check-raises "before a bad range" names-the-component?
                       (lambda () (verdict 'authority (bytes "a b") 5 2)))
@@ -192,22 +180,12 @@
     (harness-case "judging a span allocates nothing that grows with its length"
       (lambda ()
         ;; The point of the range (issue #21): keeping a component as a span
-        ;; must not cost a per-byte copy to judge it. Each length takes the
-        ;; least of three windows: a collection that fires inside one window
-        ;; adds its own bookkeeping to that window alone.
+        ;; must not cost a per-byte copy to judge it.
         (let* ((buf (make-bytevector 4096 97))            ; "aaaa...": valid in all four
-               (reps 1000)
-               (window
-                (lambda (component len)
-                  (let ((before (adapter-bytes-allocated)))
-                    (do ((i 0 (+ i 1))) ((= i reps))
-                      (validate-component component buf 0 len))
-                    (- (adapter-bytes-allocated) before))))
                (allocated
                 (lambda (component len)
-                  (validate-component component buf 0 len)    ; warm
-                  (min (window component len) (window component len)
-                       (window component len)))))
+                  (least-allocation 1000
+                                    (lambda () (validate-component component buf 0 len))))))
           (for-each
            (lambda (component)
              (check-equal (string-append (symbol->string component)

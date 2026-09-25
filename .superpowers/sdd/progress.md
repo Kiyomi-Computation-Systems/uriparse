@@ -3107,3 +3107,58 @@ ranged validate-authority (0034 item 6) and the result-level authority-form vali
 if a request measures the need. (3) v0.5+ TOOLING (0012 abnfgen / host-aware mutator; 0022
 relative-reference serializer). (4) The next SIBLING request. The tree is clean on main at the
 close-out commit, and v0.5.0 is tagged on 4d95118.
+
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
+ISSUE #24 SEED (2026-09-25). The next SIBLING request from chez-http-server: RFC 9112 §3.2's Host
+rules (400 on missing, duplicate, or invalid Host). The core keeps header values as SPANS of the
+socket's buffer, so a Host value must be judged in place. validate-authority and
+authority-host-span took only a whole bytevector. The issue measured the copy (16/32/32/32/64 B
+over its five hosts, growing with the value), and the program was RE-RUN here with identical
+output. This is exactly what 0034 item 6 deferred "once a request measures the need". Maintainer
+decision (2026-09-25): host bounds RELATIVE to start, one rule for every ranged judge (the issue
+allowed absolute). Decision 0036 written (7 items).
+
+ISSUE #24 WORK DONE (branch feat/authority-range, off main e0aa810). TDD: a new group in the
+already-registered unit.host lane was written FIRST and witnessed RED (all 5 new cases). The
+refusal rows also reddened on the arity error, because the who-check from the #21 review rejected
+it ([[check-raises-needs-a-single-value-thunk]]). src/uri/host.sls changes:
+- the two bodies became `authority-fault` / `host-span` over [s, e), returning indices into bv;
+- the exports became case-lambdas: 1-arg straight through, relative = absolute at 0; 3-arg
+  guarded and rebased by `(fx- … start)`;
+- one local `check-range` names the procedure called.
+Only the entry points ever assumed a whole bytevector; every helper already took [s, e). GREEN
+first run: the 15 hand-derived host-bounds pins matched the existing code. authority-host-span had
+NO direct check before; now it is pinned whole and as a span. MUTATION: 32 mutants.
+A5/A9 SURVIVED at first: the empty-host test against the length needs a "[" right after end, and
+the ":" search to the buffer end needs an invalid byte before a later ":". The fix was two more
+surroundings ("[" and " :1"). After that, 31 redden. B3 (host-span empty-host test against the
+length) is EQUIVALENT: it reads bv[end], but every branch then yields (end, end). It is recorded
+in 0036 with that reason. Measured: 0 B/call for both procedures on the issue's hosts and on
+4000-byte values. unit.host source: 15 cases, 247 checks, 0 failures. Registered suite: release
+77/77, no-scheme 11/11, 0 failures (2026-09-25, Darwin arm64, Chez 10.4.1 tarm64osx, CMake/CTest
+4.3.3). No new lane.
+
+ISSUE #24 MERGE-GATE REVIEW (/code-review xhigh, inline). 4 findings, no correctness bug, and all
+applied on the maintainer's "apply the 4 cleanups" (PR #25 open).
+(1) The range guard was two copies: charset's judge-range and host's check-range. It is now ONE
+new pure library, `(uri range)` (check-range), imported by both.
+(2) authority-fault and host-span each re-derived the bracket-aware split. That is now ONE
+`authority-split` → (values at hp kind delim), read by both, so 0025 item 4's "the SAME split" is
+structural. A side effect: the first round's equivalent mutant (B3) is GONE. The empty-host test
+is now the split's one line and validate-authority observes it (S4 reddens).
+(3) The range-test techniques copied from unit.charset now live ONCE in the harness library
+`(uri test ranged)`: results-of, raised-by?, least-allocation, for-each-placement. Both lanes use
+it. It is named ranged.sls, not range.sls, because lane manifests key measured copies by basename,
+and src's range.sls shares those manifests.
+(4) Decision 0036 overstated its own coverage ("12 hostile surroundings", one of which is the
+whole-buffer placement); it now says 11 plus the whole buffer.
+New libraries were registered in the provenance manifests: range.sls in URI_COLLECT and the
+normalize lane; URI_RANGED_LIB in unit.charset and unit.host. The design-doc library table gains
+`(uri range)`. Decision 0036 was amended (items 1, 4, 7, Evidence). Behaviour is preserved:
+charset, host, collect, normalize and authority-form all passed unchanged on the refactored src
+before the tests moved. The mutation set was rebuilt: 29 mutants over the split, the fault path,
+the bounds and `(uri range)`, with the guard's mutants run against BOTH lanes; ALL redden. The 16
+non-guard charset mutants of #21 were re-run, and all redden. unit.charset source: 14 cases, 1274
+checks. unit.host source: 15 cases, 247 checks. Release 77/77, no-scheme 11/11, 0 failures (2026-09-25, Darwin
+arm64, Chez 10.4.1).
