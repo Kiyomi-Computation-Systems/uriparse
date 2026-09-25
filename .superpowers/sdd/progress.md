@@ -3010,3 +3010,41 @@ A new ordering case was witnessed RED first. (6) The `tried` count check could n
 vs the product of the same lists' lengths), so it was removed. Re-measured 2026-09-24 (Darwin arm64,
 Chez 10.4.1): unit.charset source 14 cases, 1274 checks, 0 failures. 20 mutants, all redden. 0
 B/call for every component at 2/46/500/4000 bytes.
+
+ISSUE #21 MERGED (2026-09-25). PR #22 squash-merged to main as bb8392a; issue #21 auto-closed by
+"Closes #21". Merged over the RED linux-amd64 check, re-confirmed as the decision-0017 billing
+refusal: 0 steps, no runner, ~3s, the "recent account payments have failed" annotation. Not a test
+result. Merge gate: release 77/77 and no-scheme 11/11, 0 failures, measured locally on exactly the
+merged tree (9c4719e, Darwin arm64, Chez 10.4.1 tarm64osx), with the squash pinned to that head by
+--match-head-commit. Local main fast-forwarded 102c8c9 → bb8392a. feat/validate-component-range was
+deleted local and remote. Lineage on main: … → 611b04b (v0.4 release) → 102c8c9 (v0.4 close-out) →
+bb8392a (#21). Tags are unchanged (v0.1.0–v0.4.0), so #21 is post-v0.4.0 and UNRELEASED.
+
+REFLECTION. A small, honest additive: one export gains an optional range, the whole-bytevector
+call is unchanged for every input, and the property the sibling needed (no allocation that grows
+with the target) is pinned by a check rather than asserted. What went well: the independent-reference
+discipline ([[equivalence-tests-need-an-independent-reference]]) was applied FROM THE START this time.
+The range sweep grades against the test-side oracle on the copied-out span, and the pins are
+hardcoded. The surroundings were chosen adversarially, one per way of reading outside the span, so
+every mutant that reads out of range reddened on the first try. What did not: the SAME family of
+defect the gate has now caught FOUR times running (audit → v0.3 → #18 → here) — a check that passes
+whether the code is right or wrong. It came in two forms this time. First, a multi-value thunk in
+check-raises raised on its own. It was caught by my own mutants before the review; see
+[[check-raises-needs-a-single-value-thunk]]. Second, the review found an `assertion-violation?`
+predicate that R6RS's own bounds/fixnum checks also satisfy, which left 4 of 6 refusal rows
+toothless. I had written that down as "a structural guarantee, not a witness" instead of making the
+rows witnesses. The fix, `condition-who`, cost one line. The lesson sharpens the house rule: when
+the predicate is broad, the check is only as strong as what ELSE satisfies it. So pin WHO raised,
+not just that something did. The review also paid for itself on the API: naming the component
+before the range restored the old misuse diagnostic, and it removed a redundant guard on (uri
+collect)'s hot path in the same move.
+
+NEXT (#21 is DONE and merged; nothing outstanding). chez-http-server can drop its copy workaround
+(and the explicit copy term in its length-independence check) once it consumes a uriparse that
+carries bb8392a, by gitlink now or by the next tag. The open directions are each their own
+decision, NOT a #21 gap. (1) The FIRST FUNDED CI RUN (0017 item 3). The billing refusal has now
+been re-confirmed on #19, #20 and #22. (2) v0.4+ TOOLING (0012 abnfgen / host-aware mutator; 0022
+relative-reference serializer). (3) The DEFERRED ranged validate-authority (0034 item 6) and the
+result-level authority-form validator (0032 item 4), if a request measures the need. (4) A v0.5
+release whenever the maintainer wants the ranged validate-component stated in a tag + CHANGELOG.
+(5) The next SIBLING request. The tree is clean on main at bb8392a.
