@@ -69,25 +69,41 @@
   ;; embedder can judge a span of a larger buffer in place without copying it
   ;; (decision 0034). Nothing outside [start, end) is read: a "%" whose HEXDIGs
   ;; lie past end is malformed. The index is relative to start. A range that is
-  ;; not within the bytevector is an assertion violation.
+  ;; not within the bytevector is an assertion violation. An unknown component
+  ;; is named first, before the range or the bytevector is looked at.
   (define validate-component
     (case-lambda
-      ((component bv) (validate-span component bv 0 (bytevector-length bv)))
-      ((component bv start) (validate-span component bv start (bytevector-length bv)))
-      ((component bv start end) (validate-span component bv start end))))
+      ((component bv)
+       (let ((judge (judge-of component)))
+         (judge bv 0 (bytevector-length bv))))       ; the whole: a range by construction
+      ((component bv start)
+       (let ((judge (judge-of component)))
+         (judge-range judge bv start (bytevector-length bv))))
+      ((component bv start end)
+       (let ((judge (judge-of component)))
+         (judge-range judge bv start end)))))
 
-  (define (validate-span component bv start end)
+  (define (judge-of component)
+    (case component
+      ((scheme)   validate-scheme)
+      ((path)     validate-path)
+      ((query)    validate-query)
+      ((fragment) validate-fragment)
+      (else (assertion-violation 'validate-component
+                                 "not an M3-validated component" component))))
+
+  (define (judge-range judge bv start end)
     (unless (and (fixnum? start) (fixnum? end)
                  (fx<=? 0 start) (fx<=? start end) (fx<=? end (bytevector-length bv)))
       (assertion-violation 'validate-component
                            "not a range within the bytevector" start end))
-    (case component
-      ((scheme) (validate-scheme bv start end))
-      ((path)     (validate-content 'invalid-pchar    path-literal? bv start end))
-      ((query)    (validate-content 'invalid-query    query/fragment-literal? bv start end))
-      ((fragment) (validate-content 'invalid-fragment query/fragment-literal? bv start end))
-      (else (assertion-violation 'validate-component
-                                 "not an M3-validated component" component))))
+    (judge bv start end))
+
+  (define (validate-path bv s e) (validate-content 'invalid-pchar path-literal? bv s e))
+  (define (validate-query bv s e)
+    (validate-content 'invalid-query query/fragment-literal? bv s e))
+  (define (validate-fragment bv s e)
+    (validate-content 'invalid-fragment query/fragment-literal? bv s e))
 
   ;; scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ): non-empty, ALPHA first.
   (define (validate-scheme bv s e)

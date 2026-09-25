@@ -2994,3 +2994,19 @@ where the arity error is an &assertion too. Fix: the thunk returns ONE value (th
 Now M8 reddens both rows, M9 reddens (1 0), and M10 reddens (0 9). A negative start or a non-fixnum
 is ALSO refused by R6RS's own bounds/fixnum checks: a structural guarantee, not a witness for the
 guard, and recorded as such in 0034.
+
+ISSUE #21 MERGE-GATE REVIEW (/code-review xhigh, inline; 7 findings, all applied). (1) The refusal
+predicate was bare `assertion-violation?`, so 4 of the 6 rows passed with the guard deleted: R6RS's
+own bounds/fixnum checks are &assertion too. The rows now require who = validate-component, and
+the guard-deletion mutant reddens ALL SIX. (2)+(3) The allocation check was one window, path only.
+It is now all four components, each the least of three windows (a collection firing inside one
+window cannot redden it). A copy in the scheme, query or fragment arm alone is now witnessed.
+(4) Decision 0034 said "(uri charset) keeps its one export"; it exports three, and the wording is now
+"gains no export". (5)+(7) The range guard and `bytevector-length` ran before the component dispatch,
+so `(validate-component 'bogus 42)` blamed bytevector-length, and the 2-arg hot path (uri collect)
+re-checked a range valid by construction. src now resolves the component FIRST (`judge-of` → a
+top-level per-component judge, no allocation) and guards only the 3/4-arg clauses (`judge-range`).
+A new ordering case was witnessed RED first. (6) The `tried` count check could not fail (a counter
+vs the product of the same lists' lengths), so it was removed. Re-measured 2026-09-24 (Darwin arm64,
+Chez 10.4.1): unit.charset source 14 cases, 1274 checks, 0 failures. 20 mutants, all redden. 0
+B/call for every component at 2/46/500/4000 bytes.

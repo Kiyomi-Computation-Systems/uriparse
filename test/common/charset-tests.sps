@@ -102,7 +102,6 @@
                         ":@" "?" "a b" "1a" "a.b-c+d"))
               (surroundings '(("" . "") (" " . "") ("" . " ") (" " . " ")
                               ("" . "41") ("%" . "41") ("ab" . "4 ")))
-              (tried 0)
               (bad '()))
           (for-each
            (lambda (component)
@@ -114,7 +113,6 @@
                           (span (bytes s))
                           (end (+ start (bytevector-length span)))
                           (buf (bytes (string-append (car around) s (cdr around)))))
-                     (set! tried (+ tried 1))
                      (unless (equal? (verdict component buf start end)
                                      (call-with-values
                                       (lambda () (oracle-scan component span)) list))
@@ -123,8 +121,6 @@
                  surroundings))
               shapes))
            components)
-          (check-equal "every (component, shape, surrounding) was judged" tried
-                       (* (length components) (length shapes) (length surroundings)))
           (check-equal "no disagreements" bad '()))))
     (harness-case "pinned: a request line, judged in place"
       (lambda ()
@@ -169,31 +165,55 @@
         ;; "a b": a scan that trusted a bad range would stop at the space and
         ;; answer, rather than raise. The thunk returns ONE value (the verdict
         ;; list): two values into check-raises would raise on their own and
-        ;; pass whatever the range.
+        ;; pass whatever the range. The raise must name validate-component: a
+        ;; primitive's own bounds or fixnum check is an &assertion too.
+        (define (refused-by-validate-component? c)
+          (and (assertion-violation? c) (who-condition? c)
+               (eq? (condition-who c) 'validate-component)))
         (let ((bv (bytes "a b")))
           (for-each
            (lambda (range)
              (check-raises (string-append "range " (adapter-value->string range))
-                           assertion-violation?
+                           refused-by-validate-component?
                            (lambda () (apply verdict 'path bv range))))
            '((1 0) (0 9) (4) (-1 2) (0 1.5) (x 2)))
           (check-equal "[length, length) is the empty span, not an error"
                        (verdict 'path bv 3 3) '(#f #f)))))
+    (harness-case "an unknown component is named before the range or the bytevector"
+      (lambda ()
+        (define (names-the-component? c)
+          (and (assertion-violation? c) (who-condition? c)
+               (eq? (condition-who c) 'validate-component)
+               (equal? (condition-irritants c) '(authority))))
+        (check-raises "before a bad range" names-the-component?
+                      (lambda () (verdict 'authority (bytes "a b") 5 2)))
+        (check-raises "before a non-bytevector" names-the-component?
+                      (lambda () (verdict 'authority 42)))))
     (harness-case "judging a span allocates nothing that grows with its length"
       (lambda ()
         ;; The point of the range (issue #21): keeping a component as a span
-        ;; must not cost a per-byte copy to judge it.
-        (let* ((buf (make-bytevector 4096 97))            ; "aaaa..."
+        ;; must not cost a per-byte copy to judge it. Each length takes the
+        ;; least of three windows: a collection that fires inside one window
+        ;; adds its own bookkeeping to that window alone.
+        (let* ((buf (make-bytevector 4096 97))            ; "aaaa...": valid in all four
                (reps 1000)
-               (allocated
-                (lambda (len)
-                  (validate-component 'path buf 0 len)    ; warm
+               (window
+                (lambda (component len)
                   (let ((before (adapter-bytes-allocated)))
                     (do ((i 0 (+ i 1))) ((= i reps))
-                      (validate-component 'path buf 0 len))
-                    (- (adapter-bytes-allocated) before)))))
-          (check-equal "a 2-byte span and a 4000-byte span allocate alike"
-                       (allocated 2) (allocated 4000)))))))
+                      (validate-component component buf 0 len))
+                    (- (adapter-bytes-allocated) before))))
+               (allocated
+                (lambda (component len)
+                  (validate-component component buf 0 len)    ; warm
+                  (min (window component len) (window component len)
+                       (window component len)))))
+          (for-each
+           (lambda (component)
+             (check-equal (string-append (symbol->string component)
+                                         ": a 2-byte and a 4000-byte span allocate alike")
+                          (allocated component 2) (allocated component 4000)))
+           '(scheme path query fragment)))))))
 
 ;; --- the negative corpus: rejected, with the exact code and absolute offset --
 (harness-group "the negative corpus is rejected, exactly"

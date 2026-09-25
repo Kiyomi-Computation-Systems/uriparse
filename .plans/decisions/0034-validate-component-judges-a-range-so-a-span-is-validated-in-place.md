@@ -34,9 +34,11 @@ with the target, and the server's decision requires that none does.
 1. **`validate-component` takes an optional `start` and `end`:
    `Symbol Bytevector [Nat [Nat]] -> (values (Option Symbol) (Option Nat))`.** They default
    to 0 and the bytevector's length (a `case-lambda`, so `start` alone runs to the end). The
-   two-argument call is the ranged call with the default range. It is one implementation,
-   not two, so the whole-bytevector and ranged verdicts cannot drift. It keeps the same name
-   rather than adding a second one (the issue allowed either): one judge, one name.
+   two-argument call judges `[0, length)` with the same per-component judge as the ranged
+   call, and skips only the range check (that range is valid by construction). It is one
+   implementation, not two, so the whole-bytevector and ranged verdicts cannot drift. It
+   keeps the same name rather than adding a second one (the issue allowed either): one
+   judge, one name.
 
 2. **The verdict on `bv[start, end)` is the verdict on those bytes alone.** Nothing outside
    the range is read. A `%` whose two HEXDIGs would lie past `end` is malformed
@@ -52,12 +54,16 @@ with the target, and the server's decision requires that none does.
 4. **A range not within the bytevector is an assertion violation**, which names
    `validate-component`. That covers a non-fixnum, `start < 0`, `start > end` and
    `end > length`. It is refused, never clamped: a clamped range would judge bytes the
-   caller did not name.
+   caller did not name. An unknown component is named FIRST, before the range or the
+   bytevector is looked at, as the two-argument call always did (`(validate-component
+   'bogus 42)` still reports the component, not `bytevector-length`).
 
 5. **Judging a span allocates nothing that grows with its length.** This property is the
-   point of the change, and a check pins it (a 2-byte and a 4000-byte span allocate the
-   same over 1000 calls). What was measured is stronger: 0 bytes per call at 2, 46, 500 and
-   4000 bytes (the 160 B read is the statistics call itself, the same at 0 calls). What
+   point of the change, and a check pins it for all four components (a 2-byte and a 4000-byte
+   span allocate the same over 1000 calls, each the least of three windows so a collection
+   firing inside one window cannot redden it). What was measured is stronger: 0 bytes per
+   call for every component at 2, 46, 500 and 4000 bytes (the 160 B read is the statistics
+   call itself, the same at 0 calls). What
    this decision promises is length-independence.
 
 6. **A ranged `validate-authority` is DEFERRED** (the issue's optional part: chez-http-server
@@ -66,13 +72,13 @@ with the target, and the server's decision requires that none does.
    `validate-port`), so it is a small additive change once a request measures the need.
 
 7. **No new library, no lane registration, no scanner/grammar change, and no
-   release-scoped doc edit at merge.** `(uri charset)` keeps its one export. `(uri
+   release-scoped doc edit at merge.** `(uri charset)` gains no export; its export list is unchanged. `(uri
    collect)` still calls the two-argument form on its component bytevectors. The README and
    CHANGELOG note rides the next release (0032 item 5).
 
 ## Evidence
 
-The already-registered `unit.charset` lane (13 cases, 1270 checks, 0 failures on the source
+The already-registered `unit.charset` lane (14 cases, 1274 checks, 0 failures on the source
 lane, Darwin arm64, Chez 10.4.1 tarm64osx, 2026-09-24) now also covers:
 
 - **Agreement with the independent oracle.** For every component, 15 shapes and 7 hostile
@@ -84,24 +90,29 @@ lane, Darwin arm64, Chez 10.4.1 tarm64osx, 2026-09-24) now also covers:
   origin-form `//a@b:c/d` span beside the collector's `invalid-port@6` reading; a triple cut
   by `end`; the relative index; empty spans; the scheme's first byte and a later one; and
   `start` alone.
-- **Refusal.** The ranges `(1 0)` and `(0 9)` on `"a b"`, where a scan that trusted the
+- **Refusal.** Six bad ranges on `"a b"`, each required to raise with `validate-component`
+  as its who: a primitive's own bounds or fixnum check is an &assertion too, so the who is
+  what makes a row a witness of the guard. For `(1 0)` and `(0 9)` a scan that trusted the
   range would stop at the space and answer instead of raising.
-- **Allocation.** Length-independence, as in item 5.
+- **Ordering.** An unknown component (`'authority`) is named before a bad range and before
+  a non-bytevector.
+- **Allocation.** Length-independence for all four components, as in item 5.
 
-Each was mutation-witnessed: 14 mutants, each asserted to land, each reddening the lane
+Each was mutation-witnessed: 20 mutants, each asserted to land, each reddening the lane
 (scan from 0; scan or scheme-scan to the buffer's end; pct guard bounded by the buffer;
 absolute index in each of the three reporting arms; scheme ALPHA read at 0; scheme empty by
-length; no range guard; each half of the guard; `start` ignored; judging a copy). A
-negative `start` or a non-fixnum is also refused by R6RS's own bounds and fixnum checks.
-That is a structural guarantee, not a witness for the guard.
+length; no range guard, which reddens all six refusal rows; each half of the guard; `start`
+ignored; judging a copy; a copy in the scheme, query or fragment arm alone; the length, or
+the range, checked before the component).
 
 ## Consequences
 
 - chez-http-server judges origin-form's path and query in place. Its copy workaround and the
   explicit copy term in its length-independence check can go, once it consumes a uriparse
   that carries this change.
-- `validate-component`'s whole-bytevector behaviour is unchanged for every input (the
-  existing single-byte, battery and exhaustive `%XY` oracle agreement, and the M3
-  negative/positive corpora, drive the two-argument form end to end).
+- `validate-component`'s whole-bytevector behaviour is unchanged for every input, misuse
+  diagnostics included (the existing single-byte, battery and exhaustive `%XY` oracle
+  agreement, and the M3 negative/positive corpora, drive the two-argument form end to end;
+  the ordering check pins the unknown-component diagnostic).
 - What stays deferred is a separate choice, not a gap: a ranged `validate-authority`
   (item 6).
