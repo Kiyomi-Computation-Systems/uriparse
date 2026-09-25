@@ -6,6 +6,59 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-25
+
+Released on macOS arm64 evidence only. The Linux CI cell is configured and committed
+but has **still never run** (decisions 0017, 0037). The #24 PR's `linux-amd64` check
+was the billing refusal (0 steps, ~3s, "recent account payments have failed"), not a
+run. So every count below is measured on macOS arm64 (Chez Scheme 10.4.1, machine-type
+tarm64osx; CMake/CTest 4.3.3) and nowhere else: the complete selection is 77/77 and the
+no-Scheme layer 11/11, 0 failures, re-measured on the release commit. v0.6.0 extends
+v0.5.0's ranged validation to the **authority**: a server judges a `Host` header value
+in place, still in the socket's buffer, without copying it. It states **no new
+conformance claim**: the ranged form is the same M4 host grammar judge that
+`uri-parse-validate` uses. The scoped claim and every boundary read exactly as
+v0.3.0 to v0.5.0 (decision 0037).
+
+### `validate-authority` and `authority-host-span` over a range — judge a Host value in place
+
+- **`validate-authority`** and **`authority-host-span`** on `(uri host)` now take an
+  optional `start` and `end`, defaulting to 0 and the length, so every one-argument
+  call behaves as before:
+  - `validate-authority : Bytevector [Nat [Nat]] -> (values (Option Symbol) (Option Nat))`
+  - `authority-host-span : Bytevector [Nat [Nat]] -> (values Nat Nat)`
+
+  The verdict on `bv[start, end)` is the verdict on those bytes alone:
+  - nothing outside the range is read, so an `@`, `]` or `:` past `end` splits, closes
+    or delimits nothing;
+  - a `%` whose HEXDIGs would lie past `end` is malformed;
+  - **every number returned is relative to `start`**: the fault index, and BOTH host
+    bounds, the same rule as `validate-component`.
+
+  A range not within the bytevector is an assertion violation that names the procedure
+  called (decision 0036).
+- The point (issue #24): RFC 9112 §3.2 requires a 400 for a `Host` field with an invalid
+  value. A server that keeps header values as spans of its buffer would otherwise copy
+  each `Host` value out first (16 to 64 B per request, growing with the value). The
+  ranged form allocates **0 bytes per call** for both procedures, on ordinary hosts and
+  on 4000-byte values.
+- It judges an RFC 3986 **authority**, not RFC 9110's `Host` (`uri-host [ ":" port ]`),
+  which has no userinfo. Refusing a userinfo is the server's rule:
+  `authority-host-span`'s host start is not 0 exactly when the value contains an `@`.
+  So is deciding whether an empty `Host` is acceptable, since an empty authority is
+  valid here.
+- `authority-host-span` now has direct checks of its own (15 hand-derived bounds, whole
+  and as a span). Other new `unit.host` checks, all mutation-witnessed:
+  - agreement with the independent host oracle on the span alone, placed in 11 hostile
+    surroundings;
+  - pinned `Host` lines;
+  - refusal checked by who raised it;
+  - allocation that does not grow with the value's length.
+
+  A merge-gate review made the range check and the host split ONE implementation each,
+  shared by every ranged judge. After it, all 29 mutants redden. No new lane, and no new
+  public export; the release selection is unchanged at 77.
+
 ## [0.5.0] - 2026-09-25
 
 Released on macOS arm64 evidence only. The Linux CI cell is configured and committed
@@ -350,7 +403,8 @@ host grammar are v0.2 (decisions 0011, 0023, and the README caveats).
   always agrees, and a ratchet that fails in only one direction, are both
   caught.
 
-[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.2.0...v0.3.0

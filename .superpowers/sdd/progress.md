@@ -3192,3 +3192,28 @@ once it consumes a uriparse carrying 7d19f9b. The open directions are each their
 (3) the result-level authority-form validator (0032 item 4), if a request measures the need;
 (4) tooling (0012, 0022);
 (5) the next sibling request.
+
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
+v0.6 RELEASE SEED (2026-09-25; "lets cut a 0.7 release"). The maintainer wrote 0.7. Asked once, with
+v0.5.0 the last tag, they chose v0.6.0, so the version history has no gap. The arc since v0.5.0 (tag
+on 4d95118) is ONE merged change: issue #24, the ranged validate-authority / authority-host-span
+(7d19f9b), with its review cleanups. Evidence: CI STILL never run (the #24 PR's linux-amd64 was the
+0017 billing refusal: 0 steps, no runner), so the basis is macOS-arm64-local. Claim: NO NEW claim.
+It is the same M4 host judge, reached over a span. It judges an RFC 3986 AUTHORITY, not RFC 9110's
+Host, and the CHANGELOG names the server's part (refusing userinfo; accepting an empty Host or
+not). Bump is MINOR (0.5.0 → 0.6.0).
+
+v0.6 RECONCILIATION DONE (branch chore/release-v0.6.0, off main 2623d6f). CMakeLists VERSION 0.5.0 →
+0.6.0. README.org: status → v0.6.0 (2026-09-25, UTC-date convention). The summary gains one clause
+(judge a Host value in place, #24), and the API paragraph names validate-authority,
+authority-host-span and their optional range, with results relative to start. Every frozen claim
+and caveat is kept VERBATIM. CHANGELOG.md: [Unreleased] → [0.6.0] - 2026-09-25. Its preamble
+discloses CI-never-run, the billing refusal, 77/77 and 11/11, and "no new conformance claim". One
+feature section, including the authority-not-Host boundary. A fresh [Unreleased] and updated
+version links; frozen [0.5.0]..[0.1.0] untouched. Decision 0037 written (7 items). The release
+gate was re-measured HERE on the final reconciled tree, the exact tree committed (2026-09-25,
+Darwin arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3): release 77/77, no-scheme 11/11, 0 failures.
+`git diff -- src test` against main is empty.
+Publish steps (squash merge pinned by --match-head-commit, tree-hash compare, annotated tag v0.6.0,
+tag push) wait for the closing ritual, which is asked for first.
