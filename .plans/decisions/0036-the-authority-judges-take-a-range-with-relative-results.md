@@ -37,6 +37,10 @@ copy.
    - Each procedure has ONE implementation over `[s, e)` (`authority-fault`, `host-span`),
      which returns indices into `bv`. The one-argument call hands it `[0, length)` directly
      and skips the range check, as 0034 did, so its results are unchanged for every input.
+   - Both implementations read ONE split, `authority-split` (the first `@`, the host start,
+     the host's kind, and its `]` or `:` delimiter). Decision 0025 item 4 requires the host
+     bound to come from "the SAME" split the validator judges; that sameness is now
+     structural rather than a matter of two copies kept in step.
 
 2. **The verdict on `bv[start, end)` is the verdict on those bytes alone.** Nothing outside
    the range is read. An `@`, `]` or `:` past `end` does not split, close or delimit
@@ -52,9 +56,10 @@ copy.
 
 4. **A range not within the bytevector is an assertion violation that names the procedure
    called** (`validate-authority` or `authority-host-span`). That covers a non-fixnum,
-   `start < 0`, `start > end` and `end > length`. It is refused, never clamped. The four-line
-   check is local to `(uri host)`, not shared with `(uri charset)`'s: sharing it would mean a
-   new library, and new lane source registrations, for no behaviour.
+   `start < 0`, `start > end` and `end > length`. It is refused, never clamped. The check is
+   `(uri range)`'s `check-range`, the ONE statement of the contract, shared with
+   `(uri charset)`'s `validate-component` (0034 item 4), so no two ranged judges can come to
+   refuse different ranges.
 
 5. **Judging a span allocates nothing that grows with its length.** A check pins this for both
    procedures, over three shapes (reg-name, IPvFuture, and userinfo + host + port), each held
@@ -68,9 +73,18 @@ copy.
    exactly when the span contains an `@`. Likewise, an empty value is a valid (empty) authority
    here; whether an empty `Host` is acceptable is the server's call.
 
-7. **No new library, no lane registration, no scanner/grammar change, and no release-scoped
-   doc edit at merge.** `(uri host)` gains no export; its export list is unchanged. The README
-   and CHANGELOG note rides the next release (0032 item 5).
+7. **Two small new libraries, no scanner/grammar change, and no release-scoped doc edit at
+   merge.**
+   - `(uri range)` (src, pure, imports only `(rnrs)`) exports `check-range`. It is internal:
+     the design doc's library table lists it, and neither the README nor the CHANGELOG
+     advertises it.
+   - `(uri test ranged)` (harness) holds the techniques the ranged-judge checks share:
+     `results-of`, `raised-by?`, `least-allocation` and `for-each-placement`. It is used by
+     `unit.charset` and `unit.host`, so a fix to one lane's technique reaches the other.
+   - Each joins the provenance manifest (`SOURCES`) of every lane that loads it. No lane is
+     added.
+   - `(uri host)` and `(uri charset)` gain no export. The README and CHANGELOG note on the
+     ranged `(uri host)` procedures rides the next release (0032 item 5).
 
 ## Evidence
 
@@ -78,8 +92,8 @@ The already-registered `unit.host` lane (15 cases, 247 checks, 0 failures on the
 Darwin arm64, Chez 10.4.1 tarm64osx, 2026-09-25) now also covers:
 
 - **Agreement with the independent oracle.** The shared authority battery plus six cut-edge
-  shapes, each placed in 12 hostile surroundings, must give `oracle-scan-authority`'s verdict
-  on the span copied out. The surroundings are:
+  shapes, each placed as the whole buffer and in 11 hostile surroundings, must give
+  `oracle-scan-authority`'s verdict on the span copied out. The hostile surroundings are:
   - `" "`, invalid everywhere;
   - a leading `@` or `[`, which re-splits a scan from 0;
   - a trailing `]`, `@x`, `x:` or ` :1`, each of which completes a delimiter search bounded
@@ -96,17 +110,26 @@ Darwin arm64, Chez 10.4.1 tarm64osx, 2026-09-25) now also covers:
   who.
 - **Allocation.** As in item 5.
 
-Mutation-witnessed. There were 32 mutants, each asserted to land: every `s`/`e` bound and
-default in both procedures, each relative rebase, `start` ignored, a copy, and each clause of
-the range check and its who.
-- 31 redden the lane. Two of those first SURVIVED, and the fix was two more surroundings:
-  - the empty-host test measured against the buffer's length (needs a `[` right after `end`);
-  - the `:` search to the buffer's end (needs an invalid byte before a later `:`).
-- ONE survives and is equivalent: `authority-host-span`'s empty-host test measured against the
-  buffer's length. When the host starts at `end` it reads `bv[end]`, but every branch after
-  that returns `(end, end)`, the same bounds, so no check can observe it.
+Mutation-witnessed, in two rounds.
 
-Registered suite on the change: release 77/77, 0 failures.
+- **First round (two copies of the split):** 32 mutants, each asserted to land: every
+  `s`/`e` bound and default in both procedures, each relative rebase, `start` ignored, a
+  copy, and each clause of the range check and its who.
+  - 31 redden the lane. Two of those first SURVIVED, and the fix was two more surroundings:
+    the empty-host test measured against the buffer's length (needs a `[` right after
+    `end`), and the `:` search to the buffer's end (needs an invalid byte before a later
+    `:`).
+  - ONE survived as equivalent: `authority-host-span`'s own empty-host test measured against
+    the buffer's length. It read `bv[end]`, but every branch after that returned
+    `(end, end)`.
+- **After the merge-gate cleanups (one split, one guard, one test library):** the set was
+  rebuilt for the new structure. That makes 29 mutants over the split, the fault path, the
+  host bounds, and `(uri range)`; the guard's mutants run against BOTH `unit.charset` and
+  `unit.host`. ALL 29 redden. The equivalent mutant is gone: the empty-host test is now the
+  split's one line, and `validate-authority` observes it. The 16 non-guard `unit.charset`
+  mutants of 0034 were re-run against the new structure, and all redden.
+
+Registered suite on the change: release 77/77 and no-scheme 11/11, 0 failures.
 
 ## Consequences
 

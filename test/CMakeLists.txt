@@ -755,6 +755,10 @@ set(URI_RATCHET_LIB
 set(URI_CHARSET_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/charset")
 set(URI_CHARSET_ORACLE_LIB
     "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/charset-oracle.sls")
+# The techniques the ranged-judge checks share (decisions 0034, 0036): used by
+# unit.charset and unit.host, so a fix to one lane's technique reaches the other.
+set(URI_RANGED_LIB
+    "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/ranged.sls")
 
 foreach(mode source aot)
   uri_add_scheme_lane(
@@ -944,6 +948,7 @@ uri_add_scheme_lane(
 set(URI_COLLECT ${URI_VOCABULARY}
                 "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/components.sls"
                 "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/percent.sls"
+                "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/range.sls"
                 "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/charset.sls"
                 "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/host.sls"
                 "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/collect.sls")
@@ -1000,6 +1005,7 @@ foreach(mode source aot)
     SOURCES ${URI_HARNESS_MANIFEST}
             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/percent.sls"
             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/components.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/range.sls"
             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/host.sls"
             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/normalize.sls"
             "${CMAKE_CURRENT_LIST_DIR}/common/normalize-tests.sps"
@@ -1145,6 +1151,7 @@ foreach(mode source aot)
             ${URI_GENERATED_PARSER}
             ${URI_CHARSET_ORACLE_LIB}
             ${URI_CORPUS_LIB}
+            ${URI_RANGED_LIB}
             "${CMAKE_CURRENT_LIST_DIR}/common/charset-tests.sps"
     ENVIRONMENT "URI_CHARSET_DIR=${URI_CHARSET_DIR}"
                 "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
@@ -1172,6 +1179,7 @@ foreach(mode source aot)
             ${URI_GENERATED_PARSER}
             ${URI_HOST_ORACLE_LIB}
             ${URI_CORPUS_LIB}
+            ${URI_RANGED_LIB}
             "${CMAKE_CURRENT_LIST_DIR}/common/host-tests.sps"
     ENVIRONMENT "URI_HOST_DIR=${URI_HOST_DIR}"
                 "URI_CORPUS_DIR=${URI_CORPUS_DIR}"

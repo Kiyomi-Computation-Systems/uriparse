@@ -13,7 +13,8 @@
         (uri collect)
         (uri components)
         (uri test host-oracle)
-        (uri test corpus))
+        (uri test corpus)
+        (uri test ranged))
 
 (define (host-path name)
   (string-append (adapter-environment-variable "URI_HOST_DIR") "/" name))
@@ -108,10 +109,8 @@
 (harness-group "validate-authority and authority-host-span over a range"
   (lambda ()
     (define (bytes s) (string->utf8 s))
-    (define (fault bv . range)
-      (call-with-values (lambda () (apply validate-authority bv range)) list))
-    (define (host-bounds bv . range)
-      (call-with-values (lambda () (apply authority-host-span bv range)) list))
+    (define (fault bv . range) (apply results-of validate-authority bv range))
+    (define (host-bounds bv . range) (apply results-of authority-host-span bv range))
     ;; Each surrounding is hostile to one way of reading outside the span: " " is
     ;; invalid in every part; a leading "@" or "[" re-splits a scan from 0; a
     ;; trailing "]", "@x", "x:" or " :1" completes a delimiter search bounded by
@@ -121,13 +120,6 @@
     (define surroundings
       '(("" . "") (" " . "") ("" . " ") ("@" . "") ("[" . "") ("" . "]")
         ("" . "@x") ("" . "x:") ("" . " :1") ("" . "[") ("" . "41") ("ab@" . ":1")))
-    (define (for-each-placement s proc)   ; proc : around buf start end
-      (for-each
-       (lambda (around)
-         (let* ((start (bytevector-length (bytes (car around))))
-                (end (+ start (bytevector-length (bytes s)))))
-           (proc around (bytes (string-append (car around) s (cdr around))) start end)))
-       surroundings))
     ;; The host's [start, end) within an authority, derived by hand from the split
     ;; (decision 0025 item 4): after the first "@" (or at 0), to the closing "]"
     ;; inclusive for an IP-literal (to the end if unterminated), else to the first
@@ -142,11 +134,10 @@
         (let ((bad '()))
           (for-each
            (lambda (s)
-             (for-each-placement s
+             (for-each-placement surroundings s
               (lambda (around buf start end)
                 (unless (equal? (fault buf start end)
-                                (call-with-values
-                                 (lambda () (oracle-scan-authority (bytes s))) list))
+                                (results-of oracle-scan-authority (bytes s)))
                   (set! bad (cons (list around s) bad))))))
            (append authority-battery '("h%4" "h%" "u%4@h" "%" "[" "user@")))
           (check-equal "no disagreements" bad '()))))
@@ -160,7 +151,7 @@
         (let ((bad '()))
           (for-each
            (lambda (pin)
-             (for-each-placement (car pin)
+             (for-each-placement surroundings (car pin)
               (lambda (around buf start end)
                 (unless (equal? (host-bounds buf start end) (cdr pin))
                   (set! bad (cons (list around (car pin)) bad))))))
@@ -192,23 +183,18 @@
         (check-equal "start alone, host bounds" (host-bounds (bytes " u@h:1") 1) '(2 3))))
     (harness-case "a range outside the bytevector is refused, by the procedure called"
       (lambda ()
-        ;; As in unit.charset: ONE value out of each thunk (two would raise on their
-        ;; own), and the raise must name the procedure -- a primitive's own bounds
-        ;; or fixnum check is an &assertion too.
-        (define (refused-by? who)
-          (lambda (c)
-            (and (assertion-violation? c) (who-condition? c)
-                 (eq? (condition-who c) who))))
+        ;; ONE value out of each thunk, and the raise must name the procedure
+        ;; called (see (uri test ranged) for why each).
         (let ((bv (bytes "a b")))
           (for-each
            (lambda (range)
              (check-raises (string-append "validate-authority "
                                           (adapter-value->string range))
-                           (refused-by? 'validate-authority)
+                           (raised-by? 'validate-authority)
                            (lambda () (apply fault bv range)))
              (check-raises (string-append "authority-host-span "
                                           (adapter-value->string range))
-                           (refused-by? 'authority-host-span)
+                           (raised-by? 'authority-host-span)
                            (lambda () (apply host-bounds bv range))))
            '((1 0) (0 9) (4) (-1 2) (0 1.5) (x 2)))
           (check-equal "[length, length) is the empty authority" (fault bv 3 3) '(#f #f))
@@ -216,19 +202,10 @@
     (harness-case "judging a span allocates nothing that grows with its length"
       (lambda ()
         ;; Each shape at two lengths, as the value span of a "Host: ...\r\n" line.
-        ;; Each takes the least of three windows: a collection that fires inside
-        ;; one window adds its own bookkeeping to that window alone.
-        (define reps 1000)
-        (define (window f line s e)
-          (let ((before (adapter-bytes-allocated)))
-            (do ((i 0 (+ i 1))) ((= i reps))
-              (f line s e))
-            (- (adapter-bytes-allocated) before)))
         (define (allocated f value)
           (let ((line (bytes (string-append "Host: " value "\r\n")))
                 (e (+ 6 (bytevector-length (bytes value)))))
-            (f line 6 e)                                          ; warm
-            (min (window f line 6 e) (window f line 6 e) (window f line 6 e))))
+            (least-allocation 1000 (lambda () (f line 6 e)))))
         (define (long n) (make-string n #\a))
         (for-each
          (lambda (f name)

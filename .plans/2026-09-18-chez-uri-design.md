@@ -275,6 +275,7 @@ edge, as a convenience. Decision 0010.
 | `(uri components)` | the seam type; absent ≠ empty | M2 |
 | `(uri collect)` | **shell** — callbacks to components | M2 |
 | `(uri percent)` | core — percent decode/encode | M5 |
+| `(uri range)` | core — the `[start, end)` contract the ranged judges share | #24 (decisions 0034, 0036) |
 | `(uri normalize)` | core — §6, including the hand-written ASCII fold | M5 |
 | `(uri path)` | core — §5.2.4 `remove_dot_segments`, §5.2.3 `merge` | M6 |
 | `(uri resolve)` | core — §5.2.2 | M6 |

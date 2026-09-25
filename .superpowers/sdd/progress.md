@@ -3138,3 +3138,27 @@ in 0036 with that reason. Measured: 0 B/call for both procedures on the issue's 
 4000-byte values. unit.host source: 15 cases, 247 checks, 0 failures. Registered suite: release
 77/77, no-scheme 11/11, 0 failures (2026-09-25, Darwin arm64, Chez 10.4.1 tarm64osx, CMake/CTest
 4.3.3). No new lane.
+
+ISSUE #24 MERGE-GATE REVIEW (/code-review xhigh, inline). 4 findings, no correctness bug, and all
+applied on the maintainer's "apply the 4 cleanups" (PR #25 open).
+(1) The range guard was two copies: charset's judge-range and host's check-range. It is now ONE
+new pure library, `(uri range)` (check-range), imported by both.
+(2) authority-fault and host-span each re-derived the bracket-aware split. That is now ONE
+`authority-split` → (values at hp kind delim), read by both, so 0025 item 4's "the SAME split" is
+structural. A side effect: the first round's equivalent mutant (B3) is GONE. The empty-host test
+is now the split's one line and validate-authority observes it (S4 reddens).
+(3) The range-test techniques copied from unit.charset now live ONCE in the harness library
+`(uri test ranged)`: results-of, raised-by?, least-allocation, for-each-placement. Both lanes use
+it. It is named ranged.sls, not range.sls, because lane manifests key measured copies by basename,
+and src's range.sls shares those manifests.
+(4) Decision 0036 overstated its own coverage ("12 hostile surroundings", one of which is the
+whole-buffer placement); it now says 11 plus the whole buffer.
+New libraries were registered in the provenance manifests: range.sls in URI_COLLECT and the
+normalize lane; URI_RANGED_LIB in unit.charset and unit.host. The design-doc library table gains
+`(uri range)`. Decision 0036 was amended (items 1, 4, 7, Evidence). Behaviour is preserved:
+charset, host, collect, normalize and authority-form all passed unchanged on the refactored src
+before the tests moved. The mutation set was rebuilt: 29 mutants over the split, the fault path,
+the bounds and `(uri range)`, with the guard's mutants run against BOTH lanes; ALL redden. The 16
+non-guard charset mutants of #21 were re-run, and all redden. unit.charset source: 14 cases, 1274
+checks. unit.host source: 15 cases, 247 checks. Release 77/77, no-scheme 11/11, 0 failures (2026-09-25, Darwin
+arm64, Chez 10.4.1).
