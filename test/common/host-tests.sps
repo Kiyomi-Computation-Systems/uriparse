@@ -28,6 +28,23 @@
     (and (eq? oc vc) (equal? oi vi))))
 (define (agree-s? s) (agree? (string->utf8 s)))
 
+;; Authorities valid and invalid, one per fault kind: graded whole, and as a span.
+(define authority-battery
+  '(;; valid
+    "" "host" "example.com" "user@host" "user:pass@host" "host:80" "host:"
+    "192.168.0.1" "999.1.1.1" "[::1]" "[::]" "[2001:db8::1]"
+    "[1:2:3:4:5:6:7:8]" "[1:2:3:4:5:6:1.2.3.4]" "[::ffff:192.168.0.1]"
+    "[v1.a]" "user:pass@[::1]:443" "@host" "sub.dom.example"
+    ;; the "::" total boundary: with "::" the pieces total <= 7
+    "[1:2:3:4:5:6:7::]" "[1:2:3:4:5:6::8]" "[::1]:80"
+    "[1:2:3:4:5:6:7:8::]" "[1:2:3:4:5:6:7::8]"
+    ;; faults across userinfo / reg-name / port / ip-literal / dec-octet
+    "us er@h" "a<b@h" "a%z@h" "h st" "a@b@c" "h%g" "h:8x" "h:a" "h: "
+    "[::1" "[xyz]" "[]" "[12345::1]" "[1:2:3:4:5:6:7:8:9]" "[:1]" "[1:]"
+    "[::ffff:999.1.1.1]" "[::1.2.3.256]" "[::1]x" "[::1]:8x"
+    ;; IPvFuture = "v" 1*HEXDIG "." 1*( unreserved / sub-delims / ":" )
+    "[vG.a]" "[v1z]" "[v.a]" "[v1.]" "[vFF.foo]" "[V2.a:b]" "[v1a.x-y~z]"))
+
 (harness-begin "unit.host")
 
 ;; --- the core error vocabulary (decision 0025 item 6) --------------------
@@ -49,21 +66,7 @@
       (lambda ()
         (for-each
          (lambda (s) (check (if (string=? s "") "(empty)" s) (agree-s? s)))
-         '(;; valid
-           "" "host" "example.com" "user@host" "user:pass@host" "host:80" "host:"
-           "192.168.0.1" "999.1.1.1" "[::1]" "[::]" "[2001:db8::1]"
-           "[1:2:3:4:5:6:7:8]" "[1:2:3:4:5:6:1.2.3.4]" "[::ffff:192.168.0.1]"
-           "[v1.a]" "user:pass@[::1]:443" "@host" "sub.dom.example"
-           ;; the "::" total boundary: with "::" the pieces total <= 7
-           "[1:2:3:4:5:6:7::]" "[1:2:3:4:5:6::8]" "[::1]:80"
-           "[1:2:3:4:5:6:7:8::]" "[1:2:3:4:5:6:7::8]"
-           ;; faults across userinfo / reg-name / port / ip-literal / dec-octet
-           "us er@h" "a<b@h" "a%z@h" "h st" "a@b@c" "h%g" "h:8x" "h:a" "h: "
-           "[::1" "[xyz]" "[]" "[12345::1]" "[1:2:3:4:5:6:7:8:9]" "[:1]" "[1:]"
-           "[::ffff:999.1.1.1]" "[::1.2.3.256]" "[::1]x" "[::1]:8x"
-           ;; IPvFuture = "v" 1*HEXDIG "." 1*( unreserved / sub-delims / ":" )
-           "[vG.a]" "[v1z]" "[v.a]" "[v1.]" "[vFF.foo]" "[V2.a:b]" "[v1a.x-y~z]")))
-      )
+         authority-battery)))
     (harness-case "exhaustive dec-octet sweep: bracketed hits the range, bare stays reg-name"
       (lambda ()
         ;; 0..300 as the last octet: inside "[...]" the 255/256 edge bites
@@ -96,6 +99,150 @@
                     (set! bad (cons k bad)))
                   (loop (+ i 1) (string-append acc ":1")))))
           (check-equal "no group-count disagreements over 1..10" bad '()))))))
+
+;; --- over a range (issue #24, decision 0036) ------------------------------
+;; A server holding a Host header value as [start, end) of its line judges it in
+;; place. As for validate-component (decision 0034): the verdict is the verdict on
+;; the span ALONE, nothing outside it is read, and every number returned -- the
+;; fault index, the host bounds -- is relative to start.
+(harness-group "validate-authority and authority-host-span over a range"
+  (lambda ()
+    (define (bytes s) (string->utf8 s))
+    (define (fault bv . range)
+      (call-with-values (lambda () (apply validate-authority bv range)) list))
+    (define (host-bounds bv . range)
+      (call-with-values (lambda () (apply authority-host-span bv range)) list))
+    ;; Each surrounding is hostile to one way of reading outside the span: " " is
+    ;; invalid in every part; a leading "@" or "[" re-splits a scan from 0; a
+    ;; trailing "]", "@x", "x:" or " :1" completes a delimiter search bounded by
+    ;; the buffer instead of end (" :1" also makes the stretch up to it invalid);
+    ;; a trailing "[" opens a literal right after an empty host that ends at end;
+    ;; "41" completes a "%" or "%4" cut at end.
+    (define surroundings
+      '(("" . "") (" " . "") ("" . " ") ("@" . "") ("[" . "") ("" . "]")
+        ("" . "@x") ("" . "x:") ("" . " :1") ("" . "[") ("" . "41") ("ab@" . ":1")))
+    (define (for-each-placement s proc)   ; proc : around buf start end
+      (for-each
+       (lambda (around)
+         (let* ((start (bytevector-length (bytes (car around))))
+                (end (+ start (bytevector-length (bytes s)))))
+           (proc around (bytes (string-append (car around) s (cdr around))) start end)))
+       surroundings))
+    ;; The host's [start, end) within an authority, derived by hand from the split
+    ;; (decision 0025 item 4): after the first "@" (or at 0), to the closing "]"
+    ;; inclusive for an IP-literal (to the end if unterminated), else to the first
+    ;; ":" after it, else to the end.
+    (define host-span-pins
+      '(("" 0 0) ("host" 0 4) ("user@host" 5 9) ("user:pass@host:80" 10 14)
+        ("host:80" 0 4) ("host:" 0 4) ("[::1]" 0 5) ("[::1]:80" 0 5)
+        ("u@[::1]:443" 2 7) ("[::1" 0 4) ("user@" 5 5) ("@host" 1 5)
+        ("a@b@c" 2 5) ("[v1.a]:8" 0 6) ("h:8:9" 0 1)))
+    (harness-case "validate-authority: the oracle's verdict on the span alone, whatever surrounds it"
+      (lambda ()
+        (let ((bad '()))
+          (for-each
+           (lambda (s)
+             (for-each-placement s
+              (lambda (around buf start end)
+                (unless (equal? (fault buf start end)
+                                (call-with-values
+                                 (lambda () (oracle-scan-authority (bytes s))) list))
+                  (set! bad (cons (list around s) bad))))))
+           (append authority-battery '("h%4" "h%" "u%4@h" "%" "[" "user@")))
+          (check-equal "no disagreements" bad '()))))
+    (harness-case "authority-host-span: the pinned bounds, whole and as a span"
+      (lambda ()
+        (for-each
+         (lambda (pin)
+           (check-equal (string-append "whole: " (car pin))
+                        (host-bounds (bytes (car pin))) (cdr pin)))
+         host-span-pins)
+        (let ((bad '()))
+          (for-each
+           (lambda (pin)
+             (for-each-placement (car pin)
+              (lambda (around buf start end)
+                (unless (equal? (host-bounds buf start end) (cdr pin))
+                  (set! bad (cons (list around (car pin)) bad))))))
+           host-span-pins)
+          (check-equal "every span has its pinned bounds, relative to start" bad '()))))
+    (harness-case "pinned: Host header values, judged in place"
+      (lambda ()
+        ;; (line start end fault host-bounds); "Host: " is 6 bytes.
+        (for-each
+         (lambda (row)
+           (let ((line (bytes (car row))) (s (cadr row)) (e (caddr row)))
+             (check-equal (string-append "fault: " (car row))
+                          (fault line s e) (list-ref row 3))
+             (check-equal (string-append "host: " (car row))
+                          (host-bounds line s e) (list-ref row 4))))
+         '(("Host: example.com:8080\r\n" 6 22 (#f #f) (0 11))
+           ("Host: [::1]:8080\r\n" 6 16 (#f #f) (0 5))
+           ("Host: x\r\n" 6 7 (#f #f) (0 1))
+           ("Host: h st\r\n" 6 10 (invalid-reg-name 1) (0 4))
+           ("Host: x:8x\r\n" 6 10 (invalid-port 3) (0 1))
+           ;; a valid authority: refusing the userinfo is the server's rule
+           ("Host: u@h\r\n" 6 9 (#f #f) (2 3))
+           ;; the "]" past end does not close the literal
+           ("Host: [::1]\r\n" 6 10 (invalid-ip-literal 0) (0 4))
+           ("Host: h%41\r\n" 6 9 (invalid-pct-encoded 1) (0 3))))
+        (check-equal "the whole line is no authority"
+                     (fault (bytes "Host: x\r\n")) '(invalid-port 5))
+        (check-equal "start alone runs to the end" (fault (bytes " x:8x") 1) '(invalid-port 3))
+        (check-equal "start alone, host bounds" (host-bounds (bytes " u@h:1") 1) '(2 3))))
+    (harness-case "a range outside the bytevector is refused, by the procedure called"
+      (lambda ()
+        ;; As in unit.charset: ONE value out of each thunk (two would raise on their
+        ;; own), and the raise must name the procedure -- a primitive's own bounds
+        ;; or fixnum check is an &assertion too.
+        (define (refused-by? who)
+          (lambda (c)
+            (and (assertion-violation? c) (who-condition? c)
+                 (eq? (condition-who c) who))))
+        (let ((bv (bytes "a b")))
+          (for-each
+           (lambda (range)
+             (check-raises (string-append "validate-authority "
+                                          (adapter-value->string range))
+                           (refused-by? 'validate-authority)
+                           (lambda () (apply fault bv range)))
+             (check-raises (string-append "authority-host-span "
+                                          (adapter-value->string range))
+                           (refused-by? 'authority-host-span)
+                           (lambda () (apply host-bounds bv range))))
+           '((1 0) (0 9) (4) (-1 2) (0 1.5) (x 2)))
+          (check-equal "[length, length) is the empty authority" (fault bv 3 3) '(#f #f))
+          (check-equal "[length, length) has the empty host" (host-bounds bv 3 3) '(0 0)))))
+    (harness-case "judging a span allocates nothing that grows with its length"
+      (lambda ()
+        ;; Each shape at two lengths, as the value span of a "Host: ...\r\n" line.
+        ;; Each takes the least of three windows: a collection that fires inside
+        ;; one window adds its own bookkeeping to that window alone.
+        (define reps 1000)
+        (define (window f line s e)
+          (let ((before (adapter-bytes-allocated)))
+            (do ((i 0 (+ i 1))) ((= i reps))
+              (f line s e))
+            (- (adapter-bytes-allocated) before)))
+        (define (allocated f value)
+          (let ((line (bytes (string-append "Host: " value "\r\n")))
+                (e (+ 6 (bytevector-length (bytes value)))))
+            (f line 6 e)                                          ; warm
+            (min (window f line 6 e) (window f line 6 e) (window f line 6 e))))
+        (define (long n) (make-string n #\a))
+        (for-each
+         (lambda (f name)
+           (for-each
+            (lambda (shape)   ; (label short long)
+              (check-equal (string-append name ", " (car shape)
+                                          ": a short and a 4000-byte value allocate alike")
+                           (allocated f (cadr shape)) (allocated f (caddr shape))))
+            (list (list "reg-name" "a" (long 4000))
+                  (list "IPvFuture" "[v1.a]" (string-append "[v1." (long 4000) "]"))
+                  (list "userinfo, host, port" "u@h:80"
+                        (string-append (long 4000) "@h:80")))))
+         (list validate-authority authority-host-span)
+         '("validate-authority" "authority-host-span"))))))
 
 ;; --- the negative corpus: rejected, with the exact code and absolute offset --
 (harness-group "the negative corpus is rejected, exactly"
