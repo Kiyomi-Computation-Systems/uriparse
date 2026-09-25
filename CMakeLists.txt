@@ -14,7 +14,7 @@
 cmake_minimum_required(VERSION 3.26)
 
 project(chez-uri
-  VERSION 0.4.0
+  VERSION 0.5.0
   DESCRIPTION "RFC 3986 URI parser for Chez Scheme"
   HOMEPAGE_URL "https://github.com/Kiyomi-Computation-Systems/uriparse"
   LANGUAGES NONE)

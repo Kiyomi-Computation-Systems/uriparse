@@ -12,7 +12,7 @@ An RFC 3986 URI parser for Chez Scheme, in portable R6RS.
 ✨ *AI Disclosure:* LLMs are used extensively in the planning and development of this project.
 #+end_quote
 
-** Status: v0.4.0 — released 2026-09-20
+** Status: v0.5.0 — released 2026-09-25
 
 The scanner splits a URI reference into five components — scheme, authority,
 path, query, fragment — for all three modes (M2), and ~(uri collect)~ assembles
@@ -39,7 +39,10 @@ For a server reusing one parser per connection, ~uri-collector-reset!~ returns a
 collector to its just-constructed state in place, with no reallocation (issue #11);
 and ~uri-parse-result-validate~ applies that same audited validation to a parse
 result — a reused collector's ~uri-collect-finish!~ or any other — so a validating
-server judges the reused result with no re-parse (issue #18).
+server judges the reused result with no re-parse (issue #18). A server that keeps a
+component as a span of its own buffer (an origin-form path or query) judges its
+charset in place with ~validate-component~ over ~[start, end)~, copying nothing
+(issue #21).
 Standing behind it all (M1): the RFC's own vectors, the
 loader that reads them, the comparator, the two-way ratchet, and the harness and
 build layer.
@@ -155,8 +158,11 @@ The mode is ~uri~ (an absolute URI); ~relative-ref~ and ~uri-reference~ are the
 other two. Validating the component charsets and the host grammar is
 ~uri-parse-validate~ (parse and judge in one call), or ~uri-parse-result-validate~
 to judge a result you already have — a reused collector's ~uri-collect-finish!~ —
-without re-parsing; parsing a bare ~host:port~ CONNECT target (RFC 9112
-authority-form) is ~uri-parse-authority-form~. Resolving a reference against a
+without re-parsing. To judge one component's charset by itself, ~(uri charset)~'s
+~validate-component~ takes the component's name, a bytevector, and an optional
+~start~ and ~end~, and reports the first bad byte relative to ~start~. Parsing a bare
+~host:port~ CONNECT target (RFC 9112 authority-form) is ~uri-parse-authority-form~.
+Resolving a reference against a
 base, normalizing, and recomposing live in ~(uri resolve)~, ~(uri normalize)~ and
 ~(uri recompose)~.
 

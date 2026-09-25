@@ -3048,3 +3048,29 @@ relative-reference serializer). (3) The DEFERRED ranged validate-authority (0034
 result-level authority-form validator (0032 item 4), if a request measures the need. (4) A v0.5
 release whenever the maintainer wants the ranged validate-component stated in a tag + CHANGELOG.
 (5) The next SIBLING request. The tree is clean on main at bb8392a.
+
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
+v0.5 RELEASE SEED (2026-09-25; "Do the v0.5 release"). NEXT direction (4). The arc since v0.4.0
+(tag on 611b04b) is ONE merged change: issue #21, the ranged validate-component (bb8392a). As with
+v0.2 to v0.4, the only work is the release ACT. Evidence: CI STILL never run (the #21 PR's
+linux-amd64 was the 0017 billing refusal: 0 steps, no runner, ~3s), so the basis is
+macOS-arm64-local. Claim: NO NEW claim. The ranged form is the same M3 component charset judge that
+uri-parse-validate applies (audited at 0030), reached over a span. It judges CHARSET, not structure,
+and the CHANGELOG says so, because an origin-form server makes the split itself. Bump is MINOR
+(0.4.0 → 0.5.0): optional args on an existing export are backward compatible, the same call as
+v0.3/v0.4.
+
+v0.5 RECONCILIATION DONE (branch chore/release-v0.5.0, off main d06b556). CMakeLists VERSION 0.4.0 →
+0.5.0. README.org: status → v0.5.0 (2026-09-25, the UTC-date convention of v0.3/v0.4). The summary
+gains one sentence (judge a buffer-held span in place, #21), and the API paragraph names
+validate-component and its optional range. Every frozen claim and caveat is kept VERBATIM.
+CHANGELOG.md: [Unreleased] → [0.5.0] - 2026-09-25. Its preamble discloses CI-never-run, the billing
+refusal, 77/77 and 11/11, and "no new conformance claim". One feature section, including the
+charset-not-structure boundary. A fresh [Unreleased] and updated version links; frozen
+[0.4.0]..[0.1.0] untouched. Decision 0035 written (7 items; successor to 0023 → 0027 → 0031 →
+0033). The release-verification gate (0035 item 6) is RE-MEASURED HERE on the reconciled tree,
+since this session can build: release 77/77, no-scheme 11/11, 0 failures (2026-09-25, Darwin arm64,
+Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3). `git diff -- src test` against main is empty. Publish
+steps (squash merge pinned by --match-head-commit, annotated tag v0.5.0, tag push) wait for the
+closing ritual, which is asked for first.

@@ -6,6 +6,54 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-25
+
+Released on macOS arm64 evidence only. The Linux CI cell is configured and committed
+but has **still never run** (decisions 0017, 0035). The #21 PR's `linux-amd64` check
+was the billing refusal (0 steps, ~3s, "recent account payments have failed"), not a
+run. So every count below is measured on macOS arm64 (Chez Scheme 10.4.1, machine-type
+tarm64osx; CMake/CTest 4.3.3) and nowhere else: the complete selection is 77/77 and the
+no-Scheme layer 11/11, 0 failures, re-measured on the release commit. v0.5.0 adds
+**ranged component validation**: `validate-component` judges a span of a larger
+bytevector in place, so a server that keeps its request-target in the socket's buffer
+validates it without copying. It states **no new conformance claim**: the ranged form
+is the same component charset judge (M3) that `uri-parse-validate` uses. The scoped
+claim and every boundary read exactly as v0.3.0/v0.4.0 (decision 0035).
+
+### `validate-component` over a range — judge a span in place
+
+- **`validate-component`** on `(uri charset)` now takes an optional `start` and `end`:
+  `Symbol Bytevector [Nat [Nat]] -> (values (Option Symbol) (Option Nat))`. They default
+  to 0 and the length, so every two-argument call behaves as before, misuse diagnostics
+  included. The verdict on `bv[start, end)` is the verdict on those bytes alone:
+  - nothing outside the range is read;
+  - a `%` whose HEXDIGs would lie past `end` is malformed;
+  - the index of the first bad byte is relative to `start`.
+
+  A range not within the bytevector is an assertion violation, and an unknown component
+  is named before the range is checked (decision 0034).
+- The point (issue #21): RFC 9112 origin-form is `absolute-path [ "?" query ]`. A
+  collector parse would read a leading `//` as an authority (`//a@b:c/d` is a valid
+  origin-form target, yet `uri-parse-validate 'uri-reference` answers `invalid-port`@6).
+  So a server splits at the first `?` and judges the path and the query itself. Until
+  now it copied each part first (16/80/512 B at 2/46/500-byte targets), the only
+  per-request cost that grew with the target. The ranged form allocates **0 bytes per
+  call** for every component at 2 to 4000 bytes.
+- It judges a component's CHARSET, not its structure, exactly as before. Where the
+  delimiters fall (for example, that an origin-form path begins with `/`) is the caller's
+  split to make.
+- New `unit.charset` checks, all mutation-witnessed (20 mutants):
+  - agreement with the independent oracle on the span alone, under surroundings chosen
+    to catch every way of reading outside it;
+  - hardcoded pins;
+  - refusal of six bad ranges, each required to raise with `validate-component` as its
+    who;
+  - the component named first;
+  - allocation that does not grow with the span's length, for all four components.
+
+  A ranged `validate-authority` is deferred (decision 0034 item 6). No new lane; the
+  release selection is unchanged at 77.
+
 ## [0.4.0] - 2026-09-20
 
 Released on macOS arm64 evidence only. The Linux CI cell is configured and committed
@@ -302,7 +350,8 @@ host grammar are v0.2 (decisions 0011, 0023, and the README caveats).
   always agrees, and a ratchet that fails in only one direction, are both
   caught.
 
-[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.1.0...v0.2.0
