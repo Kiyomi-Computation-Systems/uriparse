@@ -3074,3 +3074,36 @@ since this session can build: release 77/77, no-scheme 11/11, 0 failures (2026-0
 Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3). `git diff -- src test` against main is empty. Publish
 steps (squash merge pinned by --match-head-commit, annotated tag v0.5.0, tag push) wait for the
 closing ritual, which is asked for first.
+
+v0.5.0 RELEASED (2026-09-25). PR #23 squash-merged to main as 4d95118, pinned to the tested head
+2c64659 by --match-head-commit. The merged tree de761a8 is byte-identical to the re-measured tree,
+checked before tagging. Merged over the RED linux-amd64 check, re-confirmed as the decision-0017
+billing refusal: 0 steps, no runner, ~3s, "recent account payments have failed". Annotated tag
+v0.5.0 (d245f43) was placed on 4d95118, GPG-signed (tag.gpgSign; good signature, key
+D4D955D55C8853D7) and pushed over SSH; it dereferences to 4d95118 on origin, confirmed.
+chore/release-v0.5.0 was deleted local and remote. A GitHub Release was NOT cut (0035 item 7); if
+wanted, its body is the CHANGELOG [0.5.0] section verbatim. Lineage on main: 611b04b (v0.4) →
+102c8c9 → bb8392a (#21) → d06b556 (#21 close-out) → 4d95118 (v0.5 release). Tags: v0.1.0 to v0.5.0.
+
+REFLECTION. The release template held a FIFTH time (0023 → 0027 → 0031 → 0033 → 0035), and two
+things were tighter than before. (1) The re-measure gate ran IN SESSION on the reconciled tree
+rather than being delegated to the maintainer. Then the squash was pinned with --match-head-commit
+and the merged tree hash compared to the tested one, so "re-measured at the tagged commit" is a
+checked identity (de761a8 = de761a8), not an inference from "docs-only"
+([[verify-and-emit-integrity-claims]] applied to the release itself). (2) The claim needed one
+explicit boundary v0.4 did not: the ranged form judges CHARSET, not structure. An origin-form
+server is exactly the embedder who might read "validates the path" as "validates it's an
+absolute-path", so the CHANGELOG says the split is the caller's. Otherwise, the house rule held
+symmetrically again: no new conformance claim, because none was earned. The capability (judge a
+span in place, 0 B/call) is stated with its measurement. Semver was mechanical: optional args on an
+existing export are MINOR.
+
+NEXT (v0.5 is DONE; what reopens is a SEPARATE choice, not a v0.5 gap; see the 0035
+consequences). chez-http-server can consume v0.5.0 by tag and retire its copy workaround and the
+copy term in its length-independence check. The open directions are each their own decision:
+(1) the FIRST FUNDED CI RUN (0017 item 3). Every release v0.1 to v0.5 has shipped on macOS-arm64-local
+evidence, and the billing refusal is now re-confirmed on #19, #20, #22 and #23. (2) The deferred
+ranged validate-authority (0034 item 6) and the result-level authority-form validator (0032 item 4),
+if a request measures the need. (3) v0.5+ TOOLING (0012 abnfgen / host-aware mutator; 0022
+relative-reference serializer). (4) The next SIBLING request. The tree is clean on main at the
+close-out commit, and v0.5.0 is tagged on 4d95118.
