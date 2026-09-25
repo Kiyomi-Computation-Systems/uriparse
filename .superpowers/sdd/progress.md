@@ -3217,3 +3217,36 @@ Darwin arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3): release 77/77, no-schem
 `git diff -- src test` against main is empty.
 Publish steps (squash merge pinned by --match-head-commit, tree-hash compare, annotated tag v0.6.0,
 tag push) wait for the closing ritual, which is asked for first.
+
+v0.6.0 RELEASED (2026-09-25). PR #26 squash-merged to main as 40d645f, pinned to the tested head
+5c3d93f by --match-head-commit. The merged tree 04baae8 is byte-identical to the re-measured tree,
+checked before tagging. Merged over the RED linux-amd64 check, re-confirmed as the decision-0017
+billing refusal: 0 steps, no runner, ~3s. Annotated tag v0.6.0 (cf7492c) was placed on 40d645f,
+GPG-signed (tag.gpgSign; good signature, key D4D955D55C8853D7) and pushed over SSH; it
+dereferences to 40d645f on origin, confirmed. chore/release-v0.6.0 was deleted local and remote. A
+GitHub Release was NOT cut (0037 item 7); if wanted, its body is the CHANGELOG [0.6.0] section
+verbatim. Lineage on main: 4d95118 (v0.5) → e0aa810 → 7d19f9b (#24) → 2623d6f (#24 close-out) →
+40d645f (v0.6 release). Tags: v0.1.0 to v0.6.0.
+
+REFLECTION. The template held a SIXTH time (0023 → … → 0035 → 0037). One new thing and one
+tightening. New: the release request said "0.7" against a last tag of v0.5.0. A tag is
+outward-facing and effectively permanent, so the version was ASKED once rather than silently
+"corrected" or silently skipped. The maintainer chose 0.6.0, and 0037 records the question and the
+answer. Tightening: v0.5 re-measured the tree "before its commit", but docs landed after that run.
+This time the ledger and decision were edited, then the suite was re-run on the EXACT tree
+committed. So the tested tree = the committed tree = the merged tree = the tagged tree, with each
+link checked (a hash compare, not an inference that only docs changed). The claim needed the same
+kind of boundary v0.5's did, for the same reason: the embedder most likely to over-read it is an
+HTTP server. The CHANGELOG says the functions judge a URI authority, not a Host, and names the two
+parts of RFC 9110's Host rule that stay the server's.
+
+NEXT (v0.6 is DONE; what reopens is a SEPARATE choice, not a v0.6 gap; see the 0037
+consequences). chez-http-server can consume v0.6.0 by tag and land its invalid-Host-value rule,
+copying nothing. The open directions are each their own decision:
+(1) the FIRST FUNDED CI RUN (0017 item 3). Every release v0.1 to v0.6 has shipped on
+macOS-arm64-local evidence, and the billing refusal is re-confirmed on #19, #20, #22, #23, #25 and
+#26.
+(2) The result-level authority-form validator (0032 item 4), if a request measures the need.
+(3) v0.6+ TOOLING (0012, 0022).
+(4) The next SIBLING request.
+The tree is clean on main at the close-out commit, and v0.6.0 is tagged on 40d645f.
