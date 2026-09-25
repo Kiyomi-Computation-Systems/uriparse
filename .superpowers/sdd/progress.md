@@ -3250,3 +3250,9 @@ macOS-arm64-local evidence, and the billing refusal is re-confirmed on #19, #20,
 (3) v0.6+ TOOLING (0012, 0022).
 (4) The next SIBLING request.
 The tree is clean on main at the close-out commit, and v0.6.0 is tagged on 40d645f.
+
+v0.6.0 GITHUB RELEASE CUT (2026-09-25, on the maintainer's request). "v0.6.0 — ranged authority
+validation" was published from the existing signed tag (--verify-tag, so no new tag was created) and
+marked Latest. Its body is the CHANGELOG [0.6.0] section VERBATIM, CI disclosure included (0037 item
+7), checked twice: the extracted file against CHANGELOG.md, and the published body against the
+file. It is the repo's FIRST GitHub Release; v0.1.0 to v0.5.0 remain tags only.
