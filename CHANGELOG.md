@@ -6,6 +6,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-09-26
+
+A pin bump only: no src, no lane, no algorithm, and **no new conformance claim**.
+Released on macOS arm64 evidence only (Chez Scheme 10.4.1, tarm64osx); the Linux CI
+cell has **still never run** (decision 0017). The complete selection is 77/77 and the
+no-Scheme layer 11/11, 0 failures, measured at the new pin.
+
+### Changed
+
+- **The pin moves to byte-machine `v0.6.1`** (`0245db3..5c1cb7e`: upstream PRs #140,
+  #141, #142). Upstream changed only `byte-machine-keyword-step/v1`, the runtime's
+  keyword walk
+  ([byte-machine#139](https://github.com/Kiyomi-Computation-Systems/byte-machine/issues/139)).
+  uriparse's generated scanner never calls it, and the emitter is unchanged:
+  `make parser-refresh` at the new pin rewrites `src/generated/uri-scanner.sls`
+  byte-identical.
+- Why: a consumer that vendors both uriparse and chez-httparse needs them on the same
+  byte-machine, and chez-httparse v0.4.3 moved to v0.6.1.
+
 ## [0.6.0] - 2026-09-25
 
 Released on macOS arm64 evidence only. The Linux CI cell is configured and committed
@@ -403,7 +422,8 @@ host grammar are v0.2 (decisions 0011, 0023, and the README caveats).
   always agrees, and a ratchet that fails in only one direction, are both
   caught.
 
-[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.3.0...v0.4.0
