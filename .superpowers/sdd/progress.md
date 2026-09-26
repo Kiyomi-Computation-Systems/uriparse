@@ -3256,3 +3256,39 @@ validation" was published from the existing signed tag (--verify-tag, so no new 
 marked Latest. Its body is the CHANGELOG [0.6.0] section VERBATIM, CI disclosure included (0037 item
 7), checked twice: the extracted file against CHANGELOG.md, and the published body against the
 file. It is the repo's FIRST GitHub Release; v0.1.0 to v0.5.0 remain tags only.
+
+v0.6.1 RELEASED (2026-09-26, on the maintainer's request). A PIN BUMP ONLY, for chez-http-server's
+`make check-pins`: it needs uriparse released on the same byte-machine as chez-httparse, and
+chez-httparse v0.4.3 moved to byte-machine v0.6.1. vendor/byte-machine moved 0245db3 → 5c1cb7e
+(upstream #140, #141, #142; byte-machine#139). Upstream src changed ONLY runtime.sls, and there only
+the keyword walk (kw-prefix? → kw-common under byte-machine-keyword-step/v1). src/generated/
+uri-scanner.sls has zero `keyword` references, and `make parser-refresh` at the new pin (exit 0,
+"wrote 28766 bytes") left it byte-identical. The release also bumped CMakeLists VERSION and the
+README status to 0.6.1: the brief said "change nothing else", but a v0.6.1 tag whose build prints
+"chez-uri 0.6.0" is a defect, so it was ASKED, and the maintainer chose the bump. Measured on the
+exact committed tree (macOS arm64, Chez 10.4.1 tarm64osx): test-all 77/77, no-scheme 11/11, 0
+failures; the build prints "chez-uri 0.6.1". PR #27 squash-merged as 88d538f. Merged tree
+02e87f8 = tested tree 02e87f8 (hash compare). Merged over the RED linux-amd64 check, re-confirmed as
+the decision-0017 billing refusal: 0 steps, ~2s, "recent account payments have failed". Annotated
+tag v0.6.1 (849fdf0) on 88d538f, GPG-signed (tag.gpgSign; good signature, key D4D955D55C8853D7),
+pushed; it dereferences to 88d538f on origin, confirmed. chore/release-v0.6.1 deleted local and
+remote. GitHub Release "v0.6.1 — pin byte-machine v0.6.1" published from the signed tag
+(--verify-tag) and marked Latest; its body is the CHANGELOG [0.6.1] section VERBATIM, published body
+diffed against the extracted file. Tags: v0.1.0 to v0.6.1; Releases: v0.6.0, v0.6.1.
+
+REFLECTION. Three things. (1) A PIN-BUMP RELEASE STILL MOVES FOUR THINGS, not two: the gitlink, the
+CHANGELOG, CMakeLists VERSION and the README status. "Change nothing else" named only the first two;
+the other two are part of cutting any version, so the conflict was surfaced before tagging, not
+resolved silently either way. Nothing checks that VERSION matches the newest CHANGELOG heading; that
+is a candidate check, not a v0.6.1 gap. (2) chez-httparse's v0.4.3 reflection says a byte-identical
+regeneration does not mean the runtime is unchanged. So the upstream runtime.sls diff was READ, not
+inferred from the byte-identical scanner: the one moved definition is the keyword walk, and the
+scanner never reaches it. (3) A REGENERATE-AND-DIFF CHECK IS VACUOUS IF THE REGENERATOR DID NOT RUN.
+The first `make parser-refresh` redirected to a bad log path, so the shell failed before make ran,
+and `git status` came back clean anyway: "byte-identical" would have been claimed off a no-op. The
+nonzero exit caught it. The rerun was trusted only on exit 0 plus uri-emit's "wrote N bytes" line.
+
+NEXT. Unchanged from v0.6.0: (1) the first funded CI run (0017; the billing refusal is re-confirmed
+on #27); (2) the result-level authority-form validator (0032 item 4), if a request measures the
+need; (3) v0.6+ tooling (0012, 0022); (4) the next sibling request. chez-http-server can now pin
+uriparse v0.6.1 alongside chez-httparse v0.4.3.
