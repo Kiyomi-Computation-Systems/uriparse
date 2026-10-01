@@ -15,6 +15,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ahead-of-time lanes pass on a cold runner. The README's "CI has not run" banner is gone.
   Windows and arm64 Linux are still not run.
 
+- **CI's actions run on the Node 24 runtime they declare.** `actions/checkout` moves
+  from v4 to v7, and `actions/cache/restore` and `actions/cache/save` from v4 to v6.
+  Every v4 targets Node 20, which GitHub has deprecated, and every run warned that it
+  was forcing them onto Node 24. v5 and later declare `node24` and need runner 2.327.1;
+  the hosted runner is 2.337.0. Since v6, checkout keeps the job's token in a file under
+  `$RUNNER_TEMP`, included only for this repository's git directory. The submodule's
+  clone neither reads that file nor matches the include, so `Init submodules` still
+  authenticates with `SUBMODULES_READ_TOKEN` alone.
+
 ### Fixed
 
 - **CI clones the private byte-machine submodule with a read token.** The
