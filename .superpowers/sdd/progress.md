@@ -3458,3 +3458,61 @@ PR #30 RE-KEY CONFIRMED ON MAIN (2026-10-01). Both post-merge runs passed on ima
   same counts in 1m42s.
 
 The whole re-key cycle has now run on main: miss, build, save, restore.
+
+---
+
+v0.6.2 MERGED (2026-10-01, PR #31, on the maintainer's request). A PIN BUMP, for chez-http-server:
+it vendors uriparse and chez-httparse, and both must share a byte-machine before it can use
+`parser-error-span` and `parser-error-span-offset` for its span size limits (byte-machine#145).
+vendor/byte-machine moved 5c1cb7e → c338a57 (v0.7.0; upstream #143, #144, #146–#150). The first
+tag check found no v0.7.0 (its release PR #150 was still open), and the work stopped there until
+the tag landed. Upstream src changed runtime.sls and compile.sls only. compile.sls adds the two
+names to `reserved-member-2`, the runtime names an output binding may not take, and a census
+comment. The runtime adds the two exports, and the error
+record grows to ten slots, which `abandon-span!` fills in place after `parser-feed!` and
+`parser-finish!`. `span-fragment-deliver!` now also sets the mark to the fragment's end
+(runtime.sls:839). CHECKED: `make parser-refresh` exit 0, "wrote 28766 bytes", `git diff
+--exit-code src/generated/` clean, SHA-256 eae7725f… equal to main's. ABI 9 at uri-scanner.sls:437
+and runtime.sls:110. src reads only `parser-error-code` and `parser-error-offset`
+(collect.sls:183), and neither new name occurs outside vendor/.
+
+AMBIGUITY 1 AND DECISION 0018 STAY AS WRITTEN. Both say, from v0.6.0 source, that the mark is
+written only to pos, 0 or the feed start (runtime.sls:748,754,1022,1177,1370). At v0.7.0 those
+writes are at 767 (span-open, which the interpreter's span-start calls at 1280), 773 (close),
+1124 (feed start) and 1473 (finish), plus a fourth at 839: every delivery moves the mark to the
+fragment's end. Three of the five lines had already moved at v0.6.1 (1022 → 1054, 1177 → 1209,
+1370 → 1402). The conclusion holds. Both delivery callers take `from` from the mark and deliver only when
+from ≤ to, so the new write moves the mark forward only, and no byte the span took can be taken
+back. Both records are dated 2026-09-18 and scoped to v0.6.0 source, and 0039 item 5 keeps such
+records as written, so neither gets an in-place note; this entry carries the v0.7.0 lines.
+
+Two commits: 24705c3 the gitlink alone (0002 item 6), then 65fc4cf the CHANGELOG [0.6.2] entry
+(it absorbs [Unreleased]'s CI work from #28–#30), CMakeLists VERSION and the README status.
+Measured on 65fc4cf's tree (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3): test-all 78/78,
+no-scheme 12/12, 0 failures; the build prints "chez-uri 0.6.2". CI run 36895939900 on 65fc4cf:
+ubuntu-24.04 20260927.320.1, Init submodules checked out c338a57, cache restored from
+chez-Linux-ubuntu-24.04-X64-10.4.1-threads, ta6le, CMake 3.31.6, pr 78/78, release 78/78,
+no-scheme 12/12, in 1m28s. The [0.6.2] summary cites the local counts only; the maintainer merged
+on green without the CI line, so the run is recorded here. PR #31 squash-merged as 5ecd88f,
+pinned to 65fc4cf by --match-head-commit. Merged tree 0f314cb = tested tree 0f314cb (hash
+compare). chore/release-v0.6.2 deleted local and remote. FOUND IN PASSING:
+test/common/generator-abi-tests.sps still says "the pin at v0.6.0" and cites runtime.sls:109 and
+:175,179 (110 and 176,180 at v0.7.0). It is a separate change (0002 item 6) and is running in its
+own session.
+
+REFLECTION. Three things. (1) A CLAIM CAN LIVE IN MORE RECORDS THAN THE BRIEF NAMES. The brief
+pointed at the ledger's AMBIGUITY 1; searching for `runtime.sls:` across .plans, the ledger and
+test/ found the same proof in decision 0018 and pin citations in a test's comments. Search for
+the claim, not for the record. (2) AN EMPTY SEARCH IS A RESULT TO CHECK. A loop over three tags
+found no mark writes at all, because zsh read `$t:src` as the `:s` modifier. Nothing that
+silent should enter a record; `${t}` fixed it. (3) THE FIRST MEASUREMENT RAN ON A TREE THAT WAS
+NEVER COMMITTED. CMakeLists was edited while `make test-all` ran. The suites were re-run on the
+exact committed tree, and only that run's counts were recorded.
+
+NEXT. (1) Tag v0.6.2 on 5ecd88f and publish its GitHub Release, on the maintainer's word.
+(2) chez-httparse moves to byte-machine v0.7.0 too, before chez-http-server can use the
+accessors. (3) The generator-abi-tests citation fix (its own session). (4) Carried from #30:
+the 2026-12-01 CMake hold review; the 24.04 → 26.04 move as its own commit (0038 item 4);
+chez-httparse's runner pin before 2026-10-19; the result-level authority-form validator
+(0032 item 4), if a request measures the need; v0.6+ tooling (0012, 0022); the next sibling
+request.
