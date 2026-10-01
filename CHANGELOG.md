@@ -60,6 +60,35 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   tarm64osx) under CMake 3.31.6 and 4.3.3 alike: pr 78/78, release 78/78,
   no-scheme 12/12.
 
+- **CI runs on a named image, `ubuntu-24.04`, and keys the Chez cache on its OS release.**
+  CI used to run on `ubuntu-latest`. GitHub starts moving that label from Ubuntu 24.04 to
+  26.04 on 2026-10-19 (actions/runner-images#14748), and two things would have moved with
+  it, unreviewed:
+  - **The cached Chez.** The cache key named only the OS family and the architecture, and
+    both releases share those. So a 26.04 runner would have restored a Chez built against
+    24.04's libraries.
+  - **CMake.** The image supplies it: 3.31.6 on 24.04, 4.4.3 on 26.04. Every `cmake -P`
+    script gets its policy defaults from that CMake.
+
+  A new step reads the release from `/etc/os-release` and puts it in the key
+  (`chez-Linux-ubuntu-24.04-X64-10.4.1-threads`). So a new image misses the cache instead
+  of restoring an old build, and an empty field fails the step.
+
+  The pin fixes the release, not every tool on it. The 24.04 image holds CMake at 3.31.6
+  only until a review on 2026-12-01 (actions/runner-images#11926).
+
+  Decision 0038 amends 0006 to name the image. It is the release the first funded run
+  passed on (decision 0039), and the check is still called `linux-amd64`.
+
+  Before its first CI run, this was rehearsed locally in the `ubuntu:24.04` and
+  `ubuntu:26.04` images:
+  - the step writes each image's release, where the old key was the same on both;
+  - with a field missing, it exits 1 and writes nothing;
+  - actionlint 1.7.12 is clean;
+  - nine mutations of the workflow were each caught.
+
+  Release 78/78, no-scheme 12/12 (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3).
+
 ## [0.6.1] - 2026-09-26
 
 A pin bump only: no src, no lane, no algorithm, and **no new conformance claim**.

@@ -2,6 +2,7 @@
 
 Date: 2026-09-18
 Status: accepted
+Amended by: [0038](0038-the-linux-cell-is-a-named-image-and-the-chez-cache-is-keyed-on-its-os-release.md) (item 1: the cell is the named image `ubuntu-24.04`)
 Plan: [the brief](../2026-09-18-chez-uri-project-brief.md)
 References: `byte-machine` decision 0041, `chez-httparse` decision 0004
 
