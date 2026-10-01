@@ -109,6 +109,19 @@ uri_add_test(
   TIMEOUT 120
   LABELS unit)
 
+# A script run with `cmake -P` inherits none of this project's policies, so
+# each one declares the floor itself. Four did not, and CI's CMake 3 would read
+# an IN_LIST in one of them as a syntax error while every CMake 4 machine
+# passes it, because CMake 4 no longer has the old behaviour. Running the
+# scripts cannot see this on CMake 4, so this checks it as text. It needs no
+# Scheme runtime, so it also holds under the no-scheme preset.
+uri_add_test(
+  NAME uri.harness.script-policy-floor.cmake.direct
+  COMMAND "${CMAKE_COMMAND}" -P
+          "${CMAKE_CURRENT_LIST_DIR}/support/cmake/ScriptPolicyFloorSpec.cmake"
+  TIMEOUT 120
+  LABELS unit)
+
 
 
 

@@ -22,6 +22,8 @@
 #
 # It needs no Scheme runtime, so it holds under the no-scheme preset too.
 
+cmake_minimum_required(VERSION 3.26)
+
 include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/SpecSupport.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/../../../cmake/UriCorpus.cmake")
