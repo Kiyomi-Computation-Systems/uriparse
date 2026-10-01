@@ -3292,3 +3292,59 @@ NEXT. Unchanged from v0.6.0: (1) the first funded CI run (0017; the billing refu
 on #27); (2) the result-level authority-form validator (0032 item 4), if a request measures the
 need; (3) v0.6+ tooling (0012, 0022); (4) the next sibling request. chez-http-server can now pin
 uriparse v0.6.1 alongside chez-httparse v0.4.3.
+
+---
+
+CI FUNDED, FIXED AND GREEN (2026-10-01, PR #28, on the maintainer's request). The Actions minutes
+came back on 2026-10-01. All 65 earlier runs (2026-09-18 to #27) were refused before a single step;
+the jobs API shows none ran. chez-httparse's #58 found two defects on its first funded run, and
+uriparse had both. (1) THE WORKFLOW NEVER FETCHED THE PRIVATE SUBMODULE, and the job's token cannot
+read it. A fresh clone without it fails configure under `dev` (UriSchemeLane.cmake:267) and
+`no-scheme` (:386). (2) FOUR `cmake -P` SCRIPTS LACKED THE 3.26 FLOOR: CorpusProvenanceSpec,
+RenameAuditSpec, UriImportAuditSpec, UriExpectExit.cmake. Fix: the workflow steps are byte-identical
+to chez-httparse's (require SUBMODULES_READ_TOKEN by name; checkout this repo alone; "Init
+submodules" through a GIT_CONFIG_* rewrite scoped to the org's URLs). The four scripts get the
+floor, and `harness.script-policy-floor` (a renamed port of chez-httparse's spec) checks every
+`-P` script as text. CI prints `cmake --version`. Watched red: on the unfloored tree it failed
+exactly the four (16 scripts audited), and five staged mutations each failed for the declared
+reason. REHEARSAL on Kitware's CMake 3.31.6 (SHA-256 verified, the runner's version): main passed
+every preset (11/11, 77/77, 77/77), but instrumenting UriExpectExit in a scratch clone showed 39
+verdicts entered and only 19 returned. All 20 wrong-status verdicts died on IN_LIST (CMP0057
+unset), and the Scheme mutation suite counted each crash as a catch. On the branch, 39/39 returned
+(19 ok, 11 mismatch, 9 out-of-vocabulary), and pr 78/78, release 78/78, no-scheme 12/12 held under
+3.31.6 and 4.3.3 alike. A CMP0053 `@URI-SEMI@` hypothesis was probed and is false: 3.31.6 leaves
+it alone. The submodule step was rehearsed against a stand-in rewrite target: it clones the pinned
+5c1cb7e, and no config keeps the rewrite. FIRST FUNDED RUN: attempt 1 of 36870151249 stopped at the
+token step, as designed. The maintainer added the secret, and attempt 2 passed: ubuntu-24.04
+(20260920.314), runner 2.337.0, Chez 10.4.1 built from source (cache miss, saved as
+chez-Linux-X64-10.4.1-threads), ta6le, CMake 3.31.6, pr 78/78, release 78/78, no-scheme 12/12, in
+5m41s. DECISION 0039 records it and settles 0017 item 3. ta6le derives linux/amd64 by exact match,
+and that comparison is live: on macOS the four lanes pass with darwin and fail with linux. All 25
+aot lanes pass on a cold runner. The README banner, the 0017 header and CHANGELOG [Unreleased]
+follow. The rerun on 4246ae4 (36875607047) restored the cache: green in 1m28s. PR #28 squash-merged
+as 5cf4222. Merged tree 4dd4cbb = tested tree 4dd4cbb (hash compare). fix/ci-submodule-token deleted
+local and remote. IN PARALLEL a separate session cut fix/ci-pin-runner-image (decision 0038:
+ubuntu-24.04 pinned, the Chez cache keyed on the OS release). It conflicts with #28 in ci.yml (both
+insert a step after checkout) and in CHANGELOG. The plan is to rebase it onto main once that
+session ends, keeping both steps.
+
+REFLECTION. Four things. (1) A GREEN SUITE ON A NEW TOOLCHAIN CAN STILL BE HOLLOW. On CMake 3.31.6,
+main passed everything while 20 mutation catches were a crashing verifier. The runner calls any
+nonzero exit "caught" and keeps the verifier's output to itself. Even EXPECT_OUTPUT_MATCHES passed,
+because UriExpectExit echoes the child's output before its verdict. Only counting verdicts entered
+against verdicts returned showed it. When the toolchain under a verifier changes, count the path,
+not the colour. (2) REHEARSE THE GATE'S TOOLCHAIN BEFORE SPENDING ITS MINUTES. CMake 4 cannot show
+a CMake 3 policy default at all, so no laptop run could have found this. A checksum-verified
+tarball in the scratchpad reproduced the runner in minutes, and the first funded run became a
+confirmation instead of a discovery. (3) A HYPOTHESIS ABOUT A TOOL IS ONE PROBE FROM A FACT. The
+`@URI-SEMI@` theory never reached the CHANGELOG, because a five-line probe refuted it. "65 runs
+refused" entered 0039 only after the jobs API confirmed it. (4) chez-httparse's "a gate that has
+not run has not passed" held exactly. The workflow could not have passed its first funded run, and
+nothing could say so while every run was refused.
+
+NEXT. (1) Node 24: every run warns that checkout@v4 and cache/restore|save@v4 target Node 20 and
+are forced onto Node 24. Bump to checkout@v7 and cache@v6, all declaring node24 (runner 2.337.0 is
+past their 2.327.1 floor). (2) fix/ci-pin-runner-image rebased onto main and merged (0038). (3) The
+result-level authority-form validator (0032 item 4), if a request measures the need. (4) v0.6+
+tooling (0012, 0022). (5) The next sibling request. A release cut from here can cite a green run on
+its own commit (0039 item 5).
