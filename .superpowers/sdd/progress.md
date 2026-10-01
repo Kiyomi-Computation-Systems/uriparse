@@ -3384,3 +3384,65 @@ NEXT. (1) fix/ci-pin-runner-image (0038) rebased onto main, which now has #28 an
 post-checkout steps (Init submodules, then Identify the OS release), combine [Unreleased], correct
 the post-step comment, then merge. (2) The result-level authority-form validator (0032 item 4), if
 a request measures the need. (3) v0.6+ tooling (0012, 0022). (4) The next sibling request.
+
+---
+
+CI PINNED TO ubuntu-24.04 (2026-10-01, PR #30, on the maintainer's request). Every run carried
+GitHub's notice that ubuntu-latest moves to Ubuntu 26.04 from 2026-10-19 (actions/runner-images
+#14748; the rollout ends by 2026-11-19). Two risks rode on the label. (1) THE CHEZ CACHE KEY
+IGNORED THE OS RELEASE: it named runner.os and runner.arch, and both releases report Linux/X64,
+so a 26.04 runner would restore a Chez built on 24.04. (2) THE IMAGE CHOOSES CMAKE, and every
+`cmake -P` script takes its policy defaults from it. The runner-images toolsets say 3.31.6 on
+24.04, held "to avoid CMake 4.0 compatibility issues" (#11926, review-at 2026-12-01), and
+`latest` on 26.04 (4.4.3 in image 20260920.143.1). Fix, the shape chez-http-server's #8 took:
+runs-on: ubuntu-24.04 with its reason; a step `os` after Init submodules writes
+release=${ID:?}-${VERSION_ID:?} from /etc/os-release; the key becomes
+chez-${runner.os}-${steps.os.outputs.release}-${runner.arch}-${CHEZ_VERSION}-threads. DECISION
+0038 amends 0006 item 1, and 0006 gains an Amended-by line. It records that the pin fixes the
+release, not CMake, and what an image bump must state: the CMake it brings, whether any run still
+exercises CMake 3, and an actionlint that knows the label (1.7.12 rejects ubuntu-26.04). The
+post-step comment #29's close-out flagged is corrected: actions/cache declares
+post-if: success() at v4 and v6 (read from action.yml), so the early save is what keeps a
+working Chez when a later test fails. WATCHED RED, THEN GREEN, LOCALLY: a scratchpad rehearsal
+(PyYAML and Docker, not committed: no new dependency) parsed ci.yml and ran the os step's script
+as the runner runs a run: block (bash --noprofile --norc -eo pipefail, $GITHUB_OUTPUT
+pre-created) in the local linux/amd64 ubuntu:24.04 and ubuntu:26.04 images, --pull=never. On
+main it failed 11 of 12 checks, and both images rendered one key, chez-Linux-X64-10.4.1-threads.
+After the fix, 12 of 12; a removed or empty ID or VERSION_ID exits 1 and writes nothing. Nine
+workflow mutations were each caught by the check named for them, 9 of 9 verdicts reached.
+actionlint caught 3 (the unknown 26.04 label, two broken steps.os references); its shellcheck
+pass was witnessed live with an injected unquoted $VAR (SC2086). REBASED: the branch was cut
+from e1997e0 while #28 was open; by the push, #28 and #29 had landed and 0039 had settled 0017.
+ci.yml merged clean in the planned order (token check, checkout v7, Init submodules, os,
+restore). The CHANGELOG entry went under the existing ### Fixed, 0038 was re-read and now cites
+0039, and the counts moved: no-scheme 12/12, test-all 78/78 (macOS arm64, Chez 10.4.1 tarm64osx,
+CMake 4.3.3). The rehearsal and all nine mutants were re-run on the rebased file. CI: run
+36879385574 on f972f3d, image ubuntu-24.04 20260927.320.1. That is a newer weekly image than
+0039's 20260920.314 under the same key, because the key follows the release. The restore printed
+"Cache not found for input keys: chez-Linux-ubuntu-24.04-X64-10.4.1-threads", the key the
+rehearsal predicted, verbatim. Chez was built from source (10.4.1, ta6le), CMake 3.31.6, then
+"Cache saved with key: chez-Linux-ubuntu-24.04-X64-10.4.1-threads" (refs/pull/30/merge). pr
+78/78, release 78/78, no-scheme 12/12, about 7 minutes, and NO annotations: the ubuntu-latest
+notice is gone. PR #30 squash-merged as 8238d1c, pinned to f972f3d by --match-head-commit.
+Merged tree 26dee92 = tested tree 26dee92 (hash compare). fix/ci-pin-runner-image deleted local
+and remote. MAIN'S FIRST RUN UNDER THE NEW KEY (36880820386 on 8238d1c) missed, as 0038 item 2
+says it must. main held only the old-key entry, and #30's entry lives under refs/pull/30/merge,
+which main cannot read. At this close-out it was building Chez from source. Its save under
+refs/heads/main, and the first restore under the new key, are for the next runs to show.
+
+REFLECTION. Three things. (1) A REHEARSAL THAT PREDICTS THE RUNNER'S OUTPUT SAYS MORE THAN A
+GREEN TICK. Green alone would not show that the key carries the release; the restore line
+printing the predicted key verbatim does. (2) A LINT IS NOT A SPECIFICATION. actionlint passed
+6 of 9 broken workflows: back to ubuntu-latest, the release dropped from the key, either guard
+removed, the output sent to stdout, the separator dropped. Only checks of behaviour caught them.
+(3) A BRANCH CUT BEFORE A PARALLEL MERGE MUST BE RE-READ, NOT JUST REBASED. The rebase merged
+ci.yml cleanly, but five sentences on the branch had become false ("CI has not yet run the
+suite", "0017 still holds"), and its counts were 77/11 on a tree that now holds 78/12. Text
+needs a reading, not a merge. This ledger's NEXT had already given the branch its plan.
+
+NEXT. (1) Before 2026-12-01, when runner-images reviews the 24.04 CMake hold (#11926): if it
+lifts, CI's CMake moves under the pin. The runtime identity step prints it (0038 item 3). (2) The
+24.04 → 26.04 move is its own commit, stating what 0038 item 4 lists. (3) chez-httparse still
+runs on ubuntu-latest with a key that ignores the release, so the same port applies there before
+2026-10-19. (4) The result-level authority-form validator (0032 item 4), if a request measures
+the need. (5) v0.6+ tooling (0012, 0022). (6) The next sibling request.
