@@ -29,6 +29,8 @@
 # case mixture -- the function prefix, the cache variable, the module
 # CamelCase, the hyphenated prose form -- reduces to the one stem below.
 
+cmake_minimum_required(VERSION 3.26)
+
 include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/SpecSupport.cmake")
 

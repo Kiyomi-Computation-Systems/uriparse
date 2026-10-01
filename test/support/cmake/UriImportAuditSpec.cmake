@@ -19,6 +19,8 @@
 # properties, and a broader import audit can extend this spec when a slice needs
 # one, the way the rename audit's forms grew.
 
+cmake_minimum_required(VERSION 3.26)
+
 include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/SpecSupport.cmake")
 

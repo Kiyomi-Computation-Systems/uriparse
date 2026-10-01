@@ -6,6 +6,42 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **CI clones the private byte-machine submodule with a read token.** The
+  workflow's checkout never fetched `vendor/byte-machine`, and the job's own
+  token cannot read the private repository it pins anyway. A clone without it
+  stops at configure under both `dev` and `no-scheme` (measured on a fresh
+  clone), so the first run with minutes back would have failed at `Configure
+  and build`. Every earlier run was a billing refusal before any step (decision
+  0017), so nothing showed it. The fix is chez-httparse's #58, itself
+  chez-http-server's #88. A first step fails by name while the
+  `SUBMODULES_READ_TOKEN` Actions secret is missing. Checkout fetches this
+  repository alone, with the job's own token. A new `Init submodules` step then
+  clones the submodule, before Chez is built, through a URL rewrite that carries
+  the secret. The rewrite covers only the organization's URLs and lives in that
+  step's environment, so no file holds the token and no later step sees it.
+  Until the secret is added, every run fails at the first step, naming it.
+
+- **Every script `cmake -P` runs declares the CMake 3.26 policy floor, and a
+  lane holds them to it.** A `-P` script inherits none of the project's
+  policies. On the runner's CMake 3.31.6 that leaves CMP0057 unset, so
+  `if(x IN_LIST y)` is a syntax error; CMake 4 cannot leave it unset, so no
+  machine this suite had run on could see it. Four scripts ran without the
+  floor. Three (`CorpusProvenanceSpec`, `RenameAuditSpec`, `UriImportAuditSpec`)
+  pass on CMake 3.31.6 without it. The fourth, `UriExpectExit.cmake`, reaches
+  `IN_LIST` whenever a lane's exit status is wrong. Rehearsed on CMake 3.31.6
+  before this change, every preset still passed, but 20 of the Scheme mutation
+  suite's catches go through that path, and all 20 were the runner dying on the
+  syntax error rather than a verdict: the suite counted a crash as a catch. With
+  the floor, all 20 reach a verdict (11 mismatches, 9 out-of-vocabulary
+  statuses). `harness.script-policy-floor` checks, as text, that every script
+  the build runs with `-P` opens with the floor the top-level `CMakeLists.txt`
+  declares, because running them on CMake 4 cannot tell the difference. CI now
+  records CMake's version beside Chez's. Measured on macOS arm64 (Chez 10.4.1,
+  tarm64osx) under CMake 3.31.6 and 4.3.3 alike: pr 78/78, release 78/78,
+  no-scheme 12/12.
+
 ## [0.6.1] - 2026-09-26
 
 A pin bump only: no src, no lane, no algorithm, and **no new conformance claim**.
