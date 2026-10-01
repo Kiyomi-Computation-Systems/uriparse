@@ -2,6 +2,7 @@
 
 Date: 2026-09-18
 Status: accepted
+Item 3 settled by: [0039](0039-the-first-funded-ci-run-passes-and-settles-0017-item-3.md) (both predictions held on the first funded run)
 Amends: [0006](0006-ci-covers-the-linux-cell-alone.md) for M1
 References: `byte-machine` decision 0041 (the same situation, the same answer)
 Milestone: M1

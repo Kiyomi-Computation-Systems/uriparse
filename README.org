@@ -1,9 +1,10 @@
 * uriparse
 
 #+begin_quote
-*CI has not run.* The Linux cell is configured and committed; the billed
-minutes for the month are exhausted, so everything below is measured on macOS
-arm64 locally and nowhere else ([[file:.plans/decisions/0017-m1-ships-on-one-cell-and-it-is-not-the-linux-one.md][decision 0017]]).
+*CI runs on one cell, Linux amd64*, and its first run passed on 2026-10-01
+([[file:.plans/decisions/0039-the-first-funded-ci-run-passes-and-settles-0017-item-3.md][decision 0039]]).
+Windows and arm64 Linux are not run
+([[file:.plans/decisions/0006-ci-covers-the-linux-cell-alone.md][decision 0006]]).
 #+end_quote
 
 An RFC 3986 URI parser for Chez Scheme, in portable R6RS.

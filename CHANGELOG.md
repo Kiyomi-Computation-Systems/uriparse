@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **CI has run, and passed.** The first funded run, on #28: `pr` 78/78, `release` 78/78,
+  `no-scheme` 12/12, on `ubuntu-24.04` with Chez 10.4.1 built from source (`ta6le`) and
+  CMake 3.31.6. All 65 earlier runs were refused for billing before a single step. It
+  settles decision 0017 item 3 (decision 0039): `ta6le` derives `linux/amd64`, and all 25
+  ahead-of-time lanes pass on a cold runner. The README's "CI has not run" banner is gone.
+  Windows and arm64 Linux are still not run.
+
 ### Fixed
 
 - **CI clones the private byte-machine submodule with a read token.** The
