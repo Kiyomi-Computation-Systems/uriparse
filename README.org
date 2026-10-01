@@ -13,7 +13,7 @@ An RFC 3986 URI parser for Chez Scheme, in portable R6RS.
 ✨ *AI Disclosure:* LLMs are used extensively in the planning and development of this project.
 #+end_quote
 
-** Status: v0.6.1 — released 2026-09-26
+** Status: v0.6.2 — released 2026-10-01
 
 The scanner splits a URI reference into five components — scheme, authority,
 path, query, fragment — for all three modes (M2), and ~(uri collect)~ assembles
