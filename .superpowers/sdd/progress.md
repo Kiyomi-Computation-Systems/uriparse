@@ -3568,3 +3568,22 @@ name, as its own change. (4) Carried from #30: the 2026-12-01 CMake hold review;
 move as its own commit (0038 item 4); chez-httparse's runner pin before 2026-10-19; the
 result-level authority-form validator (0032 item 4), if a request measures the need; v0.6+ tooling
 (0012, 0022); the next sibling request.
+
+v0.6.2 TAGGED AND RELEASED (2026-10-01, on the maintainer's request). Annotated tag v0.6.2
+(3cfec81) on 5ecd88f, GPG-signed (tag.gpgSign; good signature, key D4D955D55C8853D7), pushed; it
+dereferences to 5ecd88f on origin, confirmed. It is the FIRST TAG CUT ON A GREEN RUN ON ITS OWN
+COMMIT (0039 item 5). Run 36896649640, the push run on 5ecd88f: ubuntu-24.04 20260927.320.1, Init
+submodules checked out c338a57, cache restored from chez-Linux-ubuntu-24.04-X64-10.4.1-threads,
+ta6le, CMake 3.31.6, pr 78/78, release 78/78, no-scheme 12/12. The tag message cites that run.
+The CHANGELOG [0.6.2] section cites only the local counts: it was merged before a CI line was
+added. GitHub Release "v0.6.2 — pin byte-machine v0.7.0" published from the signed tag
+(--verify-tag) and marked Latest. Its body is the CHANGELOG [0.6.2] section VERBATIM, extracted
+from 5ecd88f (identical on main at 54c4e87, checked); the published body was diffed against the
+extracted file. Tags: v0.1.0 to v0.6.2; Releases: v0.6.0, v0.6.1, v0.6.2.
+
+NEXT. (1) chez-httparse moves to byte-machine v0.7.0 too, before chez-http-server can use the
+accessors; it can then pin uriparse v0.6.2 alongside it. (2) Optional: cite grammar.sls:103's
+verify.sls:1798 by name, as its own change. (3) Carried from #30: the 2026-12-01 CMake hold
+review; the 24.04 → 26.04 move as its own commit (0038 item 4); chez-httparse's runner pin before
+2026-10-19; the result-level authority-form validator (0032 item 4), if a request measures the
+need; v0.6+ tooling (0012, 0022); the next sibling request.
