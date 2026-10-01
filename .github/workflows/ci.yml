@@ -19,7 +19,12 @@ on:
 
 jobs:
   linux-amd64:
-    runs-on: ubuntu-latest       # x86-64 (amd64)
+    # An explicit image, not ubuntu-latest: that label moves to Ubuntu 26.04
+    # from 2026-10-19 (actions/runner-images#14748), and the image chooses both
+    # the libraries the cached Chez links against and the CMake every
+    # `cmake -P` script runs under, so an image change should be a reviewed
+    # commit (decision 0038). Changing it re-keys the Chez cache (step `os`).
+    runs-on: ubuntu-24.04        # x86-64 (amd64)
     env:
       URI_EXPECT_OS: linux
       URI_EXPECT_ARCH: amd64
@@ -55,6 +60,16 @@ jobs:
           GIT_CONFIG_VALUE_0: "https://github.com/Kiyomi-Computation-Systems/"
         run: git submodule update --init
 
+      # The OS release for the Chez cache key, read off the machine rather than
+      # restated from runs-on (which a bump could forget), so a new image misses
+      # the cache instead of restoring a Chez built against another release's
+      # libraries. An empty ID or VERSION_ID fails the step.
+      - name: Identify the OS release
+        id: os
+        run: |
+          . /etc/os-release
+          echo "release=${ID:?}-${VERSION_ID:?}" >> "$GITHUB_OUTPUT"
+
       # Building Chez from source is minutes; every other step in this job is
       # seconds. The install prefix is under $HOME rather than /usr/local so the
       # cache can be restored without root, and it is an absolute path that is
@@ -63,15 +78,17 @@ jobs:
       #
       # The key pins the version because the prefix holds a version-stamped boot
       # directory (lib/csv$CHEZ_VERSION): a bumped CHEZ_VERSION must miss the
-      # cache rather than merge into an existing prefix. No restore-keys, for
-      # the same reason -- a partial match here would be a wrong Chez, not a
-      # warm start.
+      # cache rather than merge into an existing prefix. It names the OS release
+      # (step `os`) because the binary is linked against that release's
+      # libraries, so a new image must miss as well. No restore-keys, for the
+      # same reason -- a partial match here would be a wrong Chez, not a warm
+      # start.
       - name: Restore cached Chez Scheme
         id: chez-cache
         uses: actions/cache/restore@v6
         with:
           path: ~/.local/chez
-          key: chez-${{ runner.os }}-${{ runner.arch }}-${{ env.CHEZ_VERSION }}-threads
+          key: chez-${{ runner.os }}-${{ steps.os.outputs.release }}-${{ runner.arch }}-${{ env.CHEZ_VERSION }}-threads
 
       - name: Build and install Chez Scheme from source (>= floor)
         if: steps.chez-cache.outputs.cache-hit != 'true'
@@ -110,10 +127,11 @@ jobs:
           echo '(display (machine-type))(newline)' | scheme -q
           cmake --version | head -1
 
-      # Saved here rather than by the cache action's own post-step, which would
-      # also run after a failed build and could publish a half-installed prefix
-      # under the key -- poisoning every later run until the version changes.
-      # Reaching this step means the prefix above answered as a working Chez.
+      # Saved here rather than by the cache action's own post-step, which runs
+      # only when every step before it passed (`post-if: success()`): one
+      # failing test would then discard a Chez that works, and the next run
+      # would build it again. Reaching this step means the prefix above
+      # answered as a working Chez, so it is kept whatever the tests do.
       - name: Cache the Chez build
         if: steps.chez-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
