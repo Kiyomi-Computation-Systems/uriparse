@@ -3516,3 +3516,55 @@ the 2026-12-01 CMake hold review; the 24.04 → 26.04 move as its own commit (00
 chez-httparse's runner pin before 2026-10-19; the result-level authority-form validator
 (0032 item 4), if a request measures the need; v0.6+ tooling (0012, 0022); the next sibling
 request.
+
+---
+
+GENERATOR-ABI CITATIONS BY NAME (2026-10-01, PR #32, on the maintainer's request). The #31
+close-out's FOUND IN PASSING, as its own change (0002 item 6). Two comments in
+test/common/generator-abi-tests.sps located byte-machine definitions by pin and line: "the pin at
+v0.6.0 ... runtime.sls:109" above `expected-abi`, and "(runtime.sls:175,179)" in the
+retired-constructor case. The version went stale at v0.6.1 (#27), the lines at v0.7.0 (#31): 110
+and 176,180, read from the checked-out submodule. Both now cite by name: `current-abi-version` in
+`(byte-machine runtime)`, and the /v1 and /v2 constructors the checks below spell in full. No
+version, no line. COMMENTS ONLY; the lane checks what it did. NO CHECK REPLACES THE CITATION, and
+that was asked before it was settled (AGENTS.md: prefer a check to a comment).
+current-abi-version is not exported (absent from the export list, lines 11-49). The runtime
+accepting ABI 9 is already exercised by every lane that loads src/generated/uri-scanner.sls, which
+constructs with `(byte-machine-make-compiled-machine 9 ...)` at :437. One check is impossible, the
+other redundant. THE GATE HELD. The brief said to start only after #31 merged. The first fetch
+found it open, so the edit was drafted uncommitted while a background loop watched origin/main for
+"v0.6.2". The branch was cut from 5ecd88f and the submodule initialized at c338a57. Between commit
+and push main moved again (8f10f2f, the #31 close-out, whose NEXT (3) named this work). The fetch
+before the push caught it, the branch was rebased, and both suites re-ran on the rebased tree.
+Measured on 2227f3e (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3): test-all 78/78, no-scheme
+12/12, 0 failures; the build prints "chez-uri 0.6.2". CI run 36899654226 on 2227f3e: ubuntu-24.04
+20260920.314.1, runner 2.337.0, Init submodules checked out c338a57, cache restored from
+chez-Linux-ubuntu-24.04-X64-10.4.1-threads, ta6le, CMake 3.31.6, pr 78/78, release 78/78,
+no-scheme 12/12, in 1m21s. That image is older than #30's 20260927.320.1 under the same label: the
+hosted fleet serves more than one weekly image, and the key, which names the release and not the
+image, restored either way. Merged on green: PR #32 squash-merged as 34937e8, pinned to 2227f3e by
+--match-head-commit. Merged tree bac8c85 = tested tree bac8c85 (hash compare).
+fix/abi-test-pin-citations deleted local and remote. FOUND IN PASSING: src/uri/grammar.sls:103
+cites "verify.sls:1798" the same way. It still holds at v0.7.0 (verify.sls is unchanged from
+v0.6.0), so it is fragile, not stale.
+
+REFLECTION. Three things. (1) A LINE NUMBER IS A CLAIM THE PIN OWNS. Nothing reads a comment, and
+AGENTS.md forbids a test that does, so the pin-move commit that falsified these citations could
+not redden. The durable fix is a comment that does not depend on the pin: a definition's name
+moves only when the API does, and then the import or check beside it breaks loudly. (2) "PREFER A
+CHECK TO A COMMENT" WAS ASKED, AND THE ANSWER WAS NO. Both candidate checks were impossible
+(unexported) or redundant (the committed scanner already proves acceptance). Recording why keeps
+the next reader from re-asking, and keeps a redundant check from being added just to satisfy the
+rule. (3) THE ZSH `:s` TRAP STRUCK AGAIN WITHIN THE HOUR. #31's reflection (2) named it, and this
+session hit it independently in its first survey: `$rev:src` matched nothing for two of three
+tags. The empty result was treated as a fault, not a finding, and the loop re-ran with `${rev}`
+before any line number was trusted. A lesson written in one session does not reach a session
+already running.
+
+NEXT. (1) Tag v0.6.2 on 5ecd88f and publish its GitHub Release, on the maintainer's word (untagged
+at this close-out; Latest is v0.6.1). (2) chez-httparse moves to byte-machine v0.7.0 too, before
+chez-http-server can use the accessors. (3) Optional: cite grammar.sls:103's verify.sls:1798 by
+name, as its own change. (4) Carried from #30: the 2026-12-01 CMake hold review; the 24.04 → 26.04
+move as its own commit (0038 item 4); chez-httparse's runner pin before 2026-10-19; the
+result-level authority-form validator (0032 item 4), if a request measures the need; v0.6+ tooling
+(0012, 0022); the next sibling request.
