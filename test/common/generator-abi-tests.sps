@@ -24,10 +24,10 @@
         (byte-machine interpret)
         (byte-machine runtime))
 
-;; The generated-runtime ABI the pin at v0.6.0 speaks (decision 0002 item 3,
-;; read from runtime.sls:109). Read from the emitted text below, never
-;; remembered: if the pin ever moves and the ABI with it, this reddens here
-;; rather than at load time in some later slice.
+;; The generated-runtime ABI the pinned runtime speaks: `current-abi-version` in
+;; `(byte-machine runtime)` (decision 0002 item 3). Read from the emitted text
+;; below, never remembered: if the pin ever moves and the ABI with it, this
+;; reddens here rather than at load time in some later slice.
 (define expected-abi 9)
 
 (define (substring-at? s i sub)
@@ -100,9 +100,8 @@
 
     (harness-case "the retired ABI constructors are not emitted"
       (lambda ()
-        ;; The tombstoned /v1 and /v2 constructors refuse every version
-        ;; (runtime.sls:175,179); emitting either would mean the pin moved
-        ;; somewhere unexpected.
+        ;; The tombstoned /v1 and /v2 constructors refuse every version;
+        ;; emitting either would mean the pin moved somewhere unexpected.
         (let ((text (rendered)))
           (check "no /v1" (not (find-substring text "byte-machine-make-compiled-machine/v1")))
           (check "no /v2" (not (find-substring text "byte-machine-make-compiled-machine/v2"))))))
