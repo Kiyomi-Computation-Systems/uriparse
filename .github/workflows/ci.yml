@@ -40,7 +40,7 @@ jobs:
 
       # This repository alone, with the job's own token; the next step clones
       # the submodule.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # vendor/byte-machine at the commit the gitlink pins. The rewrite sends
       # only the org's URLs through the read token, and it lives in this step's
@@ -68,7 +68,7 @@ jobs:
       # warm start.
       - name: Restore cached Chez Scheme
         id: chez-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ~/.local/chez
           key: chez-${{ runner.os }}-${{ runner.arch }}-${{ env.CHEZ_VERSION }}-threads
@@ -116,7 +116,7 @@ jobs:
       # Reaching this step means the prefix above answered as a working Chez.
       - name: Cache the Chez build
         if: steps.chez-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ~/.local/chez
           key: ${{ steps.chez-cache.outputs.cache-primary-key }}
