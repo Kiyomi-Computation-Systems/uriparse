@@ -3348,3 +3348,39 @@ past their 2.327.1 floor). (2) fix/ci-pin-runner-image rebased onto main and mer
 result-level authority-form validator (0032 item 4), if a request measures the need. (4) v0.6+
 tooling (0012, 0022). (5) The next sibling request. A release cut from here can cite a green run on
 its own commit (0039 item 5).
+
+---
+
+NODE 24 ACTIONS (2026-10-01, PR #29, on the maintainer's request). Every run warned that
+actions/checkout@v4 and actions/cache/restore|save@v4 target Node 20, which GitHub has deprecated,
+and were being forced onto Node 24. They moved to the newest majors: checkout v7 (v7.0.1) and cache
+v6 (v6.1.0). runs.using was read from each action.yml at its major tag: v4 is node20, and checkout
+v5-v7 and cache v5-v6 are node24. v5+ need runner 2.327.1; the hosted runner is 2.337.0. The one
+live risk was checkout v6's relocated credentials. Checkout v7's git-auth-helper.ts writes
+`includeIf.gitdir:<workspace>/.git` (and `/worktrees/*`) into the superproject's local config,
+which the submodule's clone neither reads nor matches. Run 36876977770 on 8719643 confirmed it:
+Init submodules checked out 5c1cb7e under checkout@v7. No Node 20 annotation remained, only the
+ubuntu-latest notice that 0038 answers. pr 78/78, release 78/78, no-scheme 12/12. THE CHEZ CACHE
+MISSED, AND NOT BECAUSE OF THE BUMP. All three chez-Linux-X64-10.4.1-threads entries carry the
+same version (5e7b3cfe...), so v6 matches what v4 saved. Caches are scoped by ref: a PR restores its
+own entries and its base branch's, never another PR's. #28's entry lived under refs/pull/28/merge.
+main's first entry was saved at 14:31:41 by the run #28's merge triggered, and #29's restore step
+ran at 14:31:25. PR #29 squash-merged as a68da72. Merged tree 1b31dba = tested tree 1b31dba (hash
+compare). fix/ci-node24-actions deleted local and remote. FOUND IN PASSING: ci.yml says the cache
+action's own post-step "would also run after a failed build", but it declares
+`post-if: success()` in v4 and v6 alike. The early save is still right, for a different reason: a
+Chez proven to work is kept even if a later test fails. The comment gets corrected in the
+image-pin PR, which edits that step. chez-httparse and chez-http-server still run the v4 actions.
+
+REFLECTION. Two things. (1) A CACHE MISS IS NOT A COMPATIBILITY VERDICT. The first reading of the
+miss was "v6 cannot restore what v4 saved", and it nearly entered this ledger. The caches API
+showed one version across all three entries, and the timestamps showed the real cause: ref
+scoping plus a 16-second race with main's first save. Read the entries before naming a cause.
+(2) READ WHAT AN ACTION WRITES, NOT WHAT ITS RELEASE NOTE SAYS. "Persist creds to a separate
+file" said nothing about where the file reaches. The includeIf in the source answered that, and
+the run confirmed it before merge.
+
+NEXT. (1) fix/ci-pin-runner-image (0038) rebased onto main, which now has #28 and #29. Keep both
+post-checkout steps (Init submodules, then Identify the OS release), combine [Unreleased], correct
+the post-step comment, then merge. (2) The result-level authority-form validator (0032 item 4), if
+a request measures the need. (3) v0.6+ tooling (0012, 0022). (4) The next sibling request.
