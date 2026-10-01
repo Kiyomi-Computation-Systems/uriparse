@@ -6,7 +6,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-01
+
+A pin bump, released with the CI work since 0.6.1: no src, no algorithm, and **no new
+conformance claim**. Measured at the new pin on macOS arm64 (Chez Scheme 10.4.1,
+tarm64osx): the complete selection is 78/78 and the no-Scheme layer 12/12, 0 failures.
+
 ### Changed
+
+- **The pin moves to byte-machine `v0.7.0`** (`5c1cb7e..c338a57`: upstream PRs #143,
+  #144, #146–#150). The runtime gains two exports, `parser-error-span` and
+  `parser-error-span-offset`: the span a parse error abandoned, and the stream offset
+  where that span's withheld bytes begin, or `#f` when no span was open. The
+  generated-runtime ABI is still 9 and the emitter is unchanged: `make parser-refresh`
+  at the new pin rewrites `src/generated/uri-scanner.sls` byte-identical. uriparse
+  reads only `parser-error-code` and `parser-error-offset` and binds neither new name,
+  so nothing under `src/` changes.
+- Why: chez-http-server vendors both uriparse and chez-httparse, so both must be on the
+  same byte-machine before it can use the two accessors for its span size limits
+  ([byte-machine#145](https://github.com/Kiyomi-Computation-Systems/byte-machine/issues/145)).
 
 - **CI has run, and passed.** The first funded run, on #28: `pr` 78/78, `release` 78/78,
   `no-scheme` 12/12, on `ubuntu-24.04` with Chez 10.4.1 built from source (`ta6le`) and
@@ -505,7 +523,8 @@ host grammar are v0.2 (decisions 0011, 0023, and the README caveats).
   always agrees, and a ratchet that fails in only one direction, are both
   caught.
 
-[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.4.0...v0.5.0
