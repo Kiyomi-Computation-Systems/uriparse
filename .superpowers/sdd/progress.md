@@ -3446,3 +3446,15 @@ lifts, CI's CMake moves under the pin. The runtime identity step prints it (0038
 runs on ubuntu-latest with a key that ignores the release, so the same port applies there before
 2026-10-19. (4) The result-level authority-form validator (0032 item 4), if a request measures
 the need. (5) v0.6+ tooling (0012, 0022). (6) The next sibling request.
+
+PR #30 RE-KEY CONFIRMED ON MAIN (2026-10-01). Both post-merge runs passed on image ubuntu-24.04
+20260927.320.1.
+- 36880820386 on 8238d1c missed ("Cache not found for input keys:
+  chez-Linux-ubuntu-24.04-X64-10.4.1-threads"). It built Chez, saved it under refs/heads/main at
+  15:04:19, and passed pr 78/78, release 78/78, no-scheme 12/12.
+- 36881442309 on e44ef1e is the close-out's run. That commit was pushed only after the save had
+  landed, checked once in the caches API. Its restore printed "Cache restored from key:
+  chez-Linux-ubuntu-24.04-X64-10.4.1-threads", the first restore under the new key. It passed the
+  same counts in 1m42s.
+
+The whole re-key cycle has now run on main: miss, build, save, restore.
