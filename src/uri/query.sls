@@ -50,16 +50,17 @@
             ((fx=? (bytevector-u8-ref bv i) b) i)
             (else (loop (fx+ i 1))))))
 
-  ;; plus->space! : Bytevector -> Bytevector
-  ;; Rewrites every `+` to a space IN PLACE and returns its argument. Safe only
-  ;; because `split` hands `decode` a fresh slice, never the caller's bytes.
-  (define (plus->space! bv)
-    (let loop ((i 0))
-      (when (fx<? i (bytevector-length bv))
-        (when (fx=? (bytevector-u8-ref bv i) PLUS)
-          (bytevector-u8-set! bv i SPACE))
-        (loop (fx+ i 1))))
-    bv)
+  ;; plus->space : Bytevector -> Bytevector
+  ;; A fresh copy with every `+` rewritten to a space. The argument is never
+  ;; written, so it does not matter whose bytes `split` hands over.
+  (define (plus->space bv)
+    (let ((out (bytevector-copy bv)))
+      (let loop ((i 0))
+        (when (fx<? i (bytevector-length out))
+          (when (fx=? (bytevector-u8-ref out i) PLUS)
+            (bytevector-u8-set! out i SPACE))
+          (loop (fx+ i 1))))
+      out))
 
   ;; piece : Bytevector Nat Nat (Bytevector -> Bytevector)
   ;;         -> (Pairof Bytevector (Option Bytevector))
@@ -91,4 +92,4 @@
   ;; form-pairs : Bytevector -> (Listof (Pairof Bytevector (Option Bytevector)))
   ;; As `query-pairs`, but `+` reads as a space, before decoding.
   (define (form-pairs bv)
-    (split bv (lambda (raw) (pct-decode (plus->space! raw))))))
+    (split bv (lambda (raw) (pct-decode (plus->space raw))))))

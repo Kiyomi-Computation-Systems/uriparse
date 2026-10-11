@@ -43,6 +43,7 @@
     uri-error? uri-error-reason uri-error-offset uri-error-input uri-error-reasons)
   (import (rnrs)
           (only (uri components)
+                make-uri-components
                 uri-components-scheme uri-components-authority uri-components-path
                 uri-components-query uri-components-fragment)
           (only (uri collect)
@@ -50,22 +51,26 @@
                 uri-parse-error-code uri-parse-error-offset)
           (only (uri host) authority-host-span)
           (only (uri normalize) normalize-scheme normalize-components)
-          (only (uri percent) pct-decode pct-encode unreserved-byte? hex-digit-value)
+          (only (uri percent) pct-decode pct-encode unreserved-byte?)
           (only (uri query) query-pairs form-pairs))
 
-  (define PERCENT 37)                       ; #\%
   (define SLASH 47)                         ; #\/
   (define ZERO 48)                          ; #\0
 
   ;; --- the record and the condition ----------------------------------------
 
   ;; uri? : Any -> Boolean
+  ;; Opaque: record inspection (`record?`, `record-rtd`) cannot see inside it, so
+  ;; the validated component bytes are reachable only through this library.
   (define-record-type (uri make-uri uri?)
+    (opaque #t)
     (fields (immutable components uri-parts)))
 
   ;; uri-error? : Any -> Boolean
   ;; uri-error-reason : UriError -> Symbol
-  ;; uri-error-offset : UriError -> (Option Nat)
+  ;; uri-error-offset : UriError -> Nat
+  ;;   Every reason carries one: the low layer reports an offset with every error
+  ;;   result, and the easy layer's own reasons give theirs.
   ;; uri-error-input : UriError -> String
   (define-condition-type &uri-error &error
     make-uri-error uri-error?
@@ -188,11 +193,14 @@
   ;; uri-host : Uri -> (Option String)
   ;; Normalized: lowercase, unreserved `%XX` decoded, other triplets kept with
   ;; uppercase hex. An IP-literal keeps its brackets. #f with no authority.
-  ;; The host is read from a normalized COPY; the record stays raw.
+  ;; The host is read from a normalized COPY of the authority alone; the record
+  ;; stays raw, and the path, query and fragment are not touched.
   (define (uri-host u)
-    (let ((c (parts 'uri-host u)))
-      (and (uri-components-authority c)
-           (let ((a (uri-components-authority (normalize-components c))))
+    (let ((raw (uri-components-authority (parts 'uri-host u))))
+      (and raw
+           (let ((a (uri-components-authority
+                     (normalize-components
+                      (make-uri-components #f raw (make-bytevector 0) #f #f)))))
              (let-values (((hs he) (authority-host-span a)))
                (utf8->string (slice a hs he)))))))
 
@@ -256,41 +264,44 @@
                     i))
                (else i)))))))
 
-  ;; source-index : Bytevector Nat -> Nat
-  ;; The index in `raw` of what `pct-decode` turned into decoded byte `d`: a
-  ;; `%` and two hex digits make one decoded byte, any other byte is itself.
-  (define (source-index raw d)
-    (let ((n (bytevector-length raw)))
-      (let loop ((i 0) (k 0))
-        (if (fx=? k d)
-            i
-            (loop (if (and (fx=? (bytevector-u8-ref raw i) PERCENT)
-                           (fx<? (fx+ i 2) n)
-                           (hex-digit-value (bytevector-u8-ref raw (fx+ i 1)))
-                           (hex-digit-value (bytevector-u8-ref raw (fx+ i 2))))
-                      (fx+ i 3)
-                      (fx+ i 1))
-                  (fx+ k 1))))))
+  ;; triplet-at? : Bytevector Nat -> Boolean
+  ;; Whether `pct-decode` reads the three bytes at `i` as one `%XX` triplet. It
+  ;; asks pct-decode itself, over that window, rather than restating its rule:
+  ;; only a triplet turns three bytes into one, so the offsets below cannot drift
+  ;; from the decoder they describe.
+  (define (triplet-at? raw i)
+    (and (fx<=? (fx+ i 3) (bytevector-length raw))
+         (fx=? (bytevector-length (pct-decode (slice raw i (fx+ i 3)))) 1)))
 
-  ;; check-decodable : Symbol Bytevector String -> unspecified
-  ;; Raise invalid-utf-8 unless `raw`, percent-decoded, is UTF-8, at the
-  ;; character index in `input` where the bad sequence begins. Splitting on an
-  ;; ASCII delimiter can neither cut a well-formed sequence nor mend an
+  ;; source-index : Bytevector Nat -> Nat
+  ;; The index in `raw` of what `pct-decode` turned into decoded byte `d`. Walks
+  ;; pct-decode's units, a triplet or a single byte, one decoded byte each. Only
+  ;; an error offset needs it, so its window allocations are off the hot path.
+  (define (source-index raw d)
+    (let loop ((i 0) (k 0))
+      (if (fx=? k d)
+          i
+          (loop (if (triplet-at? raw i) (fx+ i 3) (fx+ i 1)) (fx+ k 1)))))
+
+  ;; decode-strictly : Symbol Bytevector String -> Bytevector
+  ;; `raw` percent-decoded, raising invalid-utf-8 unless the result is UTF-8, at
+  ;; the character index in `input` where the bad sequence begins. Splitting on
+  ;; an ASCII delimiter can neither cut a well-formed sequence nor mend an
   ;; ill-formed one, so judging the whole text once judges every piece split
   ;; from it, and the offset is into the whole text.
-  (define (check-decodable who raw input)
-    (let ((d (utf8-fault (pct-decode raw))))
-      (when d
-        (raise-uri-error who 'invalid-utf-8 (char-offset raw (source-index raw d)) input))))
+  (define (decode-strictly who raw input)
+    (let* ((decoded (pct-decode raw))
+           (d (utf8-fault decoded)))
+      (if d
+          (raise-uri-error who 'invalid-utf-8 (char-offset raw (source-index raw d)) input)
+          decoded)))
 
   ;; uri-decode : String -> String
   ;; Percent-decode, strictly: raises invalid-utf-8 rather than produce U+FFFD.
   ;; Total otherwise: a `%` without two hex digits is itself, and `+` is `+`.
   (define (uri-decode s)
     (check-string 'uri-decode s)
-    (let ((raw (string->utf8 s)))
-      (check-decodable 'uri-decode raw s)
-      (utf8->string (pct-decode raw))))
+    (utf8->string (decode-strictly 'uri-decode (string->utf8 s) s)))
 
   ;; uri-encode : String -> String
   ;; Percent-encode every octet of the string's UTF-8 except §2.3 unreserved,
@@ -306,7 +317,7 @@
   (define (uri-path-segments u)
     (let* ((p (uri-components-path (parts 'uri-path-segments u)))
            (n (bytevector-length p)))
-      (check-decodable 'uri-path-segments p (utf8->string p))
+      (decode-strictly 'uri-path-segments p (utf8->string p))
       (if (fx=? n 0)
           '()
           (let loop ((s (if (fx=? (bytevector-u8-ref p 0) SLASH) 1 0)) (acc '()))
@@ -319,7 +330,7 @@
       (if (not q)
           '()
           (begin
-            (check-decodable who q (utf8->string q))
+            (decode-strictly who q (utf8->string q))
             (map (lambda (p) (cons (utf8->string (car p)) (text (cdr p))))
                  (split q))))))
 

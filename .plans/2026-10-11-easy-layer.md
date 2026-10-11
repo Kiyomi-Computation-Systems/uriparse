@@ -166,7 +166,7 @@ components->uri       : Components -> Uri
 ;; --- errors ---
 uri-error?            : Any -> Boolean
 uri-error-reason      : UriError -> Symbol
-uri-error-offset      : UriError -> (Option Nat)
+uri-error-offset      : UriError -> Nat
 uri-error-input       : UriError -> String
 uri-error-reasons     : (Listof Symbol)    ; every reason above, written out
 ```
@@ -279,6 +279,11 @@ under a different meaning.
   `invalid-dec-octet`, `invalid-port`;
 - the easy layer's own: `invalid-utf-8` (decode), `base-not-absolute` (resolve),
   `ambiguous-components` (`components->uri`).
+
+Every reason carries an offset, so `uri-error-offset` is a `Nat`. The low layer
+reports one with every error result. `base-not-absolute` and
+`ambiguous-components` point at 0: the base as a whole lacks a scheme, and the
+recomposed string as a whole re-parses differently.
 
 `uri-error-reasons` exports this list, the way each low-layer library exports
 its code list. It is written out in `(uri easy)`, not derived from those lists,

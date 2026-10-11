@@ -25,13 +25,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   instead of becoming U+FFFD. `uri-encode` escapes everything but unreserved characters.
   Bad input raises `&uri-error` with a reason from `uri-error-reasons`, a character
   offset and the input. Rendering, resolution and normalization follow. The complete
-  selection is 83 lanes.
+  selection is 83 lanes and the no-Scheme layer 13.
 - **`uri.harness.hand-set-mode.cmake.direct`.** A registration in `test/CMakeLists.txt`
   that sets `URI_EXECUTION_MODE` by hand, bypassing `uri_add_scheme_lane`, must now set
   the mode its name declares. A non-Scheme registration may set one only when it is
   listed as an exemption with its reason. This replaces a comment in
   `cmake/UriSchemeLane.cmake` that counted these registrations and had the count wrong
-  (nine; there are eight). The complete selection is 79 lanes and the no-Scheme layer 13.
+  (nine; there are eight).
 - **`NOTICE`**, listing the third-party material: the RFC 3986 text and the test data
   extracted from it, and the byte-machine submodule.
 - **A pinned resolution boundary in `property.round-trip`.** Against a base with no

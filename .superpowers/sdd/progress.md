@@ -3919,3 +3919,31 @@ UTF-8 length with surrogates excluded, and also checks each encoding is a valid 
 [Unreleased] gains the (uri easy) entry; the selection count moved there from the query entry.
 Measured on ff06dcc plus this commit (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3,
 byte-machine c338a57): test-all 83/83, no-scheme 13/13.
+
+REVIEW FIXES ON #39 (2026-10-11, /code-review xhigh over main...feat/uri-easy-read, all ten
+findings fixed in this branch on the maintainer's word). (1) THE Uri RECORD IS OPAQUE: without
+`(opaque #t)`, `record-rtd` reached the mutable component bytevectors, so a caller could write
+into validated bytes. Not sealed: with the rtd unreachable and the type name unexported, nothing
+outside can subtype it. (2–4) THREE TEST GAPS CLOSED: decode rows with a malformed `%` before the
+bad sequence (`%%FF`→1, `%zz%FF`→3, `%F%FF`→2); `a=&b` through uri-query-pairs and
+uri-form-pairs (empty is not absent); userinfo with a `:` beside an IP-literal and a port.
+(5) THE OFFSET MAP ASKS pct-decode: source-index restated (uri percent)'s triplet rule with
+hex-digit-value; triplet-at? now decodes the three-byte window and asks whether it became one
+byte, so the mapping cannot drift from the decoder. Error path only. (6) uri-error-offset IS A
+Nat: the low layer reports an offset with every error result, so a #f guard would be dead code
+no test could watch fail; the contract was tightened instead, and the plan now gives slice ③'s
+base-not-absolute and ambiguous-components offset 0. (7) uri-host normalizes the authority
+alone (a components with only that field), not the path, query and fragment. (8) decode-strictly
+returns its decoded bytes, so uri-decode decodes once; the path and query readings still decode
+the whole text for the judgement and then each piece, the cost of judging once. (9) CHANGELOG
+[Unreleased] states the lane count once (83 and 13), in the newest entry. (10) (uri query)'s
+plus->space works on a copy instead of rewriting its argument in place. WATCHED FAIL: the opaque
+case failed on the unfixed code (2 failures) and again with `(opaque #t)` removed; a triplet-at?
+that calls any `%` a triplet fails the three new decode rows; collapsing an empty value to #f
+fails the two `a=&b` checks; a userinfo cut at its first `:` fails the new row. FOR (10) THE
+CONTRAST IS THE WITNESS: with `slice` handing over the caller's own bytevector for a whole-input
+piece, the OLD in-place rewrite fails only the new "neither reading modifies its argument" check
+(the table stays green, since the pairs are still right), and the NEW copying plus->space passes
+under the same split. Counts after: unit.easy 24 cases / 274 checks, unit.query 6 / 106. Measured
+on 8922cd2 plus this commit (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3, byte-machine
+c338a57): test-all 83/83, no-scheme 13/13.

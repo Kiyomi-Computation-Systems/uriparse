@@ -68,6 +68,13 @@
         (check "string->uri-reference, absolute" (uri? (string->uri-reference "http://a")))
         (check "string->relative-ref, relative" (uri? (string->relative-ref "../g")))
         (check "uri? is false for a string" (not (uri? "http://a")))))
+    ;; Opaque, so record inspection cannot reach the components inside and
+    ;; mutate bytes that were validated.
+    (harness-case "a Uri is opaque to record inspection"
+      (lambda ()
+        (let ((u (string->uri "http://a/b")))
+          (check "record? is false" (not (record? u)))
+          (check "record-rtd refuses it" (raised (lambda () (record-rtd u)))))))
     (harness-case "each mode refuses what it must"
       (lambda ()
         (check-uri-error "string->uri \"g\"" (lambda () (string->uri "g"))
@@ -139,6 +146,9 @@
     ("authority" ,uri-authority "file:///x" "")
     ("authority" ,uri-authority "mailto:a@b" #f)
     ("userinfo" ,uri-userinfo "http://u@a" "u")
+    ("userinfo" ,uri-userinfo "http://u:p@[::1]:8" "u:p")
+    ("host" ,uri-host "http://u:p@[::1]:8" "[::1]")
+    ("port" ,uri-port "http://u:p@[::1]:8" 8)
     ("userinfo" ,uri-userinfo "http://@a" "")
     ("userinfo" ,uri-userinfo "http://a" #f)
     ("userinfo" ,uri-userinfo "mailto:a@b" #f)
@@ -233,7 +243,11 @@
         (check-equal "q=a%26b&r" (uri-query-pairs (string->uri "http://a?q=a%26b&r"))
                      '(("q" . "a&b") ("r" . #f)))
         (check-equal "k=%C3%A9" (uri-query-pairs (string->uri "http://a?k=%C3%A9"))
-                     '(("k" . "\xE9;")))))
+                     '(("k" . "\xE9;")))
+        (check-equal "a=&b: empty is not absent" (uri-query-pairs (string->uri "http://a?a=&b"))
+                     '(("a" . "") ("b" . #f)))
+        (check-equal "a=&b, form reading" (uri-form-pairs (string->uri "http://a?a=&b"))
+                     '(("a" . "") ("b" . #f)))))
     (harness-case "+ is literal in the query reading and a space in the form reading"
       (lambda ()
         (check-equal "query" (uri-query-pairs (string->uri "http://a?x=%2B+y")) '(("x" . "++y")))
@@ -264,7 +278,8 @@
     ("%F4%90%80%80" #f 0) ("%F5%80%80%80" #f 0)                           ; above U+10FFFF
     ("%E2%82" #f 0) ("%E2%82x" #f 0) ("%C3" #f 0)                         ; truncated
     ("ab%E2%82%AC%FF" #f 11)                                              ; after a valid one
-    ("\xE9;%FF" #f 1)))                                                   ; after a 2-byte char
+    ("\xE9;%FF" #f 1)                                                     ; after a 2-byte char
+    ("%%FF" #f 1) ("%zz%FF" #f 3) ("%F%FF" #f 2)))                       ; after a malformed %
 
 (harness-group "uri-decode: strict UTF-8, never U+FFFD"
   (lambda ()
