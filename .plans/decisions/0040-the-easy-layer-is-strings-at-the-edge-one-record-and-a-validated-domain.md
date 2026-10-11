@@ -92,8 +92,11 @@ was written:
    predicate over symbols, and the two would sit one `?` apart in any program
    importing both. The reasons are exactly the union of the scanner's, `(uri
    charset)`'s and `(uri host)`'s codes, plus `invalid-utf-8`,
-   `base-not-absolute` and `ambiguous-components`. A test asserts that equality,
-   so a new low-layer code reddens it instead of leaking out undocumented. A
+   `base-not-absolute` and `ambiguous-components`. They are exported as
+   `uri-error-reasons`, a list written out rather than derived from the low
+   layer's lists. A test asserts that equality, so a new low-layer code reddens
+   it instead of leaking out undocumented; a derived list would pass it by
+   construction. A
    non-string argument is a programmer's mistake and stays an
    `assertion-violation`.
 

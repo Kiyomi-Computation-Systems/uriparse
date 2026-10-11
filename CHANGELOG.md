@@ -13,8 +13,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   is one pair whose value is `a&b`. A key with no `=` has the value `#f`, distinct from
   `a=`'s empty value. Order and duplicates are kept, and `;` is not a separator.
   `form-pairs` also reads `+` as a space, before decoding, so `%2B` stays `+`. Both are
-  total and work over bytevectors. The RFC 3986 query stays opaque everywhere else. The
-  complete selection is 81 lanes.
+  total and work over bytevectors. The RFC 3986 query stays opaque everywhere else.
+- **`(uri easy)`, parsing and reading.** `string->uri`, `string->uri-reference` and
+  `string->relative-ref` parse and validate a string into a `Uri` record, and
+  `uri-string?` answers without raising. `uri-scheme`, `uri-authority`, `uri-userinfo`,
+  `uri-host`, `uri-port`, `uri-path`, `uri-query` and `uri-fragment` return the text as
+  written, except scheme and host, which come back lowercase with unreserved `%XX`
+  decoded. `#f` means absent and `""` present but empty; an empty port reads `#f`.
+  `uri-path-segments`, `uri-query-pairs`, `uri-form-pairs` and `uri-decode` split before
+  they decode, and decode to strict UTF-8: an invalid sequence raises `invalid-utf-8`
+  instead of becoming U+FFFD. `uri-encode` escapes everything but unreserved characters.
+  Bad input raises `&uri-error` with a reason from `uri-error-reasons`, a character
+  offset and the input. Rendering, resolution and normalization follow. The complete
+  selection is 83 lanes.
 - **`uri.harness.hand-set-mode.cmake.direct`.** A registration in `test/CMakeLists.txt`
   that sets `URI_EXECUTION_MODE` by hand, bypassing `uri_add_scheme_lane`, must now set
   the mode its name declares. A non-Scheme registration may set one only when it is

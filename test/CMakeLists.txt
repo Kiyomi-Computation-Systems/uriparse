@@ -1052,6 +1052,32 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
+# --- (uri easy): strings in, a record out ------------------------------------
+#
+# The layer over everything above: it parses and validates through (uri
+# collect), reads the host through (uri host) and (uri normalize), and the query
+# through (uri query). Graded on its own contract -- fields absent vs empty,
+# scheme and host normalized while the record stays raw, character offsets,
+# strict UTF-8 decoding, and refusals that name the public caller. The
+# encode/decode round trip draws its strings from the seeded harness PRNG.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.easy.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/easy-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
+            ${URI_COLLECT}
+            ${URI_GENERATED_PARSER}
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/normalize.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/query.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/easy.sls"
+            "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/prng.sls"
+            "${CMAKE_CURRENT_LIST_DIR}/common/easy-tests.sps"
+    TIMEOUT 120
+    LABELS unit)
+endforeach()
+
 # --- (uri path): §5.2.4 remove-dot-segments + §5.2.3 merge ------------------
 #
 # The mechanics `(uri resolve)` (§5.2.2) is built on: two pure functions over
