@@ -55,6 +55,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `uri.docs.akku-manifest` lane holds its floor to the vendored version, and refused the
   bump until it moved. A `^0.7.0` floor also could never be met from the Akku index,
   since it admits no 0.8.x and byte-machine's first release there is 0.8.0.
+- **CI fetches byte-machine without a token.** byte-machine is now public, so the
+  `Init submodules` step clones `vendor/byte-machine` anonymously, as anyone cloning
+  uriparse does. The step that failed a run when the `SUBMODULES_READ_TOKEN` secret was
+  missing is gone, and so is the URL rewrite that carried it; nothing reads the secret
+  any more. `GIT_TERMINAL_PROMPT=0` makes a fetch that would need credentials fail at
+  once instead of waiting for a password.
 
 ## [0.7.0] - 2026-10-11
 
