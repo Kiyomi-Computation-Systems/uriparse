@@ -4219,3 +4219,50 @@ with it removed (a trap made sure), green again. CHANGELOG [Unreleased]'s lane e
 94df59's Markdown move must now teach the lane to read .md in the same change, or its first .md
 file fails the build: the intended effect. Measured on b3b049f plus this commit (macOS arm64,
 Chez 10.4.1 tarm64osx, CMake 4.3.3, byte-machine c338a57): test-all 87/87, no-scheme 13/13.
+
+PR #43 CLOSED OUT (2026-10-11, the closing ritual, on the maintainer's word). Squash-merged as
+e85fd34 on b3b049f, pinned by --match-head-commit b11eb6d. Merged tree 099dcd8 = tested tree
+099dcd8 (hash compare). Before merging, origin/main had not moved and the branch contained it.
+CI DID NOT RUN: run 38165688046 was refused over billing (annotation read); a PR comment records
+it with the local counts, test-all 87/87 and no-scheme 13/13. Before test/doc-lane-unread-formats
+was deleted (local and remote), no open PR was based on it (checked). The checkout, clean, moved
+from that branch to main and fast-forwarded to e85fd34.
+
+REPORTED BY 94df59, BY MESSAGE, DURING THE MERGE: two weaknesses in the lane's self-tests, on main
+since #42. Neither made #43 wrong.
+(1) "Every kind of wrong doc is reported" counts differences without checking WHICH. A reader
+that sees no blocks yields one difference for every row ("no example"), so every row passes with
+no reader at all. 94df59 watched this happen with its Markdown rows before writing the reader. For
+the org reader, "a correct doc" catches a reader that sees nothing, but a reader that half-works
+could pass a row for the wrong reason.
+(2) 94df59's fix makes each row name a fragment its difference must contain. That fix passed
+vacuously for "a block that never closes", because check-doc prefixes the doc's name to each
+difference and the label contained the fragment. Every test doc is now named doc.org or doc.md.
+BOTH FIXES are in 94df59's branch docs/user-docs-and-site (its worktree, unpushed, based on
+dcb7996), with four reader mutants witnessed. That branch will:
+- rebase onto e85fd34;
+- fold its Markdown reader into doc-format;
+- widen SNIPPET-ENV to (rnrs) plus every (uri ...) library;
+- let a program define after an expression (as-body);
+- update the "which files are docs" rows for .md.
+94df59 had asked that no Markdown reader be written here. Agreed: the fixes land with that branch,
+not as a second change here.
+
+REFLECTION. Three things. (1) A COUNT IS NOT A REASON. "Exactly one difference" is satisfied by
+the wrong difference, so a broken reader passed the rows built to catch it. Pin which difference,
+with a fragment the label cannot supply. It is the same shape as check-raises needing a
+single-value thunk: a check the guarded failure itself can satisfy. (2) ANOTHER SESSION VARIED A
+DIFFERENT AXIS. My mutations varied the checker's decisions over blocks it was given; 94df59's
+varied the reader that produces the blocks, and found what mine could not. (3) THE NOTED GAP WAS
+TOO SMALL. The #42 close-out named the format-move case. Listing everything the check could not
+see found a likelier one (a .md beside the .org), and the fix covers both.
+
+NEXT. (1) CI billing: eleven PRs (#33 to #43) have now merged without a CI verdict. When Actions
+runs again, run it on main (e85fd34 or later) and record the first green run since #28. (2) Make
+byte-machine public before or with uriparse. (3) 94df59's branch: the Markdown docs, its reader
+in doc-format, and the two self-test fixes above, as one change. Review it for (1) and (2) of the
+report. (4) Out of the easy layer's scope, if wanted: building URIs from parts, a host-kind
+accessor, a ranged (uri query). (5) Carried: chez-httparse to byte-machine v0.7.0; the 2026-12-01
+CMake hold review; the 24.04 → 26.04 move (0038 item 4); chez-httparse's runner pin before
+2026-10-19; the result-level authority-form validator (0032 item 4); v0.6+ tooling (0012, 0022);
+the next sibling request.
