@@ -426,8 +426,14 @@ measured counts there, not here.
 
 - `docs/easy.org`: short, ELI5. It covers the example at the top, the
   raw-vs-decoded rule, absent-vs-empty, and when to drop to the low layer.
-- `README.org`: a "What it does" bullet, and "Parsing a URI" leads with
-  `(uri easy)`. The bytevector example stays, under a heading for servers.
+- `README.org` (the structure #35 introduced):
+  - a "What it does" bullet;
+  - "Using it" leads with a `(uri easy)` example, and the bytevector example
+    follows it for servers;
+  - the task table gains `(uri easy)` and `(uri query)` rows;
+  - the "Scope and limits" bullet "Normalization does not remove `.` and `..`
+    segments" is narrowed to `(uri normalize)`, because `uri-normalize` does
+    remove them.
 - CHANGELOG `[0.7.0]`, the version bump, and the annotated tag. Then the
   merge gate and the closing ritual, **asked first**.
 
