@@ -3826,3 +3826,24 @@ of "/./" fails 3 cases and 9 checks (the whole new group, the `http` control inc
 lane went from 27 cases / 96 checks to 30 / 108, in both the source and aot registrations.
 Measured on d189c1e plus the working tree (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3,
 byte-machine c338a57): test-all 79/79, no-scheme 13/13.
+
+PLAN PR #36 CLOSED OUT (2026-10-11). Squash-merged as 145bc08 on 0b980a5, pinned by
+--match-head-commit d189c1e (gh needs the full SHA there; a short one is refused as "Could not
+coerce value to GitObjectID"). Merged tree 16ea20c = tested tree 16ea20c (hash compare). The
+first attempt, earlier the same day, was refused by the session's permission classifier ("merge
+without review"); the maintainer asked again and the second went through. CI DID NOT RUN on any
+of #36's three pushes (runs 38156441065, 38156641784, 38156709059), all refused over billing. A
+PR comment records that with the local count, `make test` 79/79 on d189c1e. #37 was retargeted
+to main BEFORE the plan branch went, then docs/easy-layer-slice0 was rebased with `git rebase
+--onto origin/main d189c1e`: clean, and the rebased tree equals the old head's.
+docs/easy-layer-plan deleted local and remote.
+
+REFLECTION. Three things. (1) A SENTENCE IN A DECISION RECORD IS A CLAIM NOTHING CHECKS. 0022's
+"resolution never synthesizes a //-leading no-authority path" stood from M7 until a feature
+leaned on it, and a ten-line probe disproved it. The repair is a pinned test, not a reworded
+sentence. (2) AN OPEN QUESTION IS WORTH ASKING AGAIN FROM THE CALLER'S SIDE. The draft's "scheme
+and host as written" optimized for the round-trip identity. Asked as "what will a caller do with
+uri-host?", the answer is compare it, which made the raw form an allowlist bug. Normalizing in
+the accessor and keeping the record raw keeps both properties. (3) A STACK NEEDS ITS MERGE ORDER
+WRITTEN DOWN BEFORE THE FIRST MERGE. The retarget must precede the branch deletion, and under a
+squash the stacked branch's old base commits must be cut off with --onto.
