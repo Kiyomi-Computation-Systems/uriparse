@@ -3649,3 +3649,64 @@ Carried from #30: the 2026-12-01 CMake hold review; the 24.04 → 26.04 move as 
 (0038 item 4); chez-httparse's runner pin before 2026-10-19; the result-level authority-form
 validator (0032 item 4), if a request measures the need; v0.6+ tooling (0012, 0022); the next
 sibling request.
+
+---
+
+HAND-SET EXECUTION MODES ARE CHECKED (2026-10-11, PR #34, on the maintainer's request). #33's
+FOUND IN PASSING, settled by a check rather than a corrected count. cmake/UriSchemeLane.cmake
+said NINE registrations in test/CMakeLists.txt bypass uri_add_scheme_lane and hand-set
+URI_EXECUTION_MODE: eight .chez.source lanes plus uri.harness.scheme-mutation.cmake.direct.
+There are EIGHT: seven launcher .chez.source lanes (absent-guard, dirty-guard, unknown-flag,
+repeated-flag, repeated-object-guard, no-library-root, no-object-guard) and the mutation lane.
+`URI_EXECUTION_MODE=source` occurs 8 times in every revision of test/CMakeLists.txt since
+b598f34, so no lane was ever dropped: the comment was wrong from M1, most likely carried over by
+the port. Every hand-set lane did agree with its name; only the count was false. ASKED, the
+maintainer chose the spec over a comment-only fix. test/support/cmake/HandSetModeSpec.cmake
+(lane uri.harness.hand-set-mode.cmake.direct, unit, no runtime) reads test/CMakeLists.txt as
+text. A chez-backend registration must hand-set the mode its name ends in. Any other backend
+needs a listed exemption with its reason; the only one is
+`uri.harness.scheme-mutation.cmake.direct=source`. An exemption matching no registration is a
+finding, and so is a mode set outside a registration call. Calls are tracked line by line, with
+parenthesis depth counted after quoted strings and trailing comments are stripped. It refuses a
+tree with zero hand-set Scheme modes. It EMITS what it checked: "7 Scheme registrations agree
+with their names, 1 exempted". Five witness cases, including one that runs the audit over the
+real file with one mode swapped, so the extraction is proven on real text. NO MutationSuite
+entry: uri_mutation_stage copies cmake/, test/support/cmake/, test/conformance/ and
+test/vendor/, not test/CMakeLists.txt. That follows ScriptPolicyFloorSpec, the other
+text-over-test/CMakeLists.txt spec, which also relies on its own witnesses. The UriSchemeLane
+comment now points at the spec and states no number. CHANGELOG [Unreleased] gains an Added
+entry. WATCHED FAIL (CMake 4.3.3): launcher-unknown-flag swapped to aot reddens the real-tree
+pass and names it. The mutation lane swapped to aot reports an unexempted lane and a stale
+exemption. A stubbed audit fails all 5 witnesses. A depth counter that ignores ")" fails 11
+assertions. The first watched failure printed one finding as THREE: a ";" inside a finding
+splits the CMake list. Both messages were reworded before commit. Measured on 1694d50 (macOS
+arm64, Chez 10.4.1 tarm64osx, byte-machine c338a57): CMake 4.3.3 test-all 79/79, no-scheme
+13/13. CI DID NOT RUN, refused over billing again (run 38154667420, 2s; same annotation as #33).
+The maintainer's #33 OK did not carry over and was asked again. The answer was REHEARSE FIRST.
+Kitware cmake-3.31.6-macos-universal.tar.gz (78,374,480 bytes) was SHA-256-checked against
+cmake-3.31.6-SHA-256.txt. In a scratch clone of 1694d50, with the submodule populated from the
+local byte-machine and following CI's steps, CMake 3.31.6 gave: dev configure + build OK, pr
+79/79, release 79/79, no-scheme 13/13. The witnesses were re-run with the 3.31.6 binary: the
+swapped lane exits 1 naming it, and the stubbed audit fails all 5 ("accepted but must be
+rejected"). Not rehearsed: Linux and ta6le; the spec is CMake text processing only. A PR
+comment records both toolchains. PR #34 squash-merged as b97343b on 89234ec, pinned by
+--match-head-commit 1694d50. Merged tree a6f12b4 = tested tree a6f12b4 (hash compare).
+test/hand-set-mode-spec deleted local and remote.
+
+REFLECTION. Three things. (1) A COUNT IN A COMMENT IS A CLAIM NOTHING CHECKS. "Nine" was off by
+one from the first commit, and no change could redden it. The repair is not "eight": it is a
+lane that reports its own count and refuses a stale exemption, so the next added lane is judged
+rather than miscounted. (2) A GREEN REHEARSAL IS HALF THE EVIDENCE. 79/79 under 3.31.6 shows
+the spec passes there, not that it can fail there. Re-running the witnesses with that binary is
+what shows the check still catches something on the runner's CMake ([[a crash can count as a
+catch]] in reverse: a pass can count as a check). (3) THE FIRST FAILURE IS ALSO A TEST OF THE
+FAILURE PATH. The list-splitting ";" only appears when a finding is printed, so a spec watched
+only passing would have shipped it.
+
+NEXT. (1) CI billing: two PRs have now merged without a CI verdict. When Actions runs again,
+run it on main (b97343b or later) and record the first green run since 5ecd88f. (2) chez-httparse
+moves to byte-machine v0.7.0, before chez-http-server can use the accessors; it can then pin
+uriparse v0.6.2 alongside it. (3) Carried from #30: the 2026-12-01 CMake hold review; the 24.04
+→ 26.04 move as its own commit (0038 item 4); chez-httparse's runner pin before 2026-10-19; the
+result-level authority-form validator (0032 item 4), if a request measures the need; v0.6+
+tooling (0012, 0022); the next sibling request.
