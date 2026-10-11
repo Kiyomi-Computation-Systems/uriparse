@@ -3959,3 +3959,41 @@ docs/easy-layer-slice0 deleted local and remote. #38 now targets main (head 682a
 on it (head ec67047 before this commit). This close-out is committed on #39's branch, the top of
 the stack, so no later rebase meets it at the end of the file the way #36's met slice ①'s.
 NEXT MERGE: #38 the same way (retarget #39 first, rebase --onto, then delete feat/uri-query).
+
+SLICE ③ OPEN AND DONE IN BRANCH (2026-10-11). Branch feat/uri-easy-resolve, STACKED on
+feat/uri-easy-read (#39). (uri easy) gains uri->string, uri-resolve, uri-normalize, uri=?,
+uri->components and components->uri; uri-error-reasons gains base-not-absolute and
+ambiguous-components (offset 0, the whole input at fault). Exactly 0042 items 1–5: resolve is
+strict §5.2.2 with no normalization; normalize is normalize-components THEN remove-dot-segments,
+skipped for a relative-path reference; uri=? compares normalized components; the guard prefixes
+"/." to a //-leading path with no authority, after both resolve and normalize; components->uri
+recomposes, re-parses with validation, and requires equality. ONE ADDITION BEYOND THE PLAN:
+both crossings copy. uri->components hands out fresh bytevectors, and components->uri keeps the
+re-parsed copy, never its argument, so the opaque record cannot be mutated from either side.
+test/common/easy-resolve-tests.sps, lane uri.unit.easy-resolve.chez.{source,aot}: 22 cases, 894
+checks. Its corpus is every committed input that validates, 211 of them (8 examples, the §5.4
+base, 42 references, 42 targets, 118 accepted adversarial rows), emitted on a coverage line with
+the 8 and the 42 asserted. Over it: the uri->string identity, faithful rendering (re-parse gives
+the same components) and idempotence of uri-normalize; faithful rendering again for every §5.4
+reference resolved against the base, "foo:/a" and "foo:a/b". MEASURED FIRST (2026-10-11): the
+low layer's remove-dot-segments gives "a/../b" → "/b" (so foo:a/../b normalizes to foo:/b, as
+§5.2.2 resolves it) and "./a:b" → "a:b" (a scheme, if dot removal ran on a relative-path
+reference: the vector that pins the skip). uri.unit.easy's SOURCES now share a URI_EASY list with
+the new lane, since (uri easy) imports path, resolve and recompose. WATCHED FAIL: the exports
+missing (the program cannot bind uri->components), then 13 mutations on scratch copies:
+  guard removed                        6 (the foo: vectors, the normalize guard rows)
+  guard ignoring the authority         1 (http://h + /.//bar)
+  dots removed before percent-norm     3 (%2E%2E, the all-steps row)
+  dots removed in a relative-path ref  3 (../b, a/./b, ./a:b)
+  no dot removal at all                7 (normalize rows and one uri=? row)
+  uri=? on raw components              6
+  components->uri without equality    2 (a:b, //x)
+  components->uri keeping its argument 1;  uri->components without copies  1
+  base check removed                   1;  uri-resolve normalizing         1
+  base-not-absolute missing from uri-error-reasons   1 (unit.easy)
+ONE SURVIVOR, EQUIVALENT: relative-path-reference? without its authority conjunct. With an
+authority the path is empty or rooted (§3.3), and the only case the conjunct decides is an empty
+path, where dot removal is the identity. Kept, because it makes the predicate §4.2's definition;
+no behaviour depends on it. CHANGELOG [Unreleased] gains the entry and the count moves to it.
+Measured on f40a59b plus this commit (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3,
+byte-machine c338a57): test-all 85/85, no-scheme 13/13.

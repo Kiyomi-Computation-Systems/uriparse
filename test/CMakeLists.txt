@@ -1055,11 +1055,23 @@ endforeach()
 # --- (uri easy): strings in, a record out ------------------------------------
 #
 # The layer over everything above: it parses and validates through (uri
-# collect), reads the host through (uri host) and (uri normalize), and the query
-# through (uri query). Graded on its own contract -- fields absent vs empty,
-# scheme and host normalized while the record stays raw, character offsets,
-# strict UTF-8 decoding, and refusals that name the public caller. The
-# encode/decode round trip draws its strings from the seeded harness PRNG.
+# collect), reads the host through (uri host) and (uri normalize), the query
+# through (uri query), and resolves and renders through (uri path), (uri
+# resolve) and (uri recompose). Every lane that imports it loads all of those,
+# so the list is named once.
+set(URI_EASY ${URI_COLLECT}
+             ${URI_GENERATED_PARSER}
+             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/normalize.sls"
+             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/query.sls"
+             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/path.sls"
+             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/resolve.sls"
+             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/recompose.sls"
+             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/easy.sls")
+
+# Parsing and reading: fields absent vs empty, scheme and host normalized while
+# the record stays raw, character offsets, strict UTF-8 decoding, and refusals
+# that name the public caller. The encode/decode round trip draws its strings
+# from the seeded harness PRNG.
 foreach(mode source aot)
   uri_add_scheme_lane(
     NAME uri.unit.easy.chez.${mode}
@@ -1067,14 +1079,31 @@ foreach(mode source aot)
     PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/easy-tests.sps"
     SOURCES ${URI_HARNESS_MANIFEST}
             ${URI_GENERATOR_SOURCES}
-            ${URI_COLLECT}
-            ${URI_GENERATED_PARSER}
-            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/normalize.sls"
-            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/query.sls"
-            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/easy.sls"
+            ${URI_EASY}
             "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/prng.sls"
             "${CMAKE_CURRENT_LIST_DIR}/common/easy-tests.sps"
     TIMEOUT 120
+    LABELS unit)
+endforeach()
+
+# Rendering, resolving, normalizing and comparing: the RFC 3986 §5.4 rows run
+# through uri-resolve as strings, and the round-trip, faithful-rendering and
+# idempotence properties run over every committed corpus input that validates
+# -- the rfc3986/ examples and §5.4 rows, and the accepted rows of the authored
+# adversarial corpus.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.easy-resolve.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/easy-resolve-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
+            ${URI_EASY}
+            ${URI_CORPUS_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/easy-resolve-tests.sps"
+    ENVIRONMENT "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+                "URI_DIFFERENTIAL_DIR=${CMAKE_CURRENT_LIST_DIR}/conformance/differential"
+    TIMEOUT 180
     LABELS unit)
 endforeach()
 

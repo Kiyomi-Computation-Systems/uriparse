@@ -131,7 +131,7 @@
         (let ((expected (append (remq 'mode-unset uri-error-codes)
                                 uri-charset-error-codes
                                 uri-host-error-codes
-                                '(invalid-utf-8))))
+                                '(invalid-utf-8 base-not-absolute ambiguous-components))))
           (check "no duplicates" (no-duplicates? uri-error-reasons))
           (check "the same set" (set=? uri-error-reasons expected))
           ;; mode-unset cannot arise: every parser picks its mode.

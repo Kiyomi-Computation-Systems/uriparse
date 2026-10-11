@@ -26,6 +26,15 @@
 ;;; `invalid-utf-8`; they never become U+FFFD, which would read `%FF` and `%FE`
 ;;; as the same string.
 ;;;
+;;; RESOLVE, NORMALIZE, RENDER. `uri-resolve` is strict RFC 3986 §5.2.2 and does
+;;; not normalize. `uri-normalize` is the whole of §6.2.2: case, percent-encoding,
+;;; then dot segments, except in a relative-path reference, where `..` is
+;;; relative to a base not yet known. Nothing this library builds renders to a
+;;; different URI: RFC 3986's own algorithms can leave a `//`-leading path with no
+;;; authority, which §5.3 would write as an authority, so such a path gets a `/.`
+;;; prefix. `uri->components` and `components->uri` cross to the low layer by
+;;; copying, and the second refuses a set that would re-parse differently.
+;;;
 ;;; ERRORS. Bad input raises `&uri-error`: a reason (one of `uri-error-reasons`),
 ;;; a CHARACTER offset into the input (the low layer counts bytes of UTF-8), and
 ;;; the input, with &who and &message. A wrong argument type is an assertion
@@ -39,11 +48,15 @@
     uri-path uri-query uri-fragment
     ;; decoded readings
     uri-path-segments uri-query-pairs uri-form-pairs uri-decode uri-encode
+    ;; render, resolve, normalize, compare
+    uri->string uri-resolve uri-normalize uri=?
+    ;; the way down to the low layer, and back
+    uri->components components->uri
     ;; errors
     uri-error? uri-error-reason uri-error-offset uri-error-input uri-error-reasons)
   (import (rnrs)
           (only (uri components)
-                make-uri-components
+                make-uri-components uri-components? uri-components=?
                 uri-components-scheme uri-components-authority uri-components-path
                 uri-components-query uri-components-fragment)
           (only (uri collect)
@@ -52,9 +65,13 @@
           (only (uri host) authority-host-span)
           (only (uri normalize) normalize-scheme normalize-components)
           (only (uri percent) pct-decode pct-encode unreserved-byte?)
-          (only (uri query) query-pairs form-pairs))
+          (only (uri query) query-pairs form-pairs)
+          (only (uri path) remove-dot-segments)
+          (only (uri resolve) resolve-components)
+          (only (uri recompose) recompose))
 
-  (define SLASH 47)                         ; #\/
+  (define SLASH 47)
+  (define DOT 46)                         ; #\/
   (define ZERO 48)                          ; #\0
 
   ;; --- the record and the condition ----------------------------------------
@@ -70,7 +87,8 @@
   ;; uri-error-reason : UriError -> Symbol
   ;; uri-error-offset : UriError -> Nat
   ;;   Every reason carries one: the low layer reports an offset with every error
-  ;;   result, and the easy layer's own reasons give theirs.
+  ;;   result, invalid-utf-8 points at its `%`, and base-not-absolute and
+  ;;   ambiguous-components point at 0, since the whole input is at fault.
   ;; uri-error-input : UriError -> String
   (define-condition-type &uri-error &error
     make-uri-error uri-error?
@@ -89,7 +107,9 @@
       invalid-fragment invalid-pct-encoded
       invalid-userinfo invalid-reg-name invalid-ip-literal   ; (uri host)
       invalid-dec-octet invalid-port
-      invalid-utf-8))                                        ; decoding
+      invalid-utf-8                                          ; decoding
+      base-not-absolute                                      ; uri-resolve
+      ambiguous-components))                                 ; components->uri
 
   (define (raise-uri-error who reason offset input)
     (raise (condition (make-uri-error reason offset input)
@@ -342,4 +362,112 @@
 
   ;; uri-form-pairs : Uri -> (Listof (Pairof String (Option String)))
   ;; As uri-query-pairs, but `+` reads as a space (HTML form encoding).
-  (define (uri-form-pairs u) (pairs 'uri-form-pairs u form-pairs)))
+  (define (uri-form-pairs u) (pairs 'uri-form-pairs u form-pairs))
+
+  ;; --- render, resolve, normalize, compare ------------------------------------
+
+  (define (with-path c path)
+    (make-uri-components (uri-components-scheme c) (uri-components-authority c) path
+                         (uri-components-query c) (uri-components-fragment c)))
+
+  ;; guard-path : Components -> Components
+  ;; With no authority, §5.3 writes the path straight after the scheme's ":", so
+  ;; a path beginning "//" would re-parse as an authority. RFC 3986's own
+  ;; algorithms produce such a path: resolving ".//bar" against "foo:/a", or
+  ;; removing the dot from "/.//bar". Prefix "/." instead: "/.//bar" is a
+  ;; path-absolute that re-parses unchanged, and remove-dot-segments maps it
+  ;; back to "//bar", so it names the same resource.
+  (define (guard-path c)
+    (let* ((p (uri-components-path c)) (n (bytevector-length p)))
+      (if (and (not (uri-components-authority c))
+               (fx>=? n 2)
+               (fx=? (bytevector-u8-ref p 0) SLASH)
+               (fx=? (bytevector-u8-ref p 1) SLASH))
+          (let ((out (make-bytevector (fx+ n 2))))
+            (bytevector-u8-set! out 0 SLASH)
+            (bytevector-u8-set! out 1 DOT)
+            (bytevector-copy! p 0 out 2 n)
+            (with-path c out))
+          c)))
+
+  ;; as-uri : Symbol Symbol Any -> Uri
+  ;; A Uri argument as it is, or a string parsed in `mode`.
+  (define (as-uri who mode x)
+    (cond ((uri? x) x)
+          ((string? x) (parse who mode x))
+          (else (assertion-violation who "expected a uri or a string" x))))
+
+  ;; uri->string : Uri -> String
+  ;; The URI as held, which for a parsed one is as written:
+  ;; `(uri->string (string->uri-reference s))` is `s`.
+  (define (uri->string u) (utf8->string (recompose (parts 'uri->string u))))
+
+  ;; uri-resolve : (U Uri String) (U Uri String) -> Uri
+  ;; Resolve a reference against a base, strict RFC 3986 §5.2.2. A string base is
+  ;; parsed as an absolute URI and a string reference as a URI reference; a Uri
+  ;; base without a scheme raises base-not-absolute (§5.2.1). Does not normalize.
+  (define (uri-resolve base ref)
+    (let* ((b (as-uri 'uri-resolve 'uri base))
+           (r (as-uri 'uri-resolve 'uri-reference ref)))
+      (unless (uri-components-scheme (uri-parts b))
+        (raise-uri-error 'uri-resolve 'base-not-absolute 0 (uri->string b)))
+      (make-uri (guard-path (resolve-components (uri-parts b) (uri-parts r))))))
+
+  ;; relative-path-reference? : Components -> Boolean
+  ;; §4.2: no scheme, no authority, and a path that does not begin with "/".
+  (define (relative-path-reference? c)
+    (let ((p (uri-components-path c)))
+      (and (not (uri-components-scheme c))
+           (not (uri-components-authority c))
+           (not (and (fx>? (bytevector-length p) 0) (fx=? (bytevector-u8-ref p 0) SLASH))))))
+
+  (define (normalize who u)
+    (let ((n (normalize-components (parts who u))))
+      (make-uri
+       (guard-path
+        (if (relative-path-reference? n)
+            n
+            (with-path n (remove-dot-segments (uri-components-path n))))))))
+
+  ;; uri-normalize : Uri -> Uri
+  ;; RFC 3986 §6.2.2: scheme and host lowercased, percent-encoding normalized,
+  ;; THEN dot segments removed, so an encoded `%2E%2E` goes too. A relative-path
+  ;; reference keeps its dot segments. Scheme-based normalization (§6.2.3:
+  ;; default ports, an empty path as "/") is not done. Idempotent.
+  (define (uri-normalize u) (normalize 'uri-normalize u))
+
+  ;; uri=? : (U Uri String) (U Uri String) -> Boolean
+  ;; Equal after `uri-normalize`, absent still distinct from empty. A string is
+  ;; parsed as a URI reference.
+  (define (uri=? a b)
+    (let* ((x (normalize 'uri=? (as-uri 'uri=? 'uri-reference a)))
+           (y (normalize 'uri=? (as-uri 'uri=? 'uri-reference b))))
+      (uri-components=? (uri-parts x) (uri-parts y))))
+
+  ;; uri->components : Uri -> Components
+  ;; The low layer's five fields, as fresh bytevectors: changing them cannot
+  ;; change the Uri.
+  (define (uri->components u)
+    (let ((c (parts 'uri->components u))
+          (copy (lambda (bv) (and bv (bytevector-copy bv)))))
+      (make-uri-components (copy (uri-components-scheme c)) (copy (uri-components-authority c))
+                           (copy (uri-components-path c)) (copy (uri-components-query c))
+                           (copy (uri-components-fragment c)))))
+
+  ;; components->uri : Components -> Uri
+  ;; Recompose, then parse and validate the result as a URI reference, and keep
+  ;; the parsed copy. Raises the low layer's reason for an invalid set, and
+  ;; ambiguous-components for one that re-parses as something else, such as
+  ;; {#f #f "a:b"}, which would gain the scheme "a".
+  (define (components->uri c)
+    (unless (uri-components? c)
+      (assertion-violation 'components->uri "expected uri-components" c))
+    (let* ((bytes (recompose c))
+           (s (utf8->string bytes))
+           (r (uri-parse-validate 'uri-reference bytes)))
+      (cond ((not (uri-parse-ok? r))
+             (raise-uri-error 'components->uri (uri-parse-error-code r)
+                              (char-offset bytes (uri-parse-error-offset r)) s))
+            ((uri-components=? (uri-parse-components r) c)
+             (make-uri (uri-parse-components r)))
+            (else (raise-uri-error 'components->uri 'ambiguous-components 0 s))))))
