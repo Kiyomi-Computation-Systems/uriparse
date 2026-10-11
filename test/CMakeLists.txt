@@ -122,6 +122,16 @@ uri_add_test(
   TIMEOUT 120
   LABELS unit)
 
+# A registration that bypasses uri_add_scheme_lane and sets URI_EXECUTION_MODE
+# by hand must set the mode its name declares; nothing else checks that. Text
+# only, so it also holds under the no-scheme preset.
+uri_add_test(
+  NAME uri.harness.hand-set-mode.cmake.direct
+  COMMAND "${CMAKE_COMMAND}" -P
+          "${CMAKE_CURRENT_LIST_DIR}/support/cmake/HandSetModeSpec.cmake"
+  TIMEOUT 120
+  LABELS unit)
+
 
 
 

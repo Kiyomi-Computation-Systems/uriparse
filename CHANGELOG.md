@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`uri.harness.hand-set-mode.cmake.direct`.** A registration in `test/CMakeLists.txt`
+  that sets `URI_EXECUTION_MODE` by hand, bypassing `uri_add_scheme_lane`, must now set
+  the mode its name declares. A non-Scheme registration may set one only when it is
+  listed as an exemption with its reason. This replaces a comment in
+  `cmake/UriSchemeLane.cmake` that counted these registrations and had the count wrong
+  (nine; there are eight). The complete selection is 79 lanes and the no-Scheme layer 13.
+
 ## [0.6.2] - 2026-10-01
 
 A pin bump, released with the CI work since 0.6.1: no src, no algorithm, and **no new
