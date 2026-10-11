@@ -1,9 +1,16 @@
 # 0001: the project is chez-uri, and the boundary against chez-httparse
 
 Date: 2026-09-18
-Status: accepted
+Status: accepted, then **amended in part by [0041](0041-the-query-is-split-by-a-core-library-over-its-bytes-never-by-the-grammar.md)**
 Plan: [the brief](../2026-09-18-chez-uri-project-brief.md),
 [the design](../2026-09-18-chez-uri-design.md)
+
+> **Amendment (0041).** The out-of-scope bullet on
+> `application/x-www-form-urlencoded` stands for the grammar: the scanner, the
+> `uri-components` query and every low-layer function keep the RFC 3986 query
+> opaque. 0041 adds `(uri query)`, a separate core library that splits an
+> already-isolated query into key/value pairs. That is the "clearly separate
+> module" the bullet allows. It does not implement WHATWG's parser.
 
 ## Context
 

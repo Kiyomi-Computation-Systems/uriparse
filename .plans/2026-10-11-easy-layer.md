@@ -355,7 +355,10 @@ measured counts there, not here.
   expected non-round-trip: `(foo:/a, .//bar)` resolves and recomposes to
   `foo://bar`, which re-parses with authority `bar`. The test asserts today's
   RFC-literal behaviour. A change to it must redden, not drift.
-- Seed the milestone in the ledger, and add a CHANGELOG `[Unreleased]` stub.
+- `README.org` "Scope and limits": the recomposition bullet said only
+  components built by hand fail to round-trip. It now names the resolution case.
+- Seed the milestone in the ledger. CHANGELOG `[Unreleased]` records the pin
+  and the README change.
 
 ### ① `(uri query)`
 
