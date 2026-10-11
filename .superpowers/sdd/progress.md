@@ -4029,3 +4029,41 @@ the repo root under zsh; it was found by git status, read, and removed, and the 
 were quoted. Counts after: unit.easy-resolve 23 cases / 921 checks, unit.easy 24 / 274,
 unit.corpus 25 / 64. Measured on 0a60b6e plus this commit (macOS arm64, Chez 10.4.1 tarm64osx,
 CMake 4.3.3, byte-machine c338a57): test-all 85/85, no-scheme 13/13.
+
+PRs #38, #39, #40 CLOSED OUT (2026-10-11), merged in stack order on the maintainer's word, each
+the same way: merge pinned by --match-head-commit, merged tree compared with the tested tree,
+the next PR retargeted to main BEFORE its base branch was deleted, then rebased --onto main
+cutting the squashed commits, the rebased tree compared with the old head (byte-identical every
+time, empty `git diff --stat`), force-pushed with a lease on the old head.
+  #38 (uri query)         7e9d607 on 18f528a, pinned 682ac92; tree 3eb144c = 3eb144c
+  #39 (uri easy) reading  709ecd7 on 7e9d607, pinned 9a1a2d3 (rebased f40a59b); tree 1209848 = 1209848
+  #40 (uri easy) resolve  605eae0 on 709ecd7, pinned c933de5 (rebased 9401d5a); tree de4d201 = de4d201
+CI DID NOT RUN on any of them: the latest runs 38161218165, 38161251152, 38162598652 were refused
+over billing (each annotation read), as were every earlier push; a PR comment on each records it
+with its local counts (81/81, 83/83, 85/85; no-scheme 13/13). Branches feat/uri-query,
+feat/uri-easy-read, feat/uri-easy-resolve deleted local and remote; local main = 605eae0. The
+two claude/* branches belong to other sessions' worktrees and were left alone.
+
+REFLECTION. Three things. (1) A STACK MERGES CLEANLY WHEN EACH STEP IS CHECKED, NOT ASSUMED. The
+order (retarget, rebase --onto, compare trees, push with a lease, delete) was written in the
+ledger before the first merge, and every rebased tree was compared with its tested head rather
+than re-tested on faith. (2) REVIEW FIXES BELONG TO THE PR THEY REVIEW. Each review ran over the
+whole unmerged stack, and its fixes landed on the top branch. That kept every rebase
+conflict-free, at the cost of a fix to (uri query) showing up in #39's diff. (3) THE SHELL IS
+PART OF THE INSTRUMENT. zsh read an unquoted ">" in a mutation's name as a redirect and wrote a
+file into the repo root. git status caught it; quoting every name is the fix.
+
+SLICE ④ OPEN (2026-10-11): the v0.7.0 release. Branch docs/easy-layer-release off main 605eae0.
+Decision 0043 (MINOR bump, annotated tag, local evidence disclosed, no new conformance claim).
+docs/easy.org is new; README.org leads with (uri easy), adds both libraries to "What it does"
+and the task table, and narrows "Scope and limits"; CMakeLists VERSION 0.6.2 → 0.7.0; CHANGELOG
+[Unreleased] → [0.7.0] - 2026-10-11 with the evidence preamble. EVERY EXAMPLE WAS RUN: a checker
+in the session scratchpad extracts each Scheme block from an org file, runs a whole program
+against its #+begin_example and each expression against its `;; =>` value. docs/easy.org: 10
+examples, 0 differ; README.org: 2 programs, 0 differ. It was watched failing first: two
+deliberate edits to a copy of easy.org (a port, a normalized URI) were both reported. The
+checker is not yet a registered lane (0043 lists it as next work). The tag, its push and any
+GitHub Release are the closing ritual, to be asked for after this PR merges (0043 item 6).
+RELEASE GATE on the reconciled tree (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3,
+byte-machine c338a57): configure prints "chez-uri 0.7.0"; test-all 85/85; no-scheme 13/13; the
+example checker 10/10 (docs/easy.org) and 2/2 (README.org), run last, after every edit.
