@@ -14,6 +14,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   listed as an exemption with its reason. This replaces a comment in
   `cmake/UriSchemeLane.cmake` that counted these registrations and had the count wrong
   (nine; there are eight). The complete selection is 79 lanes and the no-Scheme layer 13.
+- **`NOTICE`**, listing the third-party material: the RFC 3986 text and the test data
+  extracted from it, and the byte-machine submodule.
+
+### Changed
+
+- **README.org** is rewritten around what the library does, why, how to use it, and how
+  to develop it, with a CI badge. It no longer cites RFC section numbers or planning
+  records.
 
 ## [0.6.2] - 2026-10-01
 
