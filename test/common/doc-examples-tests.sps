@@ -11,9 +11,13 @@
 ;;;     (rnrs) and (uri easy), and its result must be `equal?` to the value read.
 ;;; A block in another language (`#+begin_src sh`) is not an example.
 ;;;
-;;; The files are URI_DOC_FILES (space-separated, relative to URI_DOC_ROOT). A
-;;; listed file with no example is a failure: a check over nothing would pass
-;;; whatever the doc said. The checker is graded first, on inline docs whose
+;;; The candidates are URI_DOC_FILES (space-separated, relative to URI_DOC_ROOT):
+;;; README.org and every prose file under docs/. A dotfile (an editor's lock file,
+;;; .DS_Store) is not a doc. Each of these is a failure, because each would let
+;;; examples go unchecked with nothing failing:
+;;;   - a doc in a format the lane cannot read (say a guide moved to Markdown);
+;;;   - a docs/ with no guide the lane reads;
+;;;   - a read doc with no example. The checker is graded first, on inline docs whose
 ;;; verdicts are known, so one that always agrees reddens before it is trusted.
 (import (rnrs)
         (rnrs eval)
@@ -72,6 +76,42 @@
                   (write (condition-irritants c) p))))
         ((message-condition? c) (condition-message c))
         (else (call-with-string-output-port (lambda (p) (write c p))))))
+
+(define (suffix? x s)
+  (and (<= (string-length x) (string-length s))
+       (string=? x (substring s (- (string-length s) (string-length x)) (string-length s)))))
+
+(define (basename path)
+  (let loop ((i (string-length path)))
+    (cond ((= i 0) path)
+          ((char=? (string-ref path (- i 1)) #\/) (substring path i (string-length path)))
+          (else (loop (- i 1))))))
+
+;; --- which files are docs ------------------------------------------------------
+;;
+;; doc-format : String -> Symbol
+;; 'skip for a dotfile (an editor's lock file such as ".#easy.org"); 'org for an
+;; org file, the one format the lane reads; 'unread for any other doc. An unread
+;; doc fails rather than being skipped: its examples would otherwise go
+;; unchecked, and nothing would say so.
+(define (doc-format path)
+  (let ((base (basename path)))
+    (cond ((prefix? "." base) 'skip)
+          ((suffix? ".org" base) 'org)
+          (else 'unread))))
+
+;; doc-set-problems : (Listof String) -> (Listof String)
+;; What is wrong with the candidate files as a set: each doc the lane cannot
+;; read, and a docs/ with no guide it reads.
+(define (doc-set-problems files)
+  (append
+   (map (lambda (f)
+          (string-append f ": no reader for this format, so its examples would go"
+                         " unchecked; teach doc-examples-tests.sps to read it"))
+        (filter (lambda (f) (eq? (doc-format f) 'unread)) files))
+   (if (exists (lambda (f) (and (prefix? "docs/" f) (eq? (doc-format f) 'org))) files)
+       '()
+       (list "docs/ has no guide the lane reads"))))
 
 ;; --- blocks ----------------------------------------------------------------------
 ;;
@@ -277,6 +317,23 @@
           (list "a block that never closes"
                 (inline "#+begin_src scheme" "(+ 1 1)" ";; => 2" "#+end_src"
                         "#+begin_src scheme" "(+ 1 2)" ";; => 3"))))))
+    ;; The set check is what notices a guide changing format: a file the lane
+    ;; cannot read must fail, never vanish from what is checked.
+    (harness-case "which files are docs, and what is wrong with a set of them"
+      (lambda ()
+        (for-each
+         (lambda (row) (check-equal (car row) (doc-format (car row)) (cadr row)))
+         '(("README.org" org) ("docs/easy.org" org) ("docs/api/index.org" org)
+           ("docs/easy.md" unread) ("docs/guide.markdown" unread) ("docs/notes.txt" unread)
+           ("docs/.#easy.org" skip) ("docs/api/.DS_Store" skip)))
+        (check-equal "README.org and a guide" (doc-set-problems '("README.org" "docs/easy.org")) '())
+        (check-equal "an editor's lock file beside the guide"
+                     (doc-set-problems '("README.org" "docs/.#easy.org" "docs/easy.org")) '())
+        (check-equal "a Markdown index beside the guide"
+                     (length (doc-set-problems '("README.org" "docs/easy.org" "docs/README.md"))) 1)
+        (check-equal "no guide at all" (length (doc-set-problems '("README.org"))) 1)
+        (check-equal "the guide moved to Markdown"
+                     (length (doc-set-problems '("README.org" "docs/easy.md"))) 2)))
     ;; "(echo 1)" would raise if it were run as Scheme.
     (harness-case "a block in another language is not an example"
       (lambda ()
@@ -296,6 +353,18 @@
       (lambda ()
         (check "URI_DOC_ROOT is set" (string? ROOT))
         (check "URI_DOC_FILES lists at least one file" (pair? FILES))))
+    (harness-case "every doc is one the lane reads, and docs/ has a guide"
+      (lambda ()
+        (let ((problems (doc-set-problems FILES))
+              (count (lambda (kind) (length (filter (lambda (f) (eq? (doc-format f) kind)) FILES)))))
+          (display (string-append "uri-harness: coverage doc-set files=" (number->string (length FILES))
+                                  " read=" (number->string (count 'org))
+                                  " skipped=" (number->string (count 'skip))
+                                  " unread=" (number->string (count 'unread))))
+          (newline)
+          (adapter-flush-output)
+          (for-each (lambda (p) (check-fail "DOC SET" p)) problems)
+          (check "the doc set has no problem" (null? problems)))))
     (for-each
      (lambda (file)
        (harness-case (string-append file ": every example prints what the doc says")
@@ -309,6 +378,6 @@
              (newline)
              (adapter-flush-output)
              (for-each (lambda (d) (check-fail "DOC EXAMPLE" d)) diffs)))))
-     FILES)))
+     (filter (lambda (f) (eq? (doc-format f) 'org)) FILES))))
 
 (harness-finish)
