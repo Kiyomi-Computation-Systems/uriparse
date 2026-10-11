@@ -3587,3 +3587,65 @@ verify.sls:1798 by name, as its own change. (3) Carried from #30: the 2026-12-01
 review; the 24.04 → 26.04 move as its own commit (0038 item 4); chez-httparse's runner pin before
 2026-10-19; the result-level authority-form validator (0032 item 4), if a request measures the
 need; v0.6+ tooling (0012, 0022); the next sibling request.
+
+---
+
+PUBLIC-RELEASE COMMENT SWEEP (2026-10-11, PR #33, on the maintainer's request). Comments
+across src/, tools/, cmake/, the build files, test/ and the conformance notes now read as
+developer documentation: types, invariants and rationale, with no plan citations or timeline.
+README.org is rewritten the same way. REMOVED: decision-record, design-doc, milestone (M1–M9),
+slice, task and issue citations, release dates, and history narration ("not part of this
+project yet", "a v0.2 function"). Where a citation carried the only rationale, the rationale now
+stands in its place. KEPT: RFC section and erratum references, toolchain and pin facts,
+invariants. .plans/ and .superpowers/ STAY as design records (maintainer's word); only the
+README's links into them went. CHANGELOG.md and AGENTS.md untouched. README.org: the dated
+status block and CI banner became "What it does" and "Scope and limits"; the layout table drops
+.plans/ and adds tools/. src/: type-signature comments added on exports that lacked them (the
+uri-parse-result and uri-components accessors, the *-error-code? predicates,
+make-uri-collector, make-uri-scanner-machine). #32's FOUND IN PASSING is DONE here:
+grammar.sls's "verify.sls:1798" now cites the verifier rule by name, `span-active-at-pause`.
+Two message strings changed wording (charset.sls's unknown-component assertion,
+charset-oracle.sls's "no charset component named"); nothing asserts on either. THE DERIVED
+CORPUS HAD CITATIONS TOO: cmake/UriCorpus.cmake emits the rfc3986/ headers, and
+CorpusProvenanceSpec compares emitter to file, so the fix went into the emitter followed by
+`make corpus-refresh` (headers only; vectors unchanged). Six test names that cited plans were
+renamed, since names are code and could not just be reworded: "m1-exit" → "corpus-completeness",
+"M3/M4 … negative corpus" → "charset/host negative corpus", and the "(decision 0010)",
+"decision 0019's order" and "(issue #11 path)" cases. Nothing else referenced them. Left on
+purpose: uri_slice3_launcher_pass / uri_slice5b_launcher_pass (CMake names), two Ghostscript
+"(2026-05-19)" version strings (test data), "decision" as an English word, the ratchet's
+`not-yet` status. HOW: six Sonnet subagents in parallel against a written style guide, one per
+file group, then a lead review. The subagents stripped text but did not rewrap: ~50 paragraphs
+came back with 90–140-column lines and one dropped period. A dry-run reflow of changed
+paragraphs only fixed them; its first pass also merged `name : A -> B` signatures and `---`
+banners into prose, so those became paragraph breaks. Measured on the committed tree (macOS
+arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3, byte-machine c338a57; build prints "chez-uri
+0.6.2"): baseline on main 78/78; after, test-all 78/78 and no-scheme 12/12, 0 failures;
+`make parser-refresh` byte-identical scanner. CI DID NOT RUN. Run 38149021887 "failed" in 3s
+with "log not found": GitHub refused to start the job (annotation: account payments failed or
+the spending limit needs raising). MERGED ON LOCAL EVIDENCE, on the maintainer's word, with a PR
+comment stating that CI did not run and quoting the local counts. PR #33 squash-merged as
+1af57aa on 9c67ecd. Merged tree e979852 = tested tree e979852 (9012ad5; hash compare).
+docs/public-release-comment-sweep deleted local and remote. FOUND IN PASSING:
+cmake/UriSchemeLane.cmake (~line 405) says "nine registrations" bypass the registrar and set
+URI_EXECUTION_MODE by hand; test/CMakeLists.txt has eight `URI_EXECUTION_MODE=source` lines.
+Unverified which is wrong.
+
+REFLECTION. Three things. (1) A RED CHECK IS NOT ALWAYS A RED BUILD. A 3-second fail with no
+log is a job that never started. The annotations said so, and reading them before merging is
+what kept a billing refusal from passing as a verdict, either way. (2) DELETION HAS A LAYOUT
+COST. Removing a citation is a one-clause edit, and the subagents did it cleanly, but none
+rewrapped. The style guide should have required it. The reflow had to be scoped to changed
+paragraphs, with signatures and banners as hard breaks, or it damages what it touches. (3) NOT
+EVERY CITATION WAS A COMMENT. Some were in derived files, and their source is the emitter. Some
+were in test names, which are code. A comment-only rule would have left both, or reddened the
+corpus-provenance lane by editing one side of a compared pair.
+
+NEXT. (1) CI billing, before the next PR can carry a CI verdict; then a run on main to confirm
+1af57aa green. (2) Resolve UriSchemeLane.cmake's "nine registrations" against
+test/CMakeLists.txt's eight. (3) chez-httparse moves to byte-machine v0.7.0, before
+chez-http-server can use the accessors; it can then pin uriparse v0.6.2 alongside it. (4)
+Carried from #30: the 2026-12-01 CMake hold review; the 24.04 → 26.04 move as its own commit
+(0038 item 4); chez-httparse's runner pin before 2026-10-19; the result-level authority-form
+validator (0032 item 4), if a request measures the need; v0.6+ tooling (0012, 0022); the next
+sibling request.
