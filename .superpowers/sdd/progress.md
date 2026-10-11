@@ -4518,3 +4518,33 @@ credentials, a clone of uriparse ran the step as written at main (pin c338a57) a
 that needs credentials failed in 1s with "terminal prompts disabled", exit 128. actionlint clean.
 Separate from #47 (the pin moves alone, decision 0002 item 6). NEXT: once this merges, the
 maintainer can delete the SUBMODULES_READ_TOKEN Actions secret.
+
+PR #48 CLOSED OUT (2026-10-11, the closing ritual, on the maintainer's word). #47 merged first,
+so #48 was rebased onto d13ffd9: conflicts in CHANGELOG [Unreleased] (one `### Changed` section,
+the pin's bullet first) and in this ledger (main's entries first). The marker guard was written to
+stop on a match, `! rg -q '<markers>' <files> && git rebase --continue`, and the rebased commit was
+checked for added markers. The worktree's submodule, left at c338a57 by the rebase, was moved to
+the pin (c1f7791) before testing: make test 91/91, no-scheme 13/13, actionlint clean, on tree
+072adfb. Force-pushed with a lease on the old head 9972056. Squash-merged as 3264053 on d13ffd9,
+pinned by --match-head-commit a5e2535. Merged tree 072adfb = tested tree (hash compare). CI DID
+NOT RUN: run 38179082333 was refused over billing (annotation read); a PR comment records it with
+the local evidence and the credential-free rehearsal of the new step. Before ci/anonymous-submodule
+was deleted (local and remote), no open PR was based on it (checked). The shared checkout, clean,
+fast-forwarded to 3264053; its submodule already matched the pin. The worktree was removed after
+both trees were checked clean and its tree compared equal to 3264053's.
+
+REFLECTION. Three things. (1) TWO LESSONS FROM EARLIER TODAY HELD. The marker guard written after
+#44 stopped on a match as it should, and the #47 lesson (a moved gitlink does not move the
+submodule) applied to a rebase too: the rebase across the pin bump left vendor/byte-machine on
+v0.7.0, and testing there would have run the old runtime. (2) A CI CHANGE MERGED WITHOUT CI. The
+evidence is a rehearsal of the step as written, with no credentials, at both pins, plus a control
+that a credentialed fetch fails fast. That is strong for the step's own behaviour, but not for
+how it interacts with actions/checkout@v7 on a hosted runner. The first funded run on main is the
+real test. (3) KEEP SEPARATE WHAT MOVES SEPARATELY. #47 and #48 shared a cause, byte-machine going
+public, but decision 0002 keeps a pin alone, and the split cost only one trivial rebase.
+
+NEXT. (1) The maintainer can delete the SUBMODULES_READ_TOKEN Actions secret: nothing reads it.
+(2) When Actions billing returns, read the first run on main for `Init submodules` (anonymous,
+GIT_TERMINAL_PROMPT=0) before anything else; sixteen PRs (#33 to #48) have merged without a CI
+verdict. (3) byte-machine on the Akku index, then chez-uri (0045). (4) Publish the site: enable
+Pages. (5) Carried: the easy layer's optional extensions; the sibling items in #43's NEXT (5).
