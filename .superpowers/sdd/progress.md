@@ -4067,3 +4067,39 @@ GitHub Release are the closing ritual, to be asked for after this PR merges (004
 RELEASE GATE on the reconciled tree (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3,
 byte-machine c338a57): configure prints "chez-uri 0.7.0"; test-all 85/85; no-scheme 13/13; the
 example checker 10/10 (docs/easy.org) and 2/2 (README.org), run last, after every edit.
+
+RELEASE PR #41 CLOSED OUT, v0.7.0 TAGGED (2026-10-11, the closing ritual, on the maintainer's
+word). #41 squash-merged as daf7be0 on 605eae0, pinned by --match-head-commit 446fdf7. Merged
+tree 444d045 = tested tree 444d045 (hash compare). CI DID NOT RUN: run 38163347863 refused over
+billing (annotation read); a PR comment records it with the release-gate counts. Local main
+fast-forwarded to daf7be0; docs/easy-layer-release deleted local and remote. TAG: annotated
+v0.7.0 on daf7be0, signed per tag.gpgSign ("Good signature from DarrenN (yuzu)"), pushed;
+the remote tag object 66b2fe0 peels to daf7be0. Its message carries the CI refusal on #33 to #41
+and the local counts (0043 items 4–6). NO GitHub Release was cut (0043 item 6: only if the
+maintainer wants one; its body would be CHANGELOG [0.7.0]).
+
+THE EASY-LAYER MILESTONE IS COMPLETE: plan #36, records and pin #37, (uri query) #38, (uri easy)
+#39 and #40, release #41. The complete selection went from 79 to 85 lanes.
+
+REFLECTION. Three things. (1) THE PLAN WAS PROBED BEFORE IT WAS TRUSTED. Ten-line probes during
+planning found that 0022's resolution claim was false, that Chez's utf8->string turns invalid
+bytes into U+FFFD, and that the low layer's offsets count bytes. All three changed the design
+(the `//` guard, strict UTF-8, character offsets) before any code existed, and each became a test.
+(2) REVIEW FOUND WHAT A GREEN COUNT CANNOT. Two xhigh reviews raised nineteen findings. The
+weightiest were contract-level: a record that was not opaque, and two reasons for one mistake.
+Another was drift in the test instrument itself: copied check helpers had already diverged in
+strictness. Every fix came with a witness. (3) NAME THE EQUIVALENT MUTANTS. Two survivors (the
+authority conjunct in relative-path-reference?, and the `who` uri=? hands to normalize) cannot
+be caught because no input distinguishes them. Recording each with its reason keeps "no
+survivors" from being claimed and keeps them from being mistaken for gaps.
+
+NEXT. (1) CI billing: nine PRs (#33 to #41) have now merged without a CI verdict. When Actions
+runs again, run it on main (daf7be0 or later) and record the first green run since #28. (2) Make
+byte-machine public before or with uriparse (`gh api repos/Kiyomi-Computation-Systems/byte-machine
+--jq .visibility`). (3) A GitHub Release for v0.7.0, if wanted. (4) The org-example checker as a
+registered lane, so docs/easy.org and README.org cannot drift from what they print (0043). (5) Out
+of the easy layer's scope, if wanted: building URIs from parts, a host-kind accessor, a ranged
+(uri query). (6) Carried: chez-httparse to byte-machine v0.7.0; the 2026-12-01 CMake hold review;
+the 24.04 → 26.04 move (0038 item 4); chez-httparse's runner pin before 2026-10-19; the
+result-level authority-form validator (0032 item 4); v0.6+ tooling (0012, 0022); the next sibling
+request.

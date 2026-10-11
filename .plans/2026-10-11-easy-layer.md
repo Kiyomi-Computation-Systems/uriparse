@@ -1,7 +1,7 @@
 # chez-uri: the easy layer — strings in, a record out
 
 Date: 2026-10-11
-Status: accepted; slices ⓪ to ③ merged as #37 to #40, ④ is the v0.7.0 release
+Status: done; released as v0.7.0 (slices ⓪ to ④ merged as #37 to #41)
 Target release: v0.7.0 (additive; nothing existing changes shape)
 
 ## Goal
