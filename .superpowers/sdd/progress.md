@@ -4103,3 +4103,10 @@ of the easy layer's scope, if wanted: building URIs from parts, a host-kind acce
 the 24.04 → 26.04 move (0038 item 4); chez-httparse's runner pin before 2026-10-19; the
 result-level authority-form validator (0032 item 4); v0.6+ tooling (0012, 0022); the next sibling
 request.
+
+v0.7.0 GITHUB RELEASE CUT (2026-10-11, on the maintainer's request; 0043 item 6). Title "v0.7.0 —
+the easy layer", from tag v0.7.0 (--verify-tag), published, not a draft or pre-release, now
+Latest. Body: the CHANGELOG [0.7.0] section read from CHANGELOG.md AT THE TAG, without its
+heading, as v0.6.2's was. The extraction was asserted to be a verbatim slice (70 lines), and the
+published body read back matches it except for jq's trailing newline.
+https://github.com/Kiyomi-Computation-Systems/uriparse/releases/tag/v0.7.0. NEXT item (3) is done.
