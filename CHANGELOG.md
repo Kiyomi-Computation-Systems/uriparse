@@ -23,8 +23,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the vendored copy. `make check-akku` installs the package into a throwaway project and
   checks that exactly the libraries in `src/` land, that no program does, and that a
   program reads a URI through both layers with only Akku's library path. Nothing is
-  published yet: byte-machine has to be on the index first (decision 0045). The
-  complete selection is 89 lanes.
+  published yet: byte-machine has to be on the index first (decision 0045).
+- **User docs in `docs/`, as Markdown.** `docs/README.md` is the index, with guides to
+  installing, URIs as strings (`docs/easy.md`, which replaces `docs/easy.org`), parsing
+  bytes, validating, resolving and normalizing, queries and percent-encoding, and errors.
+  `uri.example.docs` now reads Markdown: ```` ```scheme ```` is Scheme and ```` ```text ````
+  is a program's output. Expressions may call any `(uri ...)` library, and a program may
+  define after an expression. Its wrong-doc self-tests now require the difference that
+  names the fault, not only a count of one, and in both formats.
+- **`docs/reference.md`**: every library under `src/` and every binding it exports, held
+  to the export forms by a new lane, `uri.example.api-reference`. A new export without an
+  entry fails `make test`. The complete selection is 91 lanes.
+- **A docs site.** `make site` renders `docs/` to `build/site/` with chez-cmark-gfm's
+  generator, copied into `site/`; `make check-site` tests the generator and checks the
+  nav, every link and anchor. Both take chez-cmark-gfm 2.0.0 in `CMARK_GFM_ROOT`, either a
+  git checkout or a directory where `akku install chez-cmark-gfm` ran; it is not a
+  dependency of the library. `.github/workflows/pages.yml` publishes the site to GitHub
+  Pages on a `v*` tag.
 
 ## [0.7.0] - 2026-10-11
 

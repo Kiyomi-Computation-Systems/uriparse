@@ -1,0 +1,78 @@
+name: Pages
+
+# Builds the docs site (`make site`, gated by `make check-site`) and deploys it
+# to GitHub Pages on a release tag. This workflow commits nothing: build/site/
+# is produced fresh here and handed to actions/deploy-pages as an artifact.
+#
+# The site is rendered with chez-cmark-gfm, checked out at a pinned commit. The
+# site does not load the library, so the byte-machine submodule is not fetched
+# (and the submodule read token ci.yml needs is not needed here), and a
+# distribution Chez is enough.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One Pages deployment at a time. cancel-in-progress stays false, deliberately:
+# a mid-flight deploy should finish and publish, not be torn out from under a
+# reader, so a second tag pushed while one is running queues instead of
+# racing it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # An explicit image, as in ci.yml: the image chooses the distribution's
+    # Chez and cmark-gfm, so moving it should be a reviewed commit.
+    runs-on: ubuntu-24.04
+    env:
+      CMARK_GFM_ROOT: ${{ github.workspace }}/_deps/chez-cmark-gfm
+    steps:
+      - uses: actions/checkout@v7
+
+      # chez-cmark-gfm v2.0.0, by commit rather than by tag, so a moved tag
+      # cannot change what renders the site. The README names the same release.
+      - uses: actions/checkout@v7
+        with:
+          repository: Kiyomi-Computation-Systems/chez-cmark-gfm
+          ref: 3c848281b6df72f544520fbfe8b5db305a044c94
+          path: _deps/chez-cmark-gfm
+
+      # chez-cmark-gfm finds the cmark-gfm shared library on the host when it
+      # is imported, so the runtime package is all it needs: no -dev package
+      # and no compiler.
+      - name: Install Chez and cmark-gfm
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends chezscheme cmark-gfm
+
+      # CHEZ=chezscheme: Ubuntu names the binary chezscheme; the Makefile
+      # defaults to chez. SITE_REF is the pushed tag -- $GITHUB_REF_NAME on a
+      # tag push, or the selected ref on a manual run -- so links out of the
+      # site into the repository pin to this release rather than "main".
+      - name: Gate the site
+        run: make check-site CHEZ=chezscheme SITE_REF="${GITHUB_REF_NAME}"
+
+      - name: Build the site
+        run: make site CHEZ=chezscheme SITE_REF="${GITHUB_REF_NAME}"
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: build/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

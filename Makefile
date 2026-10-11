@@ -17,10 +17,24 @@ CTEST_FLAGS ?= --output-on-failure --no-tests=error
 AKKU ?= akku
 CHEZ ?= chez
 
+# The docs site is rendered with chez-cmark-gfm, which is not a dependency of
+# the library: name it with CMARK_GFM_ROOT, either a git checkout (its
+# libraries are in src/) or a directory where `akku install chez-cmark-gfm`
+# ran (they are in .akku/lib/). A checkout wins when both are there, as in
+# chez-cmark-gfm's own. CMARK_GFM_LIBDIR is the directory that resolves to; set
+# it to name any other. These targets run Chez directly rather than through
+# CMake, so the site builds on a distribution's Chez as well as on the version
+# the library's own build requires. SITE_REF is the git ref that ../ links in
+# docs/ are pinned to on GitHub. test/site/cmark-gfm-root.sh checks the
+# resolution.
+SITE_REF ?= main
+CMARK_GFM_LIBDIR ?= $(firstword $(foreach d,src .akku/lib,$(if $(wildcard $(CMARK_GFM_ROOT)/$(d)/cmark/gfm.sls),$(CMARK_GFM_ROOT)/$(d))))
+SITE_LIBDIRS = .:test/site:test/support/harness:$(CMARK_GFM_LIBDIR)
+
 # Bare 'make' prints the target list rather than building; 'make all' still builds.
 .DEFAULT_GOAL := help
 
-.PHONY: all help doctor configure build dev test test-all no-scheme prod clean corpus-refresh parser-refresh check-akku
+.PHONY: all help doctor configure build dev test test-all no-scheme prod clean corpus-refresh parser-refresh check-akku site check-site cmark-gfm-root
 
 all: build   ## build the development preset
 
@@ -86,6 +100,31 @@ parser-refresh:   ## re-emit the committed URI scanner from the grammar
 # lane, because it needs akku, which no lane can assume is installed.
 check-akku:   ## install with Akku as a consumer would, and check what lands
 	@AKKU="$(AKKU)" CHEZ="$(CHEZ)" sh test/akku/check-akku.sh
+
+# Each site target first checks that chez-cmark-gfm was found, so a missing or
+# wrong path fails with a sentence rather than a library-not-found.
+cmark-gfm-root:
+	@test -n "$(CMARK_GFM_ROOT)$(CMARK_GFM_LIBDIR)" || { echo "set CMARK_GFM_ROOT to a chez-cmark-gfm checkout, or to where 'akku install chez-cmark-gfm' ran" >&2; exit 2; }
+	@test -f "$(CMARK_GFM_LIBDIR)/cmark/gfm.sls" || { echo "$(CMARK_GFM_ROOT) holds neither src/cmark/gfm.sls (a chez-cmark-gfm checkout) nor .akku/lib/cmark/gfm.sls (an 'akku install chez-cmark-gfm')" >&2; exit 2; }
+
+# docs/*.md, rendered to build/site/ through chez-cmark-gfm. docs/README.md
+# becomes index.html.
+site: cmark-gfm-root   ## render docs/ into build/site/ (needs CMARK_GFM_ROOT)
+	@mkdir -p build/site
+	@CHEZSCHEMELIBDIRS=$(SITE_LIBDIRS) SITE_REF="$(SITE_REF)" \
+	  $(CHEZ) --program build-site.sps
+	@cp site/style.css build/site/style.css
+	@echo "site: build/site ready (open build/site/index.html)"
+
+# The generator's own suites first, then the real site checked in memory: the
+# nav lists exactly docs/*.md, every link and anchor resolves, no .md link
+# leaks into the HTML, and preformatted code is never reflowed.
+check-site: cmark-gfm-root   ## test the site generator, then check docs/ with it
+	@sh test/site/cmark-gfm-root.sh
+	@CHEZSCHEMELIBDIRS=$(SITE_LIBDIRS) $(CHEZ) --program test/site/test-site.sps
+	@CHEZSCHEMELIBDIRS=$(SITE_LIBDIRS) $(CHEZ) --program test/site/test-site-render.sps
+	@CHEZSCHEMELIBDIRS=$(SITE_LIBDIRS) SITE_REF="$(SITE_REF)" \
+	  $(CHEZ) --program test/site/site-check.sps
 
 clean:   ## remove all build trees
 	$(CMAKE) -E rm -rf build
