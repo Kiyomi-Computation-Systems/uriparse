@@ -4143,3 +4143,54 @@ gains one line saying the examples are run; CHANGELOG [Unreleased] gains the lan
 7ff7424 plus this commit (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3, byte-machine c338a57):
 test-all 87/87, no-scheme 13/13, pr selection 87/87; the lane reports README.org 2 programs and
 docs/easy.org 1 program and 9 expressions, 0 differences, in both modes.
+
+PR #42 CLOSED OUT (2026-10-11, merged on the maintainer's word; close-out committed on main at
+the maintainer's word). Squash-merged as dcb7996 on 7ff7424, pinned by --match-head-commit
+806bef6. Merged tree 8dbb521 = tested tree 8dbb521 (hash compare). CI DID NOT RUN: run
+38164680223 was refused over billing (annotation read); a PR comment records it with the local
+counts, test-all 87/87 and no-scheme 13/13. Before test/doc-examples-lane was deleted (local and
+remote), no open PR was based on it (checked). Local main was fast-forwarded to dcb7996 only after
+confirming it was checked out and clean.
+
+THE SHARED CHECKOUT MOVED UNDER THIS WORK. Between this branch's creation and its commit, another
+session ("User-facing documentation and API reference", 94df59) ran `git switch -c
+docs/user-docs-and-site` in /Users/yuzu/github/uriparse, then switched back to main and deleted
+its branch. Uncommitted work rides along on a checkout, so the commit landed on local main; the
+push sent an empty branch, and `gh pr create` reported "No commits between main and ...". The
+reflog showed checkouts this session never ran. Nothing reached origin/main. RECOVERY BY REFS
+ONLY, with no checkout of the shared tree: `git branch -f test/doc-examples-lane 806bef6`, a push
+(fast-forward), then `git reset --keep origin/main` on main, guarded to run only while main was
+checked out, clean and at 806bef6. 94df59 confirmed by message that the switch was its own, that it
+touched none of these files, and that it now works in a separate worktree (docs/user-docs-and-site
+is checked out there).
+
+COORDINATION. 94df59 is rewriting the user docs as Markdown in docs/ (docs/README.md as the index,
+an API reference checked against the src exports, GitHub Pages through chez-cmark-gfm's
+generator), which would turn docs/easy.org into docs/easy.md. It was told by message to build on
+this lane, and it was given:
+- the seam: org-blocks returns (kind line text) and check-doc only consumes that list;
+- the conventions, and the obligation to grade a Markdown reader with its own bad-doc twins;
+- THE SILENT GAP: the lane's list is README.org plus a glob of docs/*.org. Once the guide is .md
+  the glob matches nothing, README.org still has examples, and no lane fails; guide checking
+  simply stops. The move and the lane's extension must land together.
+
+REFLECTION. Three things. (1) A SHARED CHECKOUT IS SHARED STATE. A branch made at the start of a
+task is not guaranteed to be checked out at commit time when other sessions use the same tree;
+check the branch immediately before committing, or work in a worktree. The recovery moved refs
+and left the tree alone, because another session might be standing in it. (2) A CHECKER NEEDS ITS
+OWN WITNESSES. Two of the doc lane's self-tests could not fail, a stray example that did not
+match and a rule placed where no self-test reached, and only mutating the checker exposed them.
+(3) A CHECK OF CONTENTS CANNOT SEE A FILE VANISH. The lane fails on a wrong example, a missing
+listed file or an empty doc. It cannot fail when the glob that builds its list starts matching
+nothing, which is exactly what a format change does.
+
+NEXT. (1) CI billing: ten PRs (#33 to #42) have now merged without a CI verdict. When Actions runs
+again, run it on main (dcb7996 or later) and record the first green run since #28. (2) Make
+byte-machine public before or with uriparse (`gh api repos/Kiyomi-Computation-Systems/byte-machine
+--jq .visibility`). (3) Close the silent gap: the doc lane fails when docs/ yields no guide at all,
+or the Markdown move (94df59) extends the glob and the reader in one change. (4) Out of the easy
+layer's scope, if wanted: building URIs from parts, a host-kind accessor, a ranged (uri query).
+(5) Carried: chez-httparse to byte-machine v0.7.0; the 2026-12-01 CMake hold review; the 24.04 →
+26.04 move (0038 item 4); chez-httparse's runner pin before 2026-10-19; the result-level
+authority-form validator (0032 item 4); v0.6+ tooling (0012, 0022); the next sibling request. DONE
+since #41: the v0.7.0 GitHub Release, and the example checker as a lane (#42).
