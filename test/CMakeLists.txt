@@ -1114,6 +1114,36 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
+# --- example.docs: the documented examples run ------------------------------
+#
+# Every Scheme example in the user-facing docs runs and must print what the doc
+# says it prints: a program, the #+begin_example after it; an expression, the
+# `;; =>` value after it. The lane grades its own checker first, on inline docs
+# with known verdicts. The docs are data, read at run time, not executed sources,
+# so the list is README.org plus a glob of docs/*.org: a new guide is checked the
+# moment it exists (CONFIGURE_DEPENDS re-runs the glob), and a listed file with no
+# example fails. The examples import (uri easy), (uri collect) and (uri
+# components), so the lane loads URI_EASY.
+file(GLOB URI_DOC_GUIDES CONFIGURE_DEPENDS RELATIVE "${CMAKE_SOURCE_DIR}"
+     "${CMAKE_SOURCE_DIR}/docs/*.org")
+list(SORT URI_DOC_GUIDES)
+list(JOIN URI_DOC_GUIDES " " _uri_doc_guides)
+set(URI_DOC_FILES "README.org ${_uri_doc_guides}")
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.example.docs.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/doc-examples-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
+            ${URI_EASY}
+            "${CMAKE_CURRENT_LIST_DIR}/common/doc-examples-tests.sps"
+    ENVIRONMENT "URI_DOC_ROOT=${CMAKE_SOURCE_DIR}"
+                "URI_DOC_FILES=${URI_DOC_FILES}"
+    TIMEOUT 120
+    LABELS example)
+endforeach()
+
 # --- (uri path): §5.2.4 remove-dot-segments + §5.2.3 merge ------------------
 #
 # The mechanics `(uri resolve)` (§5.2.2) is built on: two pure functions over
