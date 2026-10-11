@@ -7,7 +7,7 @@
 # success.
 #
 # This suite exists because the same check was once run by hand and written up
-# in a decision record as evidence. Evidence that lives in a transcript is not
+# as evidence. Evidence that lives in a transcript is not
 # evidence: nobody can rerun it, and it cannot fail when the code changes. The
 # hand-run version also missed the most important case, because it only mutated
 # the modules and never the assertion helper every specification depends on.
@@ -16,7 +16,7 @@
 # will tell you when a pattern has drifted; it will not tell you when a new,
 # untested decision has been added.
 #
-# ONE PASS, SEVENTY-THREE MUTATIONS
+# ONE PASS, SEVENTY-SEVEN MUTATIONS
 #
 # Every mutation below is declared before the single uri_mutation_run
 # call at the end of this file, so this suite is one pass by construction.
@@ -24,13 +24,6 @@
 # uri_mutation_totals once that call returns: SITES tells you when a
 # pattern has drifted, but a deleted uri_mutation() declaration is not
 # a pattern that failed to match, and only the totals check can see one.
-#
-# Measured on this tree when the harness was ported (Slice 1, 2026-08-28):
-# seventy-two mutations arrived with the port, their FIND/REPLACE literals
-# renamed in lockstep with the modules they mutate -- the upstream tree
-# carries the full derivation history of that number, which this file
-# deliberately does not restate -- plus one of this repository's own, the
-# rename-audit witness at the bottom of the manifest. 72 + 1 = 73.
 
 cmake_minimum_required(VERSION 3.26)
 
@@ -252,12 +245,12 @@ uri_mutation(
 #
 # The machinery every specification above is trusted through, and the one
 # module in this directory that had neither a specification nor a mutation
-# targeting it -- even though it is staged like everything else. A re-review
-# found that the fix narrowing "caught" to "caught for the declared reason"
-# had reproduced the same defect class one layer down: the `elseif`
-# translating a wrong-reason result into a failure could be deleted by hand
-# and the whole suite stayed 89/89, because nothing mutated the decision that
-# branch depends on. These mutations are what closes that.
+# targeting it -- even though it is staged like everything else. Narrowing
+# "caught" to "caught for the declared reason" reproduces the same defect class
+# one layer down: the `elseif` translating a wrong-reason result into a failure
+# could be deleted by hand and the whole suite would stay green, because
+# nothing else mutates the decision that branch depends on. These mutations
+# close that.
 
 uri_mutation(
   FILE test/support/cmake/MutationRunner.cmake SPEC MutationRunnerSpec.cmake
@@ -363,14 +356,13 @@ uri_mutation(
   set(${out_message} "" PARENT_SCOPE)]]
   REPLACE [[function(uri_expect_exit_classify code out_status out_message)]])
 
-# A reviewer once deleted this exact block by hand from
-# UriSchemeLane.cmake's copy of the same shape (below) and ran the
-# whole suite: 37/37 passed, because nothing forwarded WORKING_DIRECTORY far
-# enough to notice it stopped arriving. This is that block's other occurrence
-# -- the registrar itself, not a caller of it -- and until the WORKING_DIRECTORY
-# assertions in UriExpectExitSpec.cmake, its path was exercised by
-# nothing at all: every case that reaches uri_add_exit_code_test in
-# that specification is rejected before this line runs.
+# Deleting this exact block by hand, or the copy of the same shape in
+# UriSchemeLane.cmake (below), leaves nothing to notice that WORKING_DIRECTORY
+# stopped arriving unless a specification asserts on it. This is the
+# registrar itself, not a caller of it, and only the WORKING_DIRECTORY
+# assertions in UriExpectExitSpec.cmake exercise its path: every other case
+# that reaches uri_add_exit_code_test in that specification is rejected before
+# this line runs.
 uri_mutation(
   FILE cmake/UriExpectExit.cmake SPEC UriExpectExitSpec.cmake
   LABEL "expect-exit: WORKING_DIRECTORY is parsed and then never forwarded to the registrar"
@@ -379,10 +371,8 @@ uri_mutation(
 
 # The other direction of the same conditional: forwarding the keyword to the
 # registrar unconditionally, even when the caller gave no WORKING_DIRECTORY at
-# all. A re-review found this direction just as unwitnessed as the one above
-# was before it got a mutation: only UriExpectExitSpec.cmake's
-# "absent" assertion can see a keyword arriving that should not have, and
-# nothing mutated the condition to make it arrive.
+# all. Only UriExpectExitSpec.cmake's "absent" assertion can see a keyword
+# arriving that should not have, so this direction needs its own mutation.
 uri_mutation(
   FILE cmake/UriExpectExit.cmake SPEC UriExpectExitSpec.cmake
   LABEL "expect-exit: WORKING_DIRECTORY is forwarded to the registrar even when the caller did not give one"
@@ -422,14 +412,12 @@ uri_mutation(
 # mutation: a dropped interpolation and two one-word typos. Any of the three
 # would otherwise pass every existing assertion undetected.
 #
-# Re-anchored on ${mode}: M0 slice 5b Task 2 replaced the literal "source" in
-# the no-runtime message with the mode argument, so a lane can name the mode
-# it actually failed to find a runtime for (see MutationRunner.cmake's SITES
-# comment -- a pattern that stops matching after a refactor must be updated,
-# not deleted). REPLACE is unchanged: both specification cases this mutation
-# is caught by still call with mode `source`, so a REPLACE that hardcodes
-# "source" reproduces exactly the same break -- dropped program interpolation
-# -- as before this re-anchoring.
+# FIND is anchored on ${mode}: the no-runtime message names the mode a lane
+# failed to find a runtime for (see MutationRunner.cmake's SITES comment -- a
+# pattern that stops matching after a refactor must be updated, not deleted).
+# Both specification cases this mutation is caught by call with mode `source`,
+# so a REPLACE that hardcodes "source" reproduces exactly the same break --
+# dropped program interpolation.
 uri_mutation(
   FILE cmake/UriSchemeLane.cmake SPEC UriSchemeLaneSpec.cmake
   LABEL "scheme-lane: the chez no-runtime message drops its program interpolation"
@@ -473,10 +461,9 @@ uri_mutation(
 uri_mutation(
   FILE cmake/UriSchemeLane.cmake SPEC UriSchemeLaneSpec.cmake
   LABEL "scheme-lane: an unknown backend no longer stops registration"
-  # Re-anchored on the two-clause form left once the removed backend's
-  # comma-in-path and relative-path statuses left the vocabulary with it (see
-  # MutationRunner.cmake's SITES comment -- a pattern that stops matching
-  # after a refactor must be updated, not deleted).
+  # FIND is anchored on the two-clause guard (see MutationRunner.cmake's SITES
+  # comment -- a pattern that stops matching after a refactor must be updated,
+  # not deleted).
   FIND [[  if(status STREQUAL "unknown-backend"
      OR status STREQUAL "unknown-mode")]]
   REPLACE [[  if(FALSE)]])
@@ -507,7 +494,7 @@ uri_mutation(
   REPLACE [[  if(FALSE)]])
 
 # This is the mutation that matters most: if EXPECT_EXIT stopped being able to
-# route to the exit-code registrar, every expected-red test in this milestone
+# route to the exit-code registrar, every expected-red test
 # would silently become a "must exit 0" test.
 uri_mutation(
   FILE cmake/UriSchemeLane.cmake SPEC UriSchemeLaneSpec.cmake
@@ -517,13 +504,11 @@ uri_mutation(
 
 uri_mutation(
   FILE cmake/UriSchemeLane.cmake SPEC UriSchemeLaneSpec.cmake
-  # Re-anchored on ${lane_mode}: M0 slice 5b Task 1 replaced the literal
-  # "source" with the mode uri_test_name_parse reads from the lane's
-  # own name (see MutationRunner.cmake's SITES comment -- a pattern that stops
-  # matching after a refactor must be updated, not deleted). REPLACE still
-  # means only "the execution mode entry is gone"; the fingerprint-sample
-  # entry and arg_ENVIRONMENT are untouched, exactly as before this
-  # re-anchoring.
+  # FIND is anchored on ${lane_mode}, the mode uri_test_name_parse reads from
+  # the lane's own name (see MutationRunner.cmake's SITES comment -- a pattern
+  # that stops matching after a refactor must be updated, not deleted).
+  # REPLACE means only "the execution mode entry is gone"; the
+  # fingerprint-sample entry and arg_ENVIRONMENT are untouched.
   LABEL "scheme-lane: the source execution mode is no longer declared in the environment"
   FIND [[    "URI_EXECUTION_MODE=${lane_mode}"
 ]]
@@ -544,20 +529,13 @@ uri_mutation(
   FIND [[    if(arg_WRONG_FINGERPRINT)]]
   REPLACE [[    if(FALSE)]])
 
-# This is the mutation a whole-branch review found undetectable. The incident,
-# as history: with this block deleted by hand and the configure re-run, the
-# include-era working-directory matrix's three lanes all launched from their
-# derived directories instead of the three fixture directories
-# test/CMakeLists.txt had built for them -- three copies of one vacuous lane,
-# and nothing anywhere failed, because neither registrar this block feeds was
-# ever asked whether it received WORKING_DIRECTORY at all.
-#
-# That matrix retired with the include mechanism (upstream decision 0006), and no lane
-# overrides its run directory today, so a forwarding break is now invisible to
-# every registration in the tree. What can still see it is exactly what the
-# incident proved was missing: UriSchemeLaneSpec.cmake's absent/present
-# assertions on the keyword, which this mutation and the one below hold in
-# place.
+# Without this block, a lane given a WORKING_DIRECTORY would silently launch
+# from its derived directory instead, and nothing would fail, because neither
+# registrar this block feeds is otherwise asked whether it received
+# WORKING_DIRECTORY at all. No lane overrides its run directory, so a forwarding
+# break is invisible to every registration in the tree. What sees it is
+# UriSchemeLaneSpec.cmake's absent/present assertions on the keyword, which this
+# mutation and the one below hold in place.
 uri_mutation(
   FILE cmake/UriSchemeLane.cmake SPEC UriSchemeLaneSpec.cmake
   LABEL "scheme-lane: WORKING_DIRECTORY is parsed and then never forwarded to either registrar"
@@ -568,10 +546,8 @@ uri_mutation(
 # routed to, unconditionally, even when the lane gave no WORKING_DIRECTORY at
 # all. Both registrars' "absent" assertions in UriSchemeLaneSpec.cmake
 # can see this -- the plain path and the exit-code path both splice the same
-# working_directory_args, so one mutation here is witnessed by both -- but
-# until now nothing mutated the condition to make the keyword arrive
-# unwanted, the same blind spot the if(FALSE) mutation above used to be alone
-# in closing.
+# working_directory_args, so one mutation here is witnessed by both -- and it
+# closes the other half of the blind spot the if(FALSE) mutation above leaves.
 uri_mutation(
   FILE cmake/UriSchemeLane.cmake SPEC UriSchemeLaneSpec.cmake
   LABEL "scheme-lane: WORKING_DIRECTORY is forwarded to either registrar even when the lane did not give one"
@@ -580,9 +556,8 @@ uri_mutation(
 
 # The run directory decides where every lane launches from; the three
 # decisions inside uri_test_run_directory each get their own
-# mutation. (The include-era matrix that first hung off this function is
-# gone -- upstream decision 0006 -- but an override that silently stops arriving, or
-# arrives empty, still launches lanes from the wrong place.)
+# mutation: an override that silently stops arriving, or arrives empty,
+# launches lanes from the wrong place.
 uri_mutation(
   FILE cmake/UriTesting.cmake SPEC UriTestingSpec.cmake
   LABEL "testing: WORKING_DIRECTORY names a directory that need not exist"
@@ -631,21 +606,18 @@ uri_mutation(
   set(duplicates "")]]
   REPLACE [[  set(seen "")]])
 
-# M0 slice 5b remainder, Task 4: every decision the three aot lanes and the
-# staleness lane (Tasks 1 and 3) added to UriSchemeLane.cmake, broken
-# on a staged copy. What is deliberately *not* mutated here: the builder's
-# own body (the copy-source-of-record logic, the DEPENDS list, the prefix
-# order). Those live inside `add_custom_command` arguments the spec's stub
-# never executes; their end-to-end witness is the staleness lane itself,
-# permanently registered and asserting exit 3 -- which is exactly the
-# division of labour W12 prescribes.
+# Every decision the three aot lanes and the staleness lane add to
+# UriSchemeLane.cmake, broken on a staged copy. What is deliberately *not*
+# mutated here: the builder's own body (the copy-source-of-record logic, the
+# DEPENDS list, the prefix order). Those live inside `add_custom_command`
+# arguments the spec's stub never executes; their end-to-end witness is the
+# staleness lane itself, permanently registered and asserting exit 3.
 
-# C1. Protium's actual behaviour for its Chez aot lane: fingerprint the
-# repository originals. Under it the staleness lane's expectation and its
-# measurement read the same files again, they agree, and the lane that
-# exists to exit 3 exits 0 -- the whole defect upstream decision record 0004
-# demonstrated and this slice closes. Witnessed with no runtime present by
-# the spec's two-source aot case and its one-source registration case.
+# A compiled lane that fingerprints the repository originals. Under it the
+# staleness lane's expectation and its measurement read the same files again,
+# they agree, and the lane that exists to exit 3 exits 0 -- the whole defect the
+# staleness lane exists to catch. Witnessed with no runtime present by the
+# spec's two-source aot case and its one-source registration case.
 uri_mutation(
   FILE cmake/UriSchemeLane.cmake SPEC UriSchemeLaneSpec.cmake
   LABEL "scheme-lane: a compiled lane measures the repository originals"
@@ -653,10 +625,10 @@ uri_mutation(
       set(${out_measured} ${measured} PARENT_SCOPE)]]
   REPLACE [[      set(${out_measured} ${ARGN} PARENT_SCOPE)]])
 
-# C1b. The aot run command names one --object-dir per library root the source
-# lane names. The generator's was absent until the first aot lane that imported
-# a generator library, which failed with an unbound library rather than a
-# missing directory -- a failure mode that looks like a broken import, not a
+# The aot run command names one --object-dir per library root the source
+# lane names. Without the generator's, an aot lane importing a generator
+# library fails with an unbound library rather than a missing
+# directory -- a failure mode that looks like a broken import, not a
 # broken build layer. Witnessed with no runtime present by the spec's
 # two-source aot command-line case.
 uri_mutation(
@@ -665,7 +637,7 @@ uri_mutation(
   FIND [[        "--object-dir" "${object_dir}/generator"]]
   REPLACE [[        "--object-dir" "${object_dir}/src"]])
 
-# C2. harness-fingerprint-combine is order-sensitive by design, so a
+# harness-fingerprint-combine is order-sensitive by design, so a
 # reordered measured list computes a different digest over the same bytes.
 # Only a two-or-more-source manifest can see this, which is what the spec's
 # example-two case exists for.
@@ -675,11 +647,11 @@ uri_mutation(
   FIND [[    list(APPEND copies "${dir}/${name}")]]
   REPLACE [[    list(PREPEND copies "${dir}/${name}")]])
 
-# C4. The literal the mode plumbing replaced. Distinct from the deletion
+# The literal the mode plumbing replaces. Distinct from the deletion
 # mutation above ("the source execution mode is no longer declared"): this
 # one keeps the entry and makes it wrong, which is the defect a compiled
-# lane actually suffers. Not caught by the harness's own assertion -- under
-# W8 that assertion accepts any vocabulary member and `source` is one -- but
+# lane actually suffers. Not caught by the harness's own assertion -- that
+# assertion accepts any vocabulary member and `source` is one -- but
 # by the spec's "an aot lane declares the aot mode" case, asserted with no
 # runtime present, which is why the mode logic lives in the registrar
 # rather than in the custom command.
@@ -718,7 +690,7 @@ uri_mutation(
 # --- RenameAudit ------------------------------------------------------------
 #
 # The audit exists to catch the sibling project's name leaking back into the
-# build/test tree (decision 0001 item 1), so its witness is exactly that: a
+# build/test tree, so its witness is exactly that: a
 # leaked token planted in a scanned module. The planted text is assembled with
 # string(CONCAT) because this manifest is itself inside the audit's scan
 # surface -- written literally, the mutation's own declaration would trip the
@@ -750,7 +722,7 @@ uri_mutation(
 # --- CorpusProvenance -------------------------------------------------------
 #
 # The corpus is DERIVED from the vendored RFC text and a lane re-derives it
-# (decision 0005 item 2: a vector is never edited to make a test pass). That is
+# (a vector is never edited to make a test pass). That is
 # the most load-bearing claim in this tree and the easiest one to lose
 # silently, so the corpus and the RFC text join the stage and the lane is asked
 # to catch both ways it can be broken.

@@ -1,9 +1,9 @@
 name: CI
 
 # ONE CELL: Linux amd64, plus the build layer with no Scheme at all
-# (decision 0006). macOS is where this is developed and is exercised
-# continuously by that fact, so a hosted macOS runner -- which bills at ten
-# times the Linux rate -- would re-verify the one cell that is never in doubt.
+# macOS is where this is developed and is exercised continuously by that fact,
+# so a hosted macOS runner -- which bills at ten times the Linux rate -- would
+# re-verify the one cell that is never in doubt.
 # Windows and arm64 Linux are deferred, and deferred means NOT RUN, not
 # passing: no lane here, and no sentence anywhere, says otherwise.
 #
@@ -19,11 +19,11 @@ on:
 
 jobs:
   linux-amd64:
-    # An explicit image, not ubuntu-latest: that label moves to Ubuntu 26.04
-    # from 2026-10-19 (actions/runner-images#14748), and the image chooses both
-    # the libraries the cached Chez links against and the CMake every
+    # An explicit image, not ubuntu-latest: that label moves to a newer Ubuntu
+    # release over time (actions/runner-images#14748), and the image chooses
+    # both the libraries the cached Chez links against and the CMake every
     # `cmake -P` script runs under, so an image change should be a reviewed
-    # commit (decision 0038). Changing it re-keys the Chez cache (step `os`).
+    # commit. Changing it re-keys the Chez cache (step `os`).
     runs-on: ubuntu-24.04        # x86-64 (amd64)
     env:
       URI_EXPECT_OS: linux

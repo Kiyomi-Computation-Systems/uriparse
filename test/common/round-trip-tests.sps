@@ -1,8 +1,7 @@
 #!r6rs
-;;; property.round-trip -- RFC 3986's round-trip property (the brief's test
-;;; instrument #2), the last measured claim before v0.1.
+;;; property.round-trip -- RFC 3986's round-trip property.
 ;;;
-;;; THE INVARIANT (decision 0022), one step, a SINGLE normalization:
+;;; THE INVARIANT, one step, a SINGLE normalization:
 ;;;   r0 = uri-parse(m, x)                     ; require ok
 ;;;   n0 = normalize-components(components r0)  ; §6.2.2, applied ONCE
 ;;;   s  = recompose(n0)                        ; §5.3
@@ -10,17 +9,16 @@
 ;;;   HOLDS iff uri-components=?(components r1, n0)
 ;;; So n0 is the fixed point of the parse-recompose round trip, reached after one
 ;;; normalization -- NOT a fixed point of normalize (which is not idempotent over
-;;; v0.1's non-validating domain: %%341 -> %41 -> A, decision 0022). The second
+;;; the non-validating domain: %%341 -> %41 -> A). The second
 ;;; parse re-splits bytes; it does not re-normalize.
 ;;;
-;;; This suite (M7) grades the NORMATIVE corpora -- the §1.1.2 example URIs and
+;;; This suite grades the NORMATIVE corpora -- the §1.1.2 example URIs and
 ;;; the 42 §5.4 resolution targets, all absolute, in mode `uri` -- plus hand
 ;;; vectors that the committed corpora (all lowercase, no `%`) cannot reach: the
 ;;; normalize delta and the absent/empty distinction put through the loop, the
 ;;; exhaustive empty/absent matrix, positive RELATIVE-reference round trips (mode
 ;;; `uri-reference`), the `%%341` non-idempotence pin, and the §4.2/§3.3
-;;; recompose boundary over hand-built components. Slice ⓪ shipped the machinery
-;;; + corpora + smoke; Slice ① added the matrix, the relative refs, the pins.
+;;; recompose boundary over hand-built components.
 ;;;
 ;;; A universal property, not a ratchet: red iff any in-scope vector fails.
 (import (rnrs)
@@ -95,7 +93,7 @@
          (lambda (v) (check-round-trips (rv-id v) 'uri (rv-target v)))
          (resolution-vectors c))))))
 
-;;; --- the normalize delta, put through the loop (Slice ⓪ smoke) --------------
+;;; --- the normalize delta, put through the loop ------------------------------
 ;;; The committed corpora are all lowercase with no `%`, so normalization is the
 ;;; identity on them and the corpus groups above exercise the round trip only in
 ;;; the no-delta region. These carry a real §6.2.2 change (scheme fold, unreserved
@@ -103,7 +101,7 @@
 ;;; exercised over normalized OUTPUT too.
 ;;;
 ;;; HONEST SCOPE: the property tests recompose∘parse STABILITY on n0, not
-;;; normalize CORRECTNESS (unit.normalize's job, M5), and it is INHERENTLY blind
+;;; normalize CORRECTNESS (unit.normalize's job), and it is INHERENTLY blind
 ;;; to a normalize that does nothing -- identity output always round-trips, so
 ;;; the first four cases are COVERAGE (the round trip holds over normalized
 ;;; output), not a witness of normalize. The ONE normalize fault the property is
@@ -117,7 +115,7 @@
       (lambda () (check-round-trips "%7Efoo -> ~foo" 'uri "http://a/%7Efoo")))
     (harness-case "a reserved %XX keeps its hex, uppercased, and survives"
       (lambda () (check-round-trips "%2f -> %2F" 'uri "http://a/%2f")))
-    ;; %2E decodes to a literal '.', which normalize CREATES (decision 0020) but
+    ;; %2E decodes to a literal '.', which normalize CREATES but
     ;; does not remove -- the round trip (no resolution in the loop) keeps it.
     (harness-case "a decoded dot-segment is created and round-trips as-is"
       (lambda () (check-round-trips "%2E -> ." 'uri "http://a/b/%2E/c")))
@@ -141,7 +139,7 @@
     (harness-case "an unreserved %XX in the fragment decodes and survives"
       (lambda () (check-round-trips "%7E in fragment" 'uri "http://a#%7Efoo")))))
 
-;;; --- the empty/absent matrix, exhaustive (Slice ①) --------------------------
+;;; --- the empty/absent matrix, exhaustive ------------------------------------
 ;;; Every component's present-empty vs absent pair recovered through
 ;;; recompose→reparse, plus the §3.2 case that is the whole reason absent ≠ empty:
 ;;; http:///p (empty authority, absolute path) vs http:/p (no authority).
@@ -161,8 +159,8 @@
     (harness-case "a fragment with no authority round-trips (http:#)"
       (lambda () (check-round-trips "http:# (fragment present, no authority)" 'uri "http:#")))))
 
-;;; --- positive relative-reference round trips (Slice ①) ----------------------
-;;; Decision 0022 item 3: the property holds in EVERY mode, not only mode `uri`.
+;;; --- positive relative-reference round trips --------------------------------
+;;; The property holds in EVERY mode, not only mode `uri`.
 ;;; The committed corpora are all absolute, so relative references are MEASURED
 ;;; here, reparsed in mode `uri-reference`. None reaches the §4.2/§3.3 boundary:
 ;;; a parse never emits a colon-first-segment scheme-absent path (`./a:b` is
@@ -177,7 +175,7 @@
          (list "g" "g/h" "../g" "./g" "/g" "?q" "#f" ""
                "g;x=1/../y" "a/b?c#d" "./a:b"))))))
 
-;;; --- the absent/empty distinction, recovered through reparse (Slice ⓪ smoke)-
+;;; --- the absent/empty distinction, recovered through reparse ------------
 (harness-group "absent vs present-empty survives recompose then reparse"
   (lambda ()
     (harness-case "an empty-but-present authority round-trips (http://)"
@@ -189,9 +187,9 @@
     (harness-case "an absent query round-trips (http://a)"
       (lambda () (check-round-trips "http://a (query absent)" 'uri "http://a")))))
 
-;;; --- normalize is NOT idempotent -- why the invariant is one-step (Slice ①) -
+;;; --- normalize is NOT idempotent -- why the invariant is one-step ------------
 ;;; The round trip applies normalize ONCE. It must, because normalize is not
-;;; idempotent over v0.1's non-validating domain (decision 0022): a malformed `%`
+;;; idempotent over the non-validating domain: a malformed `%`
 ;;; adjacent to a triple realigns on a second pass. This pins that fact directly
 ;;; (non-load-bearing for the round trip, but it is the reason the round trip
 ;;; cannot be stated as a normalize fixed point) and confirms the ONE-STEP round
@@ -213,22 +211,22 @@
     (harness-case "the one-step round trip holds for http://h/%%341"
       (lambda () (check-round-trips "http://h/%%341" 'uri "http://h/%%341")))))
 
-;;; --- the §4.2/§3.3 recompose boundary, over HAND-BUILT components (Slice ①) --
+;;; --- the §4.2/§3.3 recompose boundary, over HAND-BUILT components ------------
 ;;; recompose is a faithful inverse of parse for every PARSE OUTPUT, but NOT over
-;;; arbitrary components (decision 0022 item 4). Two scheme-absent shapes break
+;;; arbitrary components. Two scheme-absent shapes break
 ;;; parse(recompose(c)) = c -- and both are UNREACHABLE from parsing (§3.3 forbids
 ;;; a //-leading no-authority path, and a parse never emits a colon-first-segment
 ;;; scheme-absent path), so the round trip over parse outputs never meets them.
 ;;; §5.3 recompose deliberately omits §4.2's disambiguating "./"; adding it would
 ;;; diverge from §5.3 as the RFC writes it, and that disambiguation is the
-;;; reference PRODUCER's job -- a v0.2 relative-reference serializer above
+;;; reference PRODUCER's job -- a relative-reference serializer layered above
 ;;; recompose, not the generic renderer. Pinned as expected non-round-trips, the
-;;; M7 analog of the §5.4.2 http:g loophole the corpus records (decision 0001).
+;;; analog of the §5.4.2 http:g loophole the corpus records.
 (harness-group "the §4.2 / §3.3 recompose boundary is documented, not faked"
   (lambda ()
     ;; §4.2: {scheme=#f, path="a:b"} is not a parse output. recompose gives
-    ;; "a:b", which re-parses as a SCHEME. (rp is a components in current code;
-    ;; the guard names a future recompose regression instead of erroring.)
+    ;; "a:b", which re-parses as a SCHEME. (rp is a components;
+    ;; the guard names a recompose regression instead of erroring.)
     (harness-case "§4.2 colon-first-segment: recompose is not invertible here"
       (lambda ()
         (let ((rp (recompose-reparse 'uri-reference (comp #f #f (a "a:b") #f #f))))

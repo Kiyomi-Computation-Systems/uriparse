@@ -1,16 +1,16 @@
 #!r6rs
-;;; conformance.abnf-differential -- Slice ① of the RFC 3986 conformance audit
-;;; (decision 0028 item 3): the DIFFERENTIAL. For a broad input space and each of
+;;; conformance.abnf-differential -- the RFC 3986 conformance audit's
+;;; DIFFERENTIAL. For a broad input space and each of
 ;;; the three modes, compare the product's verdict -- (uri-parse-ok? (uri-parse-
 ;;; validate mode bytes)) -- against the independent oracle's -- (oracle-recognize?
 ;;; mode bytes). Any input x mode where they DISAGREE is a candidate deviation, and
 ;;; the lane reddens naming it; agreement everywhere over the audited space is the
 ;;; recognizer-equivalence the "RFC 3986 compliant (validation)" claim needs.
 ;;;
-;;; THE FOUR INPUT SOURCES (decision 0028 item 3).
+;;; THE FOUR INPUT SOURCES.
 ;;;   (a) the POSITIVE corpora (§1.1.2 examples, the §5.4 base + targets + refs):
 ;;;       both must ACCEPT.
-;;;   (b) the NEGATIVE corpora (M3 charset, M4 host): both must REJECT.
+;;;   (b) the NEGATIVE corpora (charset, host): both must REJECT.
 ;;;   (c) the EXHAUSTIVE small sweep: every string of length 0..MAXLEN over a
 ;;;       reduced alphabet carrying the structural delimiters, in all three modes.
 ;;;       This densely covers the SHORT-string boundary space -- where a scheme,
@@ -20,14 +20,15 @@
 ;;;       boundaries, long pct runs, multi-segment colon paths, empty-component
 ;;;       combinations), each carrying its ABNF-correct verdict so the row is a
 ;;;       THIRD independent reading -- guarding the shared blind spot the oracle and
-;;;       product could share (decisions 0005 / 0012).
+;;;       product could share.
 ;;;
-;;; The sweep's bound is DISCLOSED and ASSERTED, never silently capped (0028
-;;; consequences). Two mechanisms, because a passing `check` prints nothing: (1) the
-;;; actual comparison count is checked EQUAL to an independently-computed expected
-;;; total, so a silently-shrunk sweep reddens rather than passing byte-identically;
-;;; and (2) an unconditional `uri-harness: coverage ...` line naming the alphabet,
-;;; MAXLEN, and the compared count is emitted on every run, pass or fail.
+;;; The sweep's bound is DISCLOSED and ASSERTED, never silently capped. Two
+;;; mechanisms, because a passing `check` prints nothing: (1) the actual
+;;; comparison count is checked EQUAL to an independently-computed expected
+;;; total, so a silently-shrunk sweep reddens rather than passing
+;;; byte-identically; and (2) an unconditional `uri-harness: coverage ...` line
+;;; naming the alphabet, MAXLEN, and the compared count is emitted on every run,
+;;; pass or fail.
 (import (rnrs)
         (uri test harness)
         (uri test corpus)
@@ -113,20 +114,20 @@
                   rows)))))
 
 ;; --- (b) negatives: both reject ------------------------------------------
-;; The M3/M4 corpora are whole inputs (a mode + the bytes) the ABNF rejects. Both
-;; the product and the whole-URI oracle must reject each.
+;; The charset and host corpora are whole inputs (a mode + the bytes) the ABNF
+;; rejects. Both the product and the whole-URI oracle must reject each.
 (harness-group "negatives: product and oracle both reject"
   (lambda ()
     (define (both-reject label mode bv)
       (check (string-append "oracle rejects " label) (not (oracle-accepts? mode bv)))
       (check (string-append "product rejects " label) (not (product-accepts? mode bv))))
-    (harness-case "M3 charset negative corpus"
+    (harness-case "charset negative corpus"
       (lambda ()
         (let ((rows (cs:negative-load (charset-path "negative.scm"))))
           (check "charset negative corpus non-empty" (> (length rows) 0))
           (for-each (lambda (v) (both-reject (cs:nv-note v) (cs:nv-mode v) (cs:nv-input v)))
                     rows))))
-    (harness-case "M4 host negative corpus"
+    (harness-case "host negative corpus"
       (lambda ()
         (let ((rows (hs:negative-load (host-path "negative.scm"))))
           (check "host negative corpus non-empty" (> (length rows) 0))
@@ -135,7 +136,7 @@
 
 ;; --- (c) the exhaustive small sweep --------------------------------------
 ;;
-;; Reduced alphabet (0028 item 3c): a letter, a digit, a sub-delim, and the
+;; Reduced alphabet: a letter, a digit, a sub-delim, and the
 ;; structural delimiters ": / ? # [ ] @ % .". Twelve bytes; a and 1 double as
 ;; HEXDIG so pct-encoding is exercised at its boundary. Every string of length
 ;; 0..MAXLEN over this alphabet is fed to both, in all three modes.

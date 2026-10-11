@@ -4,7 +4,7 @@
 ;;; primitives `(uri normalize)` reuses. Pure bytevectors in, bytevectors out; no
 ;;; scanner, no components, no §6 policy (that is unit.normalize).
 ;;;
-;;; Two decisions this suite pins, both from decision 0011's non-validating
+;;; Two behaviours this suite pins, both following from the non-validating
 ;;; stance: pct-decode is TOTAL -- a malformed `%` (not followed by two hex
 ;;; digits) is left byte-for-byte, never an error -- and pct-encode always emits
 ;;; UPPERCASE hex (§2.1's producer guidance, so the encoder and the normalizer
@@ -14,8 +14,8 @@
         (uri percent))
 
 ;; `a` builds a bytevector from an ASCII string; `bytes` from raw octets. Both
-;; inputs and expectations here are byte strings -- a URI is bytes (decision
-;; 0010) -- and the ASCII spelling is only a convenience for the reader.
+;; inputs and expectations here are byte strings -- a URI is bytes --
+;; and the ASCII spelling is only a convenience for the reader.
 (define (a str) (string->utf8 str))
 (define (bytes . lst) (u8-list->bytevector lst))
 
@@ -120,7 +120,7 @@
       (lambda ()
         (check-equal "plain" (pct-decode (a "hello-world")) (a "hello-world"))
         (check-equal "empty" (pct-decode (a "")) (a ""))))
-    ;; The non-validating stance (decision 0011): a `%` that does not begin a
+    ;; The non-validating stance: a `%` that does not begin a
     ;; valid triple is a literal byte, and decode is total -- it never raises.
     (harness-case "a malformed % is left byte-for-byte"
       (lambda ()

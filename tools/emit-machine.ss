@@ -7,12 +7,11 @@
 ;;; This is the ONLY way the artifact is written. `make parser-refresh` runs it
 ;;; and `uri.determinism.generated-artifact.chez.source` runs it again and
 ;;; compares bytes, so a grammar edit that is not followed by a refresh reddens
-;;; rather than shipping an artifact that no longer matches its source (decision
-;;; 0002 item 4).
+;;; rather than shipping an artifact that does not match its source.
 ;;;
 ;;; The emitted library is `(generated uri-scanner)` -- the collection is the
 ;;; machine's own name, chosen at `make-machine` -- and it imports
-;;; `(byte-machine runtime)` and nothing above it (decision 0002 item 5). This
+;;; `(byte-machine runtime)` and nothing above it. This
 ;;; script imports `(chezscheme)` for file I/O; it is build tooling, not the
 ;;; shipped surface, so the `(chezscheme)`-free rule for `src/` does not reach it.
 (import (rnrs) (chezscheme) (uri grammar) (byte-machine compile))
@@ -37,7 +36,7 @@
     (bytevector-copy! a 0 r 0 la) (bytevector-copy! b 0 r la lb) r))
 
 ;; A `#!r6rs` line leads the artifact so it reads on every implementation the
-;; family targets (design §8: Racket needs it, Chez and Guile accept it) -- the
+;; family targets (Racket needs it, Chez and Guile accept it) -- the
 ;; shipped file is the one that most needs to be portable, and render-machine
 ;; emits no such line. The determinism lane prepends the same prefix, so the two
 ;; cannot drift. The library form follows, so the ABI read is unaffected.

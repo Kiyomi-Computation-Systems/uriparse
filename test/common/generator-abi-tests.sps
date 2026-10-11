@@ -2,19 +2,18 @@
 ;;; unit.generator-abi -- the pinned generator is importable, emits the ABI this
 ;;; repository targets, and the machines it builds actually run.
 ;;;
-;;; Decision 0002 item 3: the generated ABI is 9, asserted in TWO places -- a
-;;; lane that reads it from a freshly emitted machine (this one), and a lane that
-;;; reads it from the committed artifact (which arrives with the grammar in the
-;;; next slice). Two checks, neither able to go stale quietly. Decision 0002's
-;;; ABI clause could otherwise rot unnoticed, because it lives in prose; a lane
-;;; cannot.
+;;; The generated ABI is 9, asserted in TWO places -- a lane that reads it from a
+;;; freshly emitted machine (this one), and a lane that reads it from the
+;;; committed artifact (determinism.generated-artifact). Two checks, neither able
+;;; to go stale quietly. The ABI target could otherwise rot unnoticed, because it
+;;; would live only in prose; a lane cannot.
 ;;;
 ;;; The machine below is a SMOKE machine -- the smallest one that exercises a
 ;;; byte dispatch, an accept, a reject and an EOF route. It is NOT a URI grammar:
 ;;; this lane answers "is the dependency wired up and speaking ABI 9", and
 ;;; nothing about RFC 3986. It declares NO field, so it emits no settable
 ;;; metadata table and the ABI literal is the only thing about its text that a
-;;; version bump would move (design §3.3): a machine with a settable field would
+;;; version bump would move: a machine with a settable field would
 ;;; conflate "what ABI does the pin speak" with "does the field feature work".
 (import (rnrs)
         (uri test harness)
@@ -25,9 +24,9 @@
         (byte-machine runtime))
 
 ;; The generated-runtime ABI the pinned runtime speaks: `current-abi-version` in
-;; `(byte-machine runtime)` (decision 0002 item 3). Read from the emitted text
+;; `(byte-machine runtime)`. Read from the emitted text
 ;; below, never remembered: if the pin ever moves and the ABI with it, this
-;; reddens here rather than at load time in some later slice.
+;; reddens here rather than at load time.
 (define expected-abi 9)
 
 (define (substring-at? s i sub)
@@ -88,7 +87,7 @@
 
     (harness-case "the emitted library imports the runtime and nothing else above it"
       (lambda ()
-        ;; Decision 0002 item 5: a generated parser depends on
+        ;; A generated parser depends on
         ;; `(byte-machine runtime)` and nothing else upstream, so a deployed
         ;; consumer ships without the compiler.
         (let ((text (rendered)))

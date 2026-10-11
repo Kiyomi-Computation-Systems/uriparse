@@ -1,12 +1,13 @@
 #!r6rs
-;;; unit.authority-form -- M9, the RFC 9112 §3.2.3 authority-form pair (decision
-;;; 0026). Two entry points on (uri collect): uri-parse-authority-form (LENIENT, a
-;;; sibling of uri-parse) and uri-parse-authority-form-validate (STRICT). Graded
-;;; against the hand-derived corpus -- each row's LENIENT and STRICT verdict, exact
-;;; code + ABSOLUTE offset in the caller's coordinates -- plus direct assertions on
-;;; the -2 splice re-map, the error vocabulary, and the lenient/strict divergence
-;;; (the whole reason for the pair). The host grammar itself is guarded by unit.host
-;;; (M4's three-provenance discipline); this lane guards the authority-form policy.
+;;; unit.authority-form -- the RFC 9112 §3.2.3 authority-form pair. Two entry
+;;; points on (uri collect): uri-parse-authority-form (LENIENT, a sibling of
+;;; uri-parse) and uri-parse-authority-form-validate (STRICT). Graded against
+;;; the hand-derived corpus -- each row's LENIENT and STRICT verdict, exact code
+;;; + ABSOLUTE offset in the caller's coordinates -- plus direct assertions on
+;;; the -2 splice re-map, the error vocabulary, and the lenient/strict
+;;; divergence (the whole reason for the pair). The host grammar itself is
+;;; guarded by unit.host (graded three ways); this lane guards the
+;;; authority-form policy.
 (import (rnrs)
         (uri test harness)
         (uri collect)
@@ -42,7 +43,7 @@
 
 (harness-begin "unit.authority-form")
 
-;; --- the RFC 9112 authority-form error vocabulary (decision 0026 item 5) ---
+;; --- the RFC 9112 authority-form error vocabulary --------------------
 (harness-group "the authority-form error vocabulary"
   (lambda ()
     (harness-case "three codes, named per §3.2.3, predicate exact"
@@ -73,7 +74,7 @@
       (lambda ()
         (check "at least 17 rows" (>= (length rows) 17))))))
 
-;; --- the "//" splice re-maps offsets by exactly -2 (decision 0026 item 3) --
+;; --- the "//" splice re-maps offsets by exactly -2 -------------------------
 (harness-group "the // splice re-maps offsets by exactly -2"
   (lambda ()
     (harness-case "a valid target: authority at 0, components are the target itself"

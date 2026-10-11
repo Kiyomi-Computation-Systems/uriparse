@@ -2,11 +2,11 @@
 ;;;
 ;;; DERIVED from test/vendor/rfc3986.txt by cmake/UriCorpus.cmake. Do not edit:
 ;;; `make corpus-refresh` rewrites this file and a lane re-derives it and
-;;; compares, so a hand edit reddens rather than surviving (decision 0005).
+;;; compares, so a hand edit reddens rather than surviving.
 ;;;
 ;;; Each row is (<section> <reference> <target>), resolved against the base
-;;; section 5.4 declares. Decision 0015 rejects erratum 4547, which would
-;;; rewrite two of the 5.4.2 rows; they are here exactly as published.
+;;; section 5.4 declares. Erratum 4547, which would rewrite two of the 5.4.2
+;;; rows, is not adopted; they are here exactly as published.
 (base "http://a/b/c/d;p?q")
 (vectors
   ("5.4.1" "g:h" "g:h")
@@ -56,5 +56,5 @@
 ;;; resolution (section 5.2.2 with strict = true) is what this project
 ;;; implements and is the row above; the loophole is recorded rather than
 ;;; silently dropped, because a reader who finds it in the RFC will look for it
-;;; here. RFC 1630 partial-URI compatibility is out of scope (decision 0001).
+;;; here. RFC 1630 partial-URI compatibility is out of scope.
 (note ("5.4.2" "http:g" backward-compatible "http://a/b/c/g"))

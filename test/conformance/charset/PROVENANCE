@@ -1,4 +1,4 @@
-M3 charset validation -- the negative corpus
+Charset validation -- the negative corpus
 
 PROVENANCE: OURS, DERIVED FROM THE ABNF (not extracted from the RFC text)
 
@@ -9,17 +9,15 @@ nothing to extract: negative.scm is HAND-AUTHORED, derived from the collected
 ABNF at test/conformance/rfc3986/rfc3986.abnf (itself RFC-derived) and RFC 5234
 Appendix B for ALPHA / DIGIT / HEXDIG.
 
-It is therefore a SEPARATE provenance with a SEPARATE count (decision 0005 item 3,
-decision 0024 item 6): it is never averaged into the normative §5.4 / §1.1.2
+It is therefore a SEPARATE provenance with a SEPARATE count: it is never averaged into the normative §5.4 / §1.1.2
 figures, and it is NOT guarded by the corpus-provenance lane. Its guard is
 instead:
 
   - every row's (component, code, offset) is cross-checked against
     (uri test charset-oracle) -- an INDEPENDENT reading of the same ABNF -- by
-    the lane uri.unit.charset-oracle; a row inconsistent with the oracle reddens
-    (decision 0024 item 6, oracle discipline of decisions 0005 / 0012);
+    the lane uri.unit.charset-oracle; a row inconsistent with the oracle reddens;
   - per-production coverage floors keep the set from silently shrinking; and
-  - in M3 Slice ②, (uri charset) is run over this corpus and must reject every
+  - (uri charset) is run over this corpus and must reject every
     row with the recorded code and absolute offset, and over the positive
     corpora (§5.4, §1.1.2) which it must still ACCEPT.
 
@@ -31,10 +29,11 @@ WHAT IS HERE
                  malformed pct-encoded). Every offset is defended in the row's
                  note.
 
-WHAT IS NOT HERE, AND WHY (decision 0024 item 2)
+WHAT IS NOT HERE, AND WHY
 
   port and every authority-interior charset (userinfo, host / reg-name,
-  IP-literal) are M4's: the authority is one opaque span until M4 splits it, and
-  an error cannot name the specific violated production (decision 0009 item 1)
-  before the split. The abnfgen positive generator and a charset-aware mutator
-  (decision 0012) stay deferred v0.2 tooling; this corpus is hand-derived.
+  IP-literal) belong to the host corpus (test/conformance/host/): the authority
+  is one opaque span to (uri charset) until the host grammar splits it, and an
+  error cannot name the specific violated production before the split. The
+  project has no ABNF-driven generator or charset-aware mutator; this corpus is
+  hand-derived.

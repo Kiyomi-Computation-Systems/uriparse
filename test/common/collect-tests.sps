@@ -1,7 +1,7 @@
 #!r6rs
 ;;; unit.collect -- the shell that turns the scanner's callbacks into a
 ;;; five-field uri-components. It is judged on the ASSEMBLY: the verdict-based
-;;; scheme and path stitching (mode 3), the on-rooted slash (decision 0018), and
+;;; scheme and path stitching (mode 3), the on-rooted slash, and
 ;;; the absent-vs-empty distinction carried into the component fields. The
 ;;; scanner itself is judged in unit.grammar; here the spans are trusted and the
 ;;; question is whether collect reads the signals and joins the bytes correctly.
@@ -83,7 +83,7 @@
                                           (uri-parse-components piece)))))))))
      oracle)))
 
-;;; --- the copy discipline (design §2, decision 0018 item 4) ---------------
+;;; --- the copy discipline -------------------------------------------------
 ;;; A delivered span range is valid only for the dynamic extent of the callback,
 ;;; so collect MUST copy each fragment. Feeding through a buffer that is refilled
 ;;; between feeds is the case that tells a copy from a retained reference: a
@@ -106,7 +106,7 @@
                    (uri-components=? (uri-parse-components r)
                                      (want "http" "a" "/p" #f #f)))))))))
 
-;;; --- absent is not empty, at the COMPONENT level (decision 0008) ---------
+;;; --- absent is not empty, at the COMPONENT level -------------------------
 (harness-group "absent-is-not-empty"
   (lambda ()
     (define (auth str mode) (uri-components-authority (uri-parse-components (parse mode str))))
@@ -133,7 +133,7 @@
         (check "empty ref path present" (uri-component-present?
                                          (uri-components-path (uri-parse-components (parse 'relative-ref "")))))))))
 
-;;; --- the offset seam (decision 0024 item 3, M3 Slice ①) ------------------
+;;; --- the offset seam -----------------------------------------------------
 ;;; Each present component's ABSOLUTE start offset, so a core charset validator's
 ;;; component-relative index rebases to an input offset. Witnessed here against
 ;;; hand-counted offsets before it is trusted -- especially the three path
@@ -210,7 +210,7 @@
         (check-raises "bogus mode" uri-vocabulary-error?
                       (lambda () (uri-parse 'whatwg (string->utf8 "x"))))))))
 
-;;; --- the section 1.1.2 example URIs parse (decision 0005 item 3) ---------
+;;; --- the section 1.1.2 example URIs parse --------------------------------
 ;;; They carry no expected decomposition, so all a lane may assert is that each
 ;;; parses into components -- across eight schemes, the smoke set for
 ;;; path-rootless the corpus was chosen for.
@@ -229,7 +229,7 @@
                     (uri-component-present? (uri-components-path (uri-parse-components r))))))
          uris)))))
 
-;;; --- collector reuse: reset! (issue #11, decision 0029) ------------------
+;;; --- collector reuse: reset! ---------------------------------------------
 ;;; A collector reset to its just-constructed state must reparse EXACTLY as a
 ;;; fresh one -- clearing the span table, the offset table and the verdict flags,
 ;;; and preserving the embedder-chosen mode (parser-reset! restores the merged
@@ -294,14 +294,14 @@
                  (uri-components=? (uri-parse-components (uri-collect-finish! c))
                                    (uri-parse-components (parse 'uri "http://h/x")))))))))
 
-;;; --- validation over a parse result (issue #18, decision 0032) -----------
+;;; --- validation over a parse result --------------------------------------
 ;;; `uri-parse-result-validate` lifts the post-parse judgement out of
 ;;; `uri-parse-validate` and names it, so a REUSED collector's `uri-collect-finish!`
-;;; result reaches the SAME audited recognizer (decisions 0024/0025, audited clean at
-;;; 0028/0030) without a re-parse. Pinned here in layers:
+;;; result reaches the SAME audited recognizer (the audited charset and host
+;;; validators) without a re-parse. Pinned here in layers:
 ;;;   - the DELEGATION: `uri-parse-validate` routes its judgement through
 ;;;     `uri-parse-result-validate` (a version that stopped delegating diverges);
-;;;   - the REUSE PATH (the #11/#18 point): a validated RESET-reused collector's result
+;;;   - the REUSE PATH (the point of both entry points): a validated RESET-reused collector's result
 ;;;     equals the one-shot -- this actually calls `uri-collector-reset!` and so also
 ;;;     witnesses that the offset seam survives a reset;
 ;;;   - the IDENTITY semantics: a valid or already-errored result returns UNCHANGED (eq?).
@@ -310,8 +310,7 @@
 ;;; and cancels). The checks with teeth for the judgement itself are therefore the two
 ;;; INDEPENDENT hardcoded expectations below -- one per arm of `validate-result` (the
 ;;; charset arm and the authority/host arm), each with its ABSOLUTE offset rebased through
-;;; the seam (decision 0032; the merge-gate rule -- a property no check verifies is not
-;;; pinned).
+;;; the seam (a property no check verifies is not pinned).
 (harness-group "validation over a parse result (uri-parse-result-validate)"
   (lambda ()
     (define (offsets r)                    ; the five component offsets, so a rebased offset reddens
@@ -335,7 +334,7 @@
             (p (string->utf8 (cdr (assq mode throwaway))))
             (bv (string->utf8 str)))
         (uri-collect-feed! c p 0 (bytevector-length p)) (uri-collect-finish! c)
-        (uri-collector-reset! c)           ; the issue #11 reuse path -- NOT a fresh collector
+        (uri-collector-reset! c)           ; the reuse path -- NOT a fresh collector
         (uri-collect-feed! c bv 0 (bytevector-length bv))
         (uri-parse-result-validate (uri-collect-finish! c))))
     ;; A spread of inputs: valid, charset-invalid, authority-invalid, and structural-error,
@@ -364,7 +363,7 @@
                     (result=? (uri-parse-validate mode bv)
                               (uri-parse-result-validate (uri-parse mode bv))))))
          cases)))
-    (harness-case "the point: a validated RESET-reused collector result == the one-shot (issue #11 path)"
+    (harness-case "the point: a validated RESET-reused collector result == the one-shot (the per-connection reuse path)"
       ;; Genuinely resets and reuses a collector, then validates its finish! result. A
       ;; reset! that corrupted the span or offset seam would diverge from the one-shot here.
       (lambda ()

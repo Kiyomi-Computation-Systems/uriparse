@@ -40,12 +40,10 @@ set(URI_MUTATION_STAGE_DIRS "cmake" "test/support/cmake")
 set(URI_MUTATION_VERIFY_COMMAND "")
 
 # Where the verify command runs. Empty means the stage directory, which is what
-# every pass wants. The one caller that ever set it was the include-era
-# working-directory matrix, which needed a pass per launch directory because
-# what it asserted was that the launch directory does not matter -- a claim no
-# command run from one fixed place can make. That matrix retired with the
-# include mechanism (upstream decision 0006); the hook is kept for the next caller that
-# has to run a verify command from somewhere other than the stage.
+# every pass wants. A caller sets it to run a verify command from somewhere
+# other than the stage, for example one pass per launch directory to assert that
+# the launch directory does not matter -- a claim no command run from one fixed
+# place can make.
 set(URI_MUTATION_VERIFY_WORKING_DIRECTORY "")
 
 # uri_mutation(FILE <repo-relative> SPEC <spec basename> LABEL <text>
@@ -201,8 +199,7 @@ endfunction()
 #                 out_reason explains which one.
 #   caught        rc was nonzero and every declared expectation was met. With
 #                 neither EXPECT_STATUS nor EXPECT_OUTPUT_MATCHES given, this is
-#                 the whole rule: any nonzero result is caught, the ordinary,
-#                 pre-slice-3 way.
+#                 the whole rule: any nonzero result is caught, the ordinary way.
 #
 # expect_status and expect_output_matches are both tested for "was this
 # declared at all" with STREQUAL "", not truthiness: a status is a small
@@ -371,8 +368,8 @@ function(uri_mutation_run source_root stage_dir)
         message(SEND_ERROR
           "uri-mutation: '${label}' is recorded as knowingly uncaught "
           "(${survives}) but the specification caught it. The recorded "
-          "limitation is stale: remove EXPECT_SURVIVES and update the decision "
-          "record that cites it.")
+          "limitation is stale: remove EXPECT_SURVIVES and update the record "
+          "that cites it.")
         math(EXPR uncaught "${uncaught} + 1")
       endif()
     elseif(verdict STREQUAL "not-caught")

@@ -118,10 +118,10 @@ set(URI_HARNESS_CHEZ_COMPILE_LAUNCHER "/launchers/chez-compile.ss")
 set(URI_HARNESS_CHEZ_LIBRARY_ROOT "/h/chez")
 set(URI_HARNESS_OBJECT_GUARD_DIR "/b/guard")
 set(URI_SRC_CHEZ_LIBRARY_ROOT "/s/chez")
-# The generator's library root (decision 0005). A lane names one root per
+# The generator's library root. A lane names one root per
 # library family it imports, so the source command line grows by one flag
 # pair when the dependency is wired -- which is what the expectation below
-# now asserts.
+# asserts.
 set(URI_GENERATOR_CHEZ_LIBRARY_ROOT "/g/chez")
 
 # --- Chez ------------------------------------------------------------------
@@ -228,10 +228,9 @@ spec_check_equal("${measured}"
 spec_check_equal("${command}"
   "/opt/chez;--script;/launchers/chez-aot.ss;--object-dir;/objects/uri_harness_example-two_chez_aot/harness;--object-dir;/objects/uri_harness_example-two_chez_aot/src;--object-dir;/objects/uri_harness_example-two_chez_aot/generator;--source-guard;/b/guard;--program;/objects/uri_harness_example-two_chez_aot/p.so"
   "chez aot lane command line -- THREE object dirs, one per library root the
-   source lane names. The generator's was missing until the first aot lane that
-   imported a generator library, which failed with an unbound library rather
-   than a missing directory; this assertion is what stops it being dropped
-   again.")
+   source lane names. Without the generator's, an aot lane importing a
+   generator library fails with an unbound library rather than a missing
+   directory; this assertion is what stops it being dropped.")
 
 uri_scheme_lane_command(uri.harness.example.chez.unknown-mode-name
   chez unknown-mode-name "/h/self/p.sps"
@@ -291,7 +290,7 @@ endfunction()
 # scriptable under cmake -P), so it is stubbed the same way the two
 # registrars are: recorded, not run. What the spec can see is the routing
 # decision -- an aot registration must reach it, a source registration must
-# not -- and the arguments it was reached with, which is where Task 3's
+# not -- and the arguments it was reached with, which is where
 # stale-root forwarding becomes assertable with no Scheme present.
 function(uri_lane_chez_aot_artifacts name program stale_library_root)
   set_property(GLOBAL PROPERTY URI_SPEC_AOT_BUILDER_NAME "${name}")
@@ -299,7 +298,7 @@ function(uri_lane_chez_aot_artifacts name program stale_library_root)
 endfunction()
 
 # uri_expected_fingerprint and uri_wrong_fingerprint are
-# defined in test/CMakeLists.txt (Task 3, M0 slice 5a), which this standalone
+# defined in test/CMakeLists.txt which this standalone
 # script does not include, so they are stubbed for the same reason the two
 # registrars above are: every direct registration below sets
 # URI_CHEZ_EXECUTABLE, which is exactly what makes
@@ -358,7 +357,7 @@ spec_check_equal("${environment}"
 
 # --- The mode is the name's, not a literal ---------------------------------
 #
-# A lane that declares a mode it is not running is the defect this whole slice
+# A lane that declares a mode it is not running is the defect this whole check
 # exists to prevent, and the declaration is what every other lane's evidence
 # is labelled with. Asserted over a name that is not `source`, because the
 # literal it replaced was `source`: a mutation restoring the literal passes
@@ -382,7 +381,7 @@ spec_check_equal("${mode_entry}" "URI_EXECUTION_MODE=aot"
 # URI_EXPECT_FINGERPRINT_FILE is still keyed by the lane's own name --
 # the expectation comes from the declared source, the run's environment from
 # the measured one. This assertion is the declared/measured asymmetry itself,
-# the whole mechanism this task adds, visible here with no Scheme runtime
+# the whole mechanism, visible here with no Scheme runtime
 # present.
 spec_check_equal("${environment}"
   "URI_EXECUTION_MODE=aot;URI_FINGERPRINT_SAMPLE=${CMAKE_SOURCE_DIR}/test/fixtures/fingerprint-sample.bin;URI_FINGERPRINT_FILES=/objects/uri_harness_example_chez_aot/fingerprint/UriSchemeLaneSpec.cmake;URI_EXPECT_FINGERPRINT_FILE=/fingerprints/uri.harness.example.chez.aot.fingerprint"

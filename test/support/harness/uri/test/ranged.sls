@@ -1,8 +1,8 @@
 #!r6rs
-;;; (uri test ranged): the techniques the ranged-judge checks share (decisions
-;;; 0034, 0036). unit.charset and unit.host each grade a judge over [start, end)
-;;; of a larger bytevector. What keeps those checks honest lives here ONCE, so a
-;;; fix to one lane's technique reaches the other:
+;;; (uri test ranged): the techniques the ranged-judge checks share. unit.charset
+;;; and unit.host each grade a judge over [start, end) of a larger bytevector.
+;;; What keeps those checks honest lives here ONCE, so a fix to one lane's
+;;; technique reaches the other:
 ;;;
 ;;;   - a judge returns TWO values, and two values into check-raises raise on
 ;;;     their own (an &assertion, whatever the range): `results-of` hands a check

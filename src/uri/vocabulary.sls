@@ -8,26 +8,24 @@
 ;;; source: the grammar declares the spans, callbacks and errors; the harness
 ;;; binds a callback per span per fixture; and an embedder writes the callback
 ;;; bindings and the `mode` field-initial. A pure table is also what an embedder
-;;; can import without dragging the builder and verifier in behind it (design
-;;; §5; the same argument chez-httparse's decision 0021 item 4 makes for
-;;; `(httparse modes)`).
+;;; can import without dragging the builder and verifier in behind it.
 ;;;
 ;;; The names here are declarations, not the grammar. A span named here is not
 ;;; opened until a grammar node opens it, and an error code named here is not a
-;;; promise until a reachable path raises it (decision 0009 item 6). This table
-;;; is the SCANNER's vocabulary: the six coarse spans (decision 0019 -- the five
-;;; RFC 3986 components plus the mode-3 `leading-token`) and the four structural
-;;; error codes. userinfo/host/port and the host/charset errors are the core's,
+;;; promise until a reachable path raises it. This table
+;;; is the SCANNER's vocabulary: the six coarse spans (the five RFC 3986
+;;; components plus the mode-3 `leading-token`) and the four structural error
+;;; codes. userinfo/host/port and the host/charset errors are the core's,
 ;;; not the scanner's, and live with the core.
 (library (uri vocabulary)
   (export
-    ;; modes (decision 0004)
+    ;; modes
     uri-mode-table uri-mode-names uri-mode-value uri-mode-width
-    ;; spans and their callbacks (decision 0008)
+    ;; spans and their callbacks
     uri-span-names uri-span-name?
     uri-span-data-callback uri-span-complete-callback
     uri-event-callback-names uri-callback-names uri-callback-name?
-    ;; errors (decision 0009)
+    ;; errors
     uri-error-codes uri-error-code?
     ;; refusal
     uri-vocabulary-error? uri-vocabulary-error-detail)
@@ -46,10 +44,10 @@
                       (make-who-condition who)
                       (make-message-condition detail))))
 
-  ;; --- modes (decision 0004) ----------------------------------------------
+  ;; --- modes ---------------------------------------------------------------
   ;;
   ;; The `mode` field is a settable uint of width 8, declared initial 0. 0 is
-  ;; `unset` and refuses at offset 0 (decision 0004 item 2): a field initial
+  ;; `unset` and refuses at offset 0: a field initial
   ;; cannot be made mandatory, so the alternative to a refusing default is a
   ;; silently permissive one. The three usable modes select the RFC production
   ;; the caller has committed to.
@@ -74,20 +72,20 @@
                                (symbol->string name))))
       (cadr row)))
 
-  ;; --- spans and their callbacks (decisions 0008, 0019) -------------------
+  ;; --- spans and their callbacks -------------------------------------------
   ;;
   ;; SIX scanner spans -- the FIVE coarse RFC 3986 components plus the mode-3
-  ;; neutral `leading-token`. Decision 0019 draws the functional-core line here:
+  ;; neutral `leading-token`. The functional-core line falls here:
   ;; the scanner splits the coarse components (essentially Appendix B), and
   ;; userinfo/host/port -- which the forward-only machine cannot split cleanly --
   ;; are pure CORE functions over the `authority` bytevector, not scanner spans.
-  ;; So there IS an `authority` span (revising 0008 item 3); its presence carries
+  ;; So there IS an `authority` span; its presence carries
   ;; the authority's presence, empty for `http:///p`, absent for `http:/p`.
   ;;
-  ;; Each span declares BOTH a data and a completion callback (decision 0008 item
-  ;; 5): the completion is the one signal that arrives exactly once per present
+  ;; Each span declares BOTH a data and a completion callback: the completion is
+  ;; the one signal that arrives exactly once per present
   ;; component, because an empty final fragment is suppressed across a feed
-  ;; boundary. `leading-token` is the mode-3 neutral span (decision 0004 item 4);
+  ;; boundary. `leading-token` is the mode-3 neutral span;
   ;; it carries both callbacks like any other span, and the verdict is an event.
   (define uri-span-callbacks
     '((scheme        on-scheme-data        on-scheme-complete)
@@ -99,6 +97,7 @@
 
   (define uri-span-names (map car uri-span-callbacks))
 
+  ;; uri-span-name? : Any -> Boolean
   (define (uri-span-name? x) (and (assq x uri-span-callbacks) #t))
 
   (define (uri-span-row who name)
@@ -116,16 +115,17 @@
   (define (uri-span-complete-callback name)
     (caddr (uri-span-row 'uri-span-complete-callback name)))
 
-  ;; The zero-width verdict events. `on-scheme-confirmed` / `on-segment-confirmed`
-  ;; mode 3 fires after `leading-token` closes (decision 0004 item 4);
-  ;; `on-rooted` fires when a path-absolute reference's leading `/` was dropped
-  ;; from the path span and must be restored (decision 0018). They are events,
-  ;; not spans: each names what a token turned out to be and carries no bytes.
+  ;; The zero-width verdict events. In mode 3, `on-scheme-confirmed` or
+  ;; `on-segment-confirmed` fires after `leading-token` closes, saying whether the
+  ;; token was a scheme or the first path segment. `on-rooted` fires when a
+  ;; path-absolute reference's leading `/` was dropped from the path span and must
+  ;; be restored. They are events, not spans: each names what a token turned out
+  ;; to be and carries no bytes.
   (define uri-event-callback-names
     '(on-scheme-confirmed on-segment-confirmed on-rooted))
 
   ;; Every callback name the grammar declares and an embedder binds: each span's
-  ;; data and completion callback, then the two verdict events. Derived from the
+  ;; data and completion callback, then the verdict events. Derived from the
   ;; table so a span added above cannot be forgotten here.
   (define uri-callback-names
     (append (apply append
@@ -133,22 +133,24 @@
                         uri-span-callbacks))
             uri-event-callback-names))
 
+  ;; uri-callback-name? : Any -> Boolean
   (define (uri-callback-name? x) (and (memq x uri-callback-names) #t))
 
-  ;; --- errors (decisions 0009, 0019) --------------------------------------
+  ;; --- errors --------------------------------------------------------------
   ;;
   ;; The SCANNER's error codes. An error names the ABNF production that failed,
-  ;; in the RFC's own spelling (decision 0009 item 1); two name no production and
-  ;; are the only such codes (item 5): `mode-unset` and `unexpected-eof`. Host and
+  ;; in the RFC's own spelling; two name no production and
+  ;; are the only such codes: `mode-unset` and `unexpected-eof`. Host and
   ;; charset errors (`invalid-ip-literal`, `invalid-dec-octet`,
   ;; `invalid-pct-encoded`, ...) are the CORE's, raised where the core validates
-  ;; the authority and the charsets (decision 0019 item 5), and belong to a core
+  ;; the authority and the charsets, and belong to a core
   ;; error vocabulary, not this one -- a declared error no reachable scanner path
   ;; raises is a promise the scanner does not keep.
   (define uri-error-codes
-    '(mode-unset          ; no mode was chosen (0004 item 2)
+    '(mode-unset          ; no mode was chosen
       scheme-required     ; mode 1 reached a delimiter with no `:`
       scheme-forbidden    ; mode 2 found a `:` in the first segment
       unexpected-eof))    ; input ended inside an unsatisfiable production
 
+  ;; uri-error-code? : Any -> Boolean
   (define (uri-error-code? x) (and (memq x uri-error-codes) #t)))

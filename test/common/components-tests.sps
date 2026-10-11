@@ -1,6 +1,6 @@
 #!r6rs
 ;;; unit.components -- the seam type, and the one distinction it exists to keep:
-;;; absent is not empty (decision 0008 item 7). Pure values in, booleans out;
+;;; absent is not empty. Pure values in, booleans out;
 ;;; no scanner, no core.
 (import (rnrs)
         (uri test harness)
@@ -119,7 +119,7 @@
 
     ;; Every field is compared, not just the middle three. `http:x` /= `a:x`
     ;; and `x#a` /= `x#b`, so a resolver or recomposer that agreed on scheme or
-    ;; fragment while they differ is caught here rather than at M6/M7.
+    ;; fragment while they differ is caught here rather than downstream.
     (harness-case "scheme and fragment are compared too"
       (lambda ()
         (check "scheme differs"

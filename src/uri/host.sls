@@ -1,42 +1,43 @@
 #!r6rs
-;;; (uri host): RFC 3986 §3.2 AUTHORITY validation (M4, decision 0025). M3's
-;;; (uri charset) judges the components the core holds whole; this library judges
+;;; (uri host): RFC 3986 §3.2 AUTHORITY validation. (uri charset) judges the
+;;; components the core holds whole; this library judges
 ;;; the AUTHORITY -- the opaque span the forward-only scanner cannot sub-split -- by
 ;;; finding the userinfo/host/port seams itself and validating each: userinfo, host
 ;;; as reg-name / IPv4address / IP-literal (→ IPv6address / IPvFuture), and port.
 ;;;
 ;;; PURE, and INDEPENDENT of the test-side (uri test host-oracle): the two are two
 ;;; readings of the same ABNF, graded into agreement on every input, and the
-;;; hand-derived negative corpus is a THIRD (decisions 0005 / 0012 / 0025). It
+;;; hand-derived negative corpus is a THIRD. It
 ;;; reuses (uri percent)'s §2.3 unreserved test and hex primitive -- the same ones
 ;;; (uri charset) reuses, and DIFFERENT ones from the oracle, which defines its own
 ;;; -- so a charset mistake cannot be shared between the product and its oracle.
 ;;;
-;;; THE SPLIT is bracket-aware (decision 0025 item 4): userinfo ends at the single
+;;; THE SPLIT is bracket-aware: userinfo ends at the single
 ;;; "@"; the port ":" is the one AFTER the closing "]" for an IP-literal, else the
 ;;; first ":". THE HOST is an ordered union with a permissive tail (§3.2.2): a "["
 ;;; commits to IP-literal, otherwise a bare host is a reg-name -- so a dotted quad
 ;;; like "999.1.1.1" is a VALID reg-name, and `dec-octet` range errors are reachable
 ;;; ONLY inside "[" ... "]". IPv6address is read as a COUNTER (≤8 h16 pieces, one
 ;;; optional "::", an optional trailing IPv4address as ls32 counting 2), NOT the nine
-;;; ABNF alternatives (decision 0025 item 5). Every IP-literal-interior fault --
+;;; ABNF alternatives. Every IP-literal-interior fault --
 ;;; including a `dec-octet` range error -- is reported at the opening "[".
 ;;;
 ;;; validate-authority returns a component-RELATIVE index; the shell ((uri collect))
-;;; rebases it onto the authority's absolute start (already captured since M3).
+;;; rebases it onto the authority's absolute start (which it captures per span).
 (library (uri host)
   (export uri-host-error-codes uri-host-error-code? validate-authority
           authority-host-span)
   (import (rnrs) (uri percent) (uri range))
 
-  ;; The CORE host error vocabulary (decision 0025 item 6): each the RFC's own ABNF
-  ;; spelling (0009 item 1), living with the core, out of (uri vocabulary).
+  ;; The CORE host error vocabulary: each code in the RFC's own ABNF spelling,
+  ;; living with the core, out of (uri vocabulary).
   ;; `invalid-pct-encoded` is shared with (uri charset): userinfo and reg-name both
   ;; admit pct-encoded.
   (define uri-host-error-codes
     '(invalid-userinfo invalid-reg-name invalid-ip-literal invalid-dec-octet
       invalid-port invalid-pct-encoded))
 
+  ;; uri-host-error-code? : Any -> Boolean
   (define (uri-host-error-code? x) (and (memq x uri-host-error-codes) #t))
 
   ;; --- byte constants ------------------------------------------------------
@@ -199,9 +200,9 @@
   ;; left to right, so the first fault is the leftmost.
   ;;
   ;; The authority is bv[start, end), by default the whole bytevector, so an
-  ;; embedder can judge a span of a larger buffer in place without copying it
-  ;; (decision 0036). Nothing outside [start, end) is read, and the index is
-  ;; relative to start. A range not within the bytevector is an assertion violation.
+  ;; embedder can judge a span of a larger buffer in place without copying it.
+  ;; Nothing outside [start, end) is read, and the index is relative to start. A
+  ;; range not within the bytevector is an assertion violation.
   (define validate-authority
     (case-lambda
       ((bv) (authority-fault bv 0 (bytevector-length bv)))   ; relative = absolute
@@ -213,7 +214,7 @@
 
   ;; authority-split : Bytevector Nat Nat -> (values (Option Nat) Nat Symbol (Option Nat))
   ;;
-  ;; The bracket-aware split of the authority bv[s, e) (decision 0025 item 4): the
+  ;; The bracket-aware split of the authority bv[s, e): the
   ;; ONE split validate-authority and authority-host-span both read, so the host
   ;; one bounds is the host the other judges. Its values, as indices IN bv: the
   ;; first "@" (#f if none); the host start hp (after that "@", else s); the host's
@@ -251,15 +252,15 @@
   ;; authority-host-span : Bytevector [Nat [Nat]] -> (values Nat Nat)
   ;;
   ;; The [start, end) of the HOST within an authority, by the SAME bracket-aware
-  ;; split as validate-authority (decision 0025 item 4): the host begins after the
-  ;; single "@" (or at 0), and ends at the closing "]" for an IP-literal (brackets
-  ;; included) or the port ":" for a reg-name/IPv4, else the end. Used by
-  ;; (uri normalize) to case-fold only the host (§6.2.2.1a) -- userinfo is
-  ;; case-sensitive and port is digits. Structural and total (v0.1 is lenient), so
-  ;; an unterminated "[" yields the span to the end.
+  ;; split as validate-authority: the host begins after the single "@" (or at
+  ;; 0), and ends at the closing "]" for an IP-literal (brackets included) or
+  ;; the port ":" for a reg-name/IPv4, else the end. Used by (uri normalize) to
+  ;; case-fold only the host (§6.2.2.1a) -- userinfo is case-sensitive and port
+  ;; is digits. Structural and total (it never rejects), so an unterminated "["
+  ;; yields the span to the end.
   ;;
-  ;; The authority is bv[start, end), by default the whole bytevector (decision
-  ;; 0036): nothing outside it is read, and both bounds are relative to start, like
+  ;; The authority is bv[start, end), by default the whole bytevector: nothing
+  ;; outside it is read, and both bounds are relative to start, like
   ;; validate-authority's index. A range not within the bytevector is an assertion
   ;; violation.
   (define authority-host-span

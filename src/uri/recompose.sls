@@ -4,19 +4,18 @@
 ;;;
 ;;; This is the last step of §5.2.2 reference resolution (a resolved target is
 ;;; returned "by recomposing ... using the algorithm of Section 5.3"), which is
-;;; why it lands at M6 with `(uri resolve)` rather than at M7 (decision 0021).
-;;; M7 keeps the round-trip PROPERTY; this is the renderer it round-trips
-;;; through.
+;;; why it lives beside `(uri resolve)`. It is also the renderer the
+;;; parse/recompose round-trip property runs through.
 ;;;
-;;; DEFINED, NOT NONEMPTY (decision 0008). §5.3 guards each delimiter on
+;;; DEFINED, NOT NONEMPTY. §5.3 guards each delimiter on
 ;;; `defined()`, so a component that is present-but-empty still emits its
 ;;; separator: an empty-but-present authority still emits `//` (`http://` vs
 ;;; `http:`), an empty-but-present query still emits `?` (`http://a?` vs
 ;;; `http://a`). A `uri-components` field carries that distinction as bytevector
 ;;; (defined) vs `#f` (undefined), so a plain truthy test on the field IS the
 ;;; §5.3 `defined()` test. The path is emitted whenever
-;;; present -- it always is, for components the scanner produces (design §3.1) --
-;;; and may be empty; a `#f` path (which the scanner never emits) is skipped
+;;; present -- it always is, for components the scanner produces -- and may be
+;;; empty; a `#f` path (which the scanner never emits) is skipped
 ;;; rather than crashing, so recompose is total where `(uri resolve)`, which
 ;;; assumes a present path per §5.2.2, is not.
 ;;;

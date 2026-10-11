@@ -2,7 +2,7 @@
 ;;; (uri components): the seam type between the scanner and the core.
 ;;;
 ;;; Five fields -- scheme, authority, path, query, fragment -- each a bytevector
-;;; OR `#f` (decision 0008 item 7). These are RFC 3986 §5.3's recomposition
+;;; OR `#f`. These are RFC 3986 §5.3's recomposition
 ;;; components and §5.2.2's resolution inputs, the granularity the pure core
 ;;; operates on; the scanner's finer userinfo/host/port spans are folded into
 ;;; `authority` by `(uri collect)`.
@@ -17,8 +17,7 @@
 ;;;
 ;;; This library is pure R6RS and imports only `(rnrs)`. It holds bytevectors,
 ;;; never strings: a URI is a byte string, and staying in bytevectors keeps
-;;; `(rnrs unicode)`'s length-changing case fold structurally out of reach
-;;; (design §5, decision 0010).
+;;; `(rnrs unicode)`'s length-changing case fold structurally out of reach.
 (library (uri components)
   (export
     make-uri-components uri-components?
@@ -50,6 +49,15 @@
                               " component must be a bytevector or #f"))
               (make-who-condition who)))))
 
+  ;; make-uri-components : (Option Bytevector) (Option Bytevector) (Option Bytevector)
+  ;;                       (Option Bytevector) (Option Bytevector) -> Components
+  ;; Arguments are scheme authority path query fragment; raises
+  ;; `uri-components-error` for any field that is neither a bytevector nor `#f`.
+  ;; uri-components? : Any -> Boolean
+  ;; uri-components-scheme, -authority, -path, -query, -fragment
+  ;;   : Components -> (Option Bytevector)
+  ;; uri-components-error? : Any -> Boolean
+  ;; uri-components-error-detail : ComponentsError -> String
   (define-record-type uri-components
     (fields scheme authority path query fragment)
     (protocol

@@ -6,9 +6,6 @@
 # most worth not drifting is invisible when it is wrong: Chez's object-guard
 # pair, without which a stale compiled object is silently preferred over the
 # source a "source" lane claims to run.
-#
-# Slice 2 registers only source lanes. The compiled lanes arrive in slice 5 and
-# extend this module rather than replacing it.
 
 include_guard(GLOBAL)
 
@@ -22,8 +19,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/UriTesting.cmake")
 # Map each declared source to the copy a compiled lane's build step wrote into
 # <dir>. Flat and keyed by basename, which is unambiguous because
 # uri_add_scheme_lane refuses a manifest carrying two entries with
-# one basename. One rule for every compiled lane: protium needs per-lane
-# path logic here precisely because it has no equivalent guard.
+# one basename. One rule serves every compiled lane.
 function(uri_lane_measured_copies dir out_var)
   set(copies "")
   foreach(body IN LISTS ARGN)
@@ -36,8 +32,7 @@ endfunction()
 # uri_lane_duplicate_basenames(<out_duplicates> <path>...)
 #
 # Basenames appearing more than once, each reported once however often they
-# repeat. Narrowed from the retired repository-wide guard (upstream decision 0006) to
-# the one invariant that survives it: uri_lane_measured_copies keys
+# repeat. The invariant is per lane: uri_lane_measured_copies keys
 # a compiled lane's fingerprint/ copies by basename, so within one lane's
 # manifest a repeated basename would make one copy silently overwrite the
 # other. Compared with the extension, because the extension is part of the
@@ -75,8 +70,7 @@ function(uri_chez_aot_paths name program out_object_dir out_compiled)
   set(dir "${URI_CHEZ_OBJECT_ROOT}/${name_key}")
   set(${out_object_dir} "${dir}" PARENT_SCOPE)
   # NAME_WLE strips one extension: harness-self-tests.sps yields
-  # harness-self-tests. (The .chez filename infix this comment once preserved
-  # retired with the merged wrappers -- upstream decision 0006.)
+  # harness-self-tests.
   get_filename_component(stem "${program}" NAME_WLE)
   set(${out_compiled} "${dir}/${stem}.so" PARENT_SCOPE)
 endfunction()
@@ -122,18 +116,17 @@ function(uri_scheme_lane_command name backend mode program
     endif()
 
     if(mode STREQUAL "source")
-      # The generator is an OPTIONAL library family. It arrives as a submodule
-      # at M2 (decision 0002 item 2) and no lane imports it before then, so an
-      # unconfigured root is omitted from the path entirely rather than passed
-      # as an empty string -- which Chez would read as the current directory,
-      # putting whatever happens to be there on the library path.
+      # The generator is an OPTIONAL library family, so an unconfigured root
+      # is omitted from the path entirely rather than passed as an empty
+      # string -- which Chez would read as the current directory, putting
+      # whatever happens to be there on the library path.
       set(generator_roots "")
       if(URI_GENERATOR_CHEZ_LIBRARY_ROOT)
         list(APPEND generator_roots
              "--library-root" "${URI_GENERATOR_CHEZ_LIBRARY_ROOT}")
       endif()
       # Flags, not positions: a lane names one library root per library
-      # family it imports, and the count grows with each slice.
+      # family it imports, and the count varies from lane to lane.
       set(${out_command}
         "${URI_CHEZ_EXECUTABLE}"
         "--script" "${URI_HARNESS_CHEZ_LAUNCHER}"
@@ -192,18 +185,17 @@ endfunction()
 #
 # Build one aot lane's compiled program and, in the SAME custom command, the
 # fingerprint/ copies of the sources it was built from. One command is the
-# whole of decision W6: the object and the copies then have one producer and
+# whole point: the object and the copies then have one producer and
 # cannot be separately stale, which is what makes the copies evidence about
 # the artifact rather than a second reading of the source tree.
 #
 # The DEPENDS list is the other half. Every .sls under both library roots is
 # a compile input (compile-imported-libraries), so every one of them must be
 # able to re-trigger this command; a library missing from this list would
-# leave the artifact -- and its copies -- describing the previous text, which
-# is the exact defect class upstream decision 0004 demonstrated.
+# leave the artifact -- and its copies -- describing the previous text.
 #
 # <stale_library_root> is empty for every lane that is meant to pass. When it
-# is set (the staleness lane, Task 3 of the remainder plan), it is prefixed
+# is set (the staleness lane), it is prefixed
 # as one extra (source root -> object dir) pair sharing the harness object
 # directory, so a library present there at its library-relative path is the
 # one compiled in -- and the copy step below takes each declared source from
@@ -215,7 +207,7 @@ function(uri_lane_chez_aot_artifacts name program stale_library_root)
 
   # Prefixed, not appended: Chez consults library-directories entries in
   # order and takes the first source it can resolve (measured for this exact
-  # shape -- design section 5.3's remainder addendum), so a library present
+  # shape), so a library present
   # in the stale root shadows the real one for the compile while every
   # library absent there still resolves from the real roots.
   set(stale_pair_args "")
@@ -259,7 +251,7 @@ function(uri_lane_chez_aot_artifacts name program stale_library_root)
               "${source_of_record}" "${copy}")
   endforeach()
 
-  # The generator arrives as a submodule (decision 0005). An unpopulated
+  # The generator is a submodule. An unpopulated
   # submodule is a directory that exists and is empty, which would otherwise
   # surface as a confusing missing-library error inside Chez rather than here.
   if(URI_GENERATOR_CHEZ_LIBRARY_ROOT AND
@@ -363,9 +355,8 @@ function(uri_add_scheme_lane)
   # lanes have provenance" but "a lane cannot be added without its manifest"
   # -- and this configure-time check is the whole of that guarantee, because
   # the harness skips provenance rather than refusing when no manifest reaches
-  # it. It matters little here, where every lane is a source lane, and a great
-  # deal in slices 5b and 5c, where a lane registered without provenance is
-  # exactly the lane that can silently fall back to source.
+  # it. It matters most for compiled lanes, where a lane registered without
+  # provenance is exactly the lane that can silently fall back to source.
   foreach(required NAME BACKEND PROGRAM TIMEOUT SOURCES)
     if(NOT arg_${required})
       message(FATAL_ERROR
@@ -391,8 +382,7 @@ function(uri_add_scheme_lane)
 
   # Within one lane's manifest, basenames must be unique: the flat
   # fingerprint/ copy directory of the aot branch keys measured copies by
-  # basename. This replaced the repository-wide basename guard when the
-  # include namespace it policed retired (upstream decision 0006).
+  # basename.
   uri_lane_duplicate_basenames(duplicate_basenames ${arg_SOURCES})
   if(duplicate_basenames)
     message(FATAL_ERROR

@@ -1,8 +1,8 @@
 # Specification: the conformance corpus is what RFC 3986 says, not what
 # someone typed.
 #
-# Decision 0005 makes the RFC's vectors the anchor of the resolution layer and
-# says a vector is never edited to make a test pass. That is the single most
+# The RFC's vectors are the anchor of the resolution layer, and a vector is
+# never edited to make a test pass. That is the single most
 # load-bearing claim in the test tree and it is exactly the kind of claim that
 # decays silently: one edited expectation turns a red lane green and nothing
 # anywhere says so.
@@ -85,7 +85,7 @@ function(_cp_compare name derived)
       "Re-deriving it from the vendored text produced different bytes, which "
       "means the committed file was edited by hand, the extractor changed "
       "without a refresh, or the vendored RFC moved. A vector is never edited "
-      "to make a test pass (decision 0005 item 2); run `make corpus-refresh` "
+      "to make a test pass; run `make corpus-refresh` "
       "and review the diff.")
   endif()
 endfunction()

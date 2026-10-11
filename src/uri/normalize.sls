@@ -8,26 +8,26 @@
 ;;; of "which octet is unreserved" and one hex renderer, shared by the codec and
 ;;; the normalizer.
 ;;;
-;;; WHAT IT NORMALIZES (decisions 0020, 0025):
+;;; WHAT IT NORMALIZES:
 ;;;   §6.2.2.1a  the SCHEME and the HOST, case-folded to lowercase (a hand-written
-;;;              ASCII fold, decision 0010 -- never `(rnrs unicode)`, whose
+;;;              ASCII fold -- never `(rnrs unicode)`, whose
 ;;;              length-changing Unicode fold would map KELVIN SIGN to `k`);
 ;;;   §6.2.2.1b  the two hex digits of every valid `%XX`, to uppercase;
 ;;;   §6.2.2.2   decode a `%XX` iff its octet is unreserved (§2.3), and only those.
 ;;;
-;;; HOST case is M4's (decision 0025 item 8), closing decision 0020's deferred half.
 ;;; The host is not the whole authority -- userinfo is case-SENSITIVE and port is
 ;;; digits -- so (uri host)'s `authority-host-span` isolates the host and the fold
 ;;; touches only its LITERAL bytes: a `%XX` triplet keeps its (uppercased, §6.2.2.1b)
 ;;; hex, so `%C3` does not become `%c3`. `User:S3cret@Example.COM` normalizes to
 ;;; `User:S3cret@example.com`, never `user:s3cret@example.com`.
 ;;;
-;;; WHAT IT DOES NOT DO (decision 0020):
-;;;   - §6.2.2.3/§5.2.4 dot-segment removal (M6), §6.2.3 scheme-based and §6.2.4
-;;;     protocol-based normalization (scheme-/protocol-specific, out of scope).
+;;; WHAT IT DOES NOT DO:
+;;;   - §6.2.2.3/§5.2.4 dot-segment removal (that is `(uri path)`'s), §6.2.3
+;;;     scheme-based and §6.2.4 protocol-based normalization (scheme-/protocol-
+;;;     specific, out of scope).
 ;;;
-;;; TOTAL. Like the codec, normalization never rejects (v0.1 is non-validating,
-;;; decision 0011): a malformed `%XX` is left byte-for-byte. Pure R6RS.
+;;; TOTAL. Like the codec, normalization never rejects (it does not
+;;; validate): a malformed `%XX` is left byte-for-byte. Pure R6RS.
 (library (uri normalize)
   (export normalize-scheme pct-normalize normalize-components)
   (import (rnrs)
@@ -47,7 +47,7 @@
   ;; The §6.2.2.1 ASCII case fold, `A`-`Z` -> `a`-`z`, byte by byte; every other
   ;; octet is copied unchanged. This is the whole of scheme normalization (and the
   ;; per-byte core of the host fold below). Written by hand, over bytes, so Unicode
-  ;; case folding is never reached (decision 0010). Returns a fresh bytevector --
+  ;; case folding is never reached. Returns a fresh bytevector --
   ;; the input is never mutated.
   (define (ascii-downcase bv)
     (let* ((n (bytevector-length bv)) (out (make-bytevector n)))
@@ -58,7 +58,7 @@
             out))))
 
   ;; downcase-host : Bytevector -> Bytevector
-  ;; §6.2.2.1a for the HOST only (M4, decision 0025 item 8). Lowercase the host's
+  ;; §6.2.2.1a for the HOST only. Lowercase the host's
   ;; literal bytes, isolated by (uri host)'s `authority-host-span` so userinfo
   ;; (case-sensitive) and port (digits) are untouched. A `%XX` triplet inside the
   ;; host is SKIPPED -- pct-normalize has already uppercased its hex (§6.2.2.1b), so
@@ -85,11 +85,11 @@
   ;; casing). A malformed `%` is a literal byte, copied through -- total, like the
   ;; codec. Non-`%` bytes are copied verbatim.
   ;;
-  ;; SINGLE PASS (RFC 3986 §2.4): a decoded octet is never re-scanned, so `%2541`
-  ;; normalizes to `%2541` (%25 is `%`, reserved, kept). Note this DECODES the
-  ;; marks, so `.` (%2E) becomes literal: `/a/%2E%2E/b` -> `/a/../b`. M5 does not
-  ;; remove dot-segments but it CREATES them, which is why M6 resolves a
-  ;; normalized path, never a raw one (decision 0020).
+  ;; SINGLE PASS (RFC 3986 §2.4): a decoded octet is never re-scanned, so
+  ;; `%2541` normalizes to `%2541` (%25 is `%`, reserved, kept). Note this
+  ;; DECODES the marks, so `.` (%2E) becomes literal: `/a/%2E%2E/b` ->
+  ;; `/a/../b`. Normalization does not remove dot-segments but it CREATES them,
+  ;; which is why resolution works on a normalized path, never a raw one.
   (define (pct-normalize bv)
     (let ((n (bytevector-length bv)))
       (call-with-bytevector-output-port
@@ -122,7 +122,7 @@
   (define (normalize-authority a) (downcase-host (pct-normalize a)))
 
   ;; normalize-components : Components -> Components
-  ;; Apply §6.2.2 per component (decisions 0020, 0025): the scheme is case-folded;
+  ;; Apply §6.2.2 per component: the scheme is case-folded;
   ;; the authority is percent-normalized and its host case-folded; path, query and
   ;; fragment are percent-normalized. An absent (`#f`) field stays absent; an empty
   ;; field stays empty. A fresh components is returned.

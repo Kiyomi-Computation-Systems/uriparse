@@ -1,8 +1,7 @@
 #!r6rs
-;;; unit.vocabulary -- the table three parties must agree on (decision 0008,
-;;; 0004, 0009). Judged before any grammar node opens a span: this is names and
-;;; integers, and the whole of what the grammar, the harness and an embedder
-;;; import to agree on them.
+;;; unit.vocabulary -- the table three parties must agree on. Judged before any
+;;; grammar node opens a span: this is names and integers, and the whole of what
+;;; the grammar, the harness and an embedder import to agree on them.
 (import (rnrs)
         (uri test harness)
         (uri vocabulary))
@@ -11,7 +10,7 @@
 
 (harness-group "modes"
   (lambda ()
-    ;; The four names and their integers are decision 0004's table verbatim.
+    ;; The four names and their integers are the vocabulary table verbatim.
     (harness-case "the mode integers are 0..3 in the RFC's order"
       (lambda ()
         (check-equal "unset"         (uri-mode-value 'unset)         0)
@@ -22,7 +21,7 @@
     (harness-case "unset is 0, the refusing default"
       (lambda ()
         ;; A field initial cannot be made mandatory; 0 refuses rather than
-        ;; permits (decision 0004 item 2). If unset ever stops being 0 the
+        ;; permits. If unset ever stops being 0 the
         ;; grammar's `mode-unset` arm stops being reachable.
         (check-equal "unset value" (uri-mode-value 'unset) 0)))
 
@@ -42,7 +41,7 @@
 
 (harness-group "spans"
   (lambda ()
-    (harness-case "six scanner spans, in decision 0019's order"
+    (harness-case "six scanner spans, in vocabulary order"
       (lambda ()
         (check-equal "count" (length uri-span-names) 6)
         (check-equal "names" uri-span-names
@@ -50,7 +49,7 @@
 
     (harness-case "authority is one coarse span; userinfo/host/port are the core's"
       (lambda ()
-        ;; Decision 0019 revised 0008 item 3: the scanner emits ONE authority
+        ;; The scanner emits ONE authority
         ;; span, and userinfo/host/port are pure core functions over it, not
         ;; scanner spans.
         (check "authority is a span"    (uri-span-name? 'authority))
@@ -60,7 +59,7 @@
 
     (harness-case "every span names both a data and a completion callback"
       (lambda ()
-        ;; Decision 0008 item 5. Both, and distinct, for all six.
+        ;; Both, and distinct, for all six.
         (for-each
          (lambda (span)
            (let ((d (uri-span-data-callback span))
@@ -81,7 +80,7 @@
 
     (harness-case "an unknown span is refused"
       (lambda ()
-        ;; `host` is a core concept, not a scanner span (decision 0019).
+        ;; `host` is a core concept, not a scanner span.
         (check-raises "no such span" uri-vocabulary-error?
                       (lambda () (uri-span-data-callback 'host)))))))
 
@@ -137,18 +136,17 @@
   (lambda ()
     (harness-case "the scanner error set is exactly these four"
       (lambda ()
-        ;; Decision 0009 item 6 as narrowed by 0019. Order is not asserted --
-        ;; membership is the API.
+        ;; Order is not asserted -- membership is the API.
         (check-equal "count" (length uri-error-codes) 4)
         (for-each (lambda (code)
                     (check (string-append (symbol->string code) " present")
                            (uri-error-code? code)))
                   '(mode-unset scheme-required scheme-forbidden unexpected-eof))))
 
-    ;; THE NEGATIVE ASSERTION. Charset codes (M3) and the host/authority codes
-    ;; (the core's, decision 0019) must NOT be in the SCANNER set: a declared
+    ;; THE NEGATIVE ASSERTION. Charset codes and the host/authority codes
+    ;; (the core's) must NOT be in the SCANNER set: a declared
     ;; error no reachable scanner path raises is a promise the scanner does not
-    ;; keep. `invalid-ip-literal` is here now -- it moved to the core.
+    ;; keep. `invalid-ip-literal` is listed because it belongs to the core.
     (harness-case "no charset or host code is in the scanner set"
       (lambda ()
         (for-each
@@ -160,8 +158,7 @@
 
     (harness-case "the two non-production codes are present"
       (lambda ()
-        ;; Decision 0009 item 5: these two, and only these two, name no
-        ;; production.
+        ;; These two, and only these two, name no production.
         (check "mode-unset"     (uri-error-code? 'mode-unset))
         (check "unexpected-eof" (uri-error-code? 'unexpected-eof))))))
 

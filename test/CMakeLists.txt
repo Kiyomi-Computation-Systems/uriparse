@@ -1,10 +1,10 @@
 # chez-uri test tree.
 #
-# Slice 1 registers the harness and build-layer surface only: the CMake-layer
+# Registers the harness and build-layer surface first: the CMake-layer
 # specifications (the build's own discovery and registration logic, which
 # decides what every later lane can even see), the Scheme harness self lanes,
-# the launcher refusals, provenance, and the two mutation suites. Parser lanes
-# arrive with the first grammar slice.
+# the launcher refusals, provenance, and the two mutation suites. The parser
+# lanes follow.
 
 # The registration helper decides which tests exist at all, so its functional
 # core is specified before anything relies on it.
@@ -44,10 +44,10 @@ uri_add_test(
   TIMEOUT 120
   LABELS unit)
 
-# The harness in this tree arrived as a bulk copy from a sibling repository
-# under decision 0001 item 1's rename map. A rule that lives only in a review
-# checklist decays the moment the next file is copied, so it is a registered
-# check: nothing in the build/test tree may mention the sibling by name. It
+# The harness in this tree was ported from another project under a rename map.
+# A rule that lives only in a review checklist decays the moment the next file
+# is copied, so it is a registered check: nothing in the build/test tree may
+# mention the original project by name. It
 # needs no Scheme runtime, so it also holds under the no-scheme preset.
 uri_add_test(
   NAME uri.harness.rename-audit.cmake.direct
@@ -56,7 +56,7 @@ uri_add_test(
   TIMEOUT 120
   LABELS unit)
 
-# src/ is pure R6RS (decision 0007): every .sls leads with #!r6rs and none names
+# src/ is pure R6RS: every .sls leads with #!r6rs and none names
 # (chezscheme). Asserted, not trusted -- and, like the rename audit, it needs no
 # Scheme runtime, so it also holds under the no-scheme preset.
 uri_add_test(
@@ -142,7 +142,7 @@ set(URI_CHEZ_OBJECT_ROOT
 # version and every machine type would share one object root, a `.so` built by
 # a different Chez could be loaded as though it were current, and every AOT
 # lane would stay green while proving nothing about the runtime that actually
-# ran it -- the exact defect this slice exists to prevent. No task in its plan
+# ran it -- the exact defect this keying exists to prevent. Nothing else
 # re-derives URI_CHEZ_VERSION or URI_CHEZ_MACHINE_TYPE to
 # catch a regression here, so this is the one place that can. Guarded on
 # URI_CHEZ_EXECUTABLE: on a host with no Chez neither variable is
@@ -177,21 +177,19 @@ file(MAKE_DIRECTORY "${URI_HARNESS_OBJECT_GUARD_DIR}")
 #
 # Read by uri_scheme_lane_command. src/ holds the product libraries;
 # the harness above is test infrastructure. A lane imports from both, which is
-# why the launcher takes repeatable roots. src/ is empty until the first
-# parser slice lands; the lane machinery requires the directory to exist.
+# why the launcher takes repeatable roots. The lane machinery requires the
+# directory to exist.
 set(URI_SRC_CHEZ_LIBRARY_ROOT "${CMAKE_SOURCE_DIR}/src")
 
-# --- The generator (decision 0002) -----------------------------------------
+# --- The generator ---------------------------------------------------------
 #
 # byte-machine is a submodule pinned by gitlink at vendor/byte-machine. Its src
 # is the library root for `(byte-machine ...)`; the collection under it is where
 # the .sls files live. Setting this root is what puts the generator on every
 # Chez lane's library path (uri_scheme_lane_command adds it when set) and turns
-# the aot generator object-dir on. It arrives now, in the first slice that
-# invokes the emitter -- an unexercised root rots exactly as an unexercised pin
-# does (decision 0002 item 2). A set-but-missing root is a checkout mistake the
-# lane machinery reports; the submodule is committed, so `git submodule update
-# --init` is the fix.
+# the aot generator object-dir on. A set-but-missing root is a checkout mistake
+# the lane machinery reports; the submodule is committed, so `git submodule
+# update --init` is the fix.
 set(URI_GENERATOR_CHEZ_LIBRARY_ROOT "${CMAKE_SOURCE_DIR}/vendor/byte-machine/src")
 set(URI_GENERATOR_COLLECTION
     "${CMAKE_SOURCE_DIR}/vendor/byte-machine/src/byte-machine")
@@ -391,12 +389,11 @@ uri_add_scheme_lane(
 # --- The Chez launcher's refusals ------------------------------------------
 #
 # The launcher decides whether a lane runs at all, and its object guard is the
-# sole mechanism that makes `mode=source` an honest claim. Three places in this
-# tree say so -- the spec's section 7.1, UriSchemeLane.cmake, and the
-# Chez adapter -- and until these lanes existed none of them checked it: every
-# decision in the launcher could be deleted, and a file dropped into the guard
-# directory, with all twenty tests still green, because a healthy lane never
-# reaches a refusal.
+# sole mechanism that makes `mode=source` an honest claim. Two places in this
+# tree say so -- UriSchemeLane.cmake and the Chez adapter -- and only these
+# lanes check it: every decision in the launcher could be deleted, and a file
+# dropped into the guard directory, with every other test still green, because
+# a healthy lane never reaches a refusal.
 #
 # One lane per `die` path, each asserting status 2 exactly. Registered through
 # the exact-status helper directly rather than through
@@ -423,9 +420,8 @@ if(URI_CHEZ_EXECUTABLE)
   set(URI_HARNESS_ABSENT_GUARD_DIR
       "${CMAKE_BINARY_DIR}/chez-object-guard-absent")
 
-  # A launcher invoked with nothing at all. Replaces the exact-arity refusal the
-  # positional protocol had; with flags, "no arguments" is the natural form of
-  # the same mistake.
+  # A launcher invoked with nothing at all. With flag-based arguments, "no
+  # arguments" is the natural form of an arity mistake.
   uri_add_exit_code_test(
     NAME uri.harness.launcher-no-program.chez.source
     COMMAND "${URI_CHEZ_EXECUTABLE}"
@@ -502,7 +498,7 @@ if(URI_CHEZ_EXECUTABLE)
     ENVIRONMENT "URI_EXECUTION_MODE=source")
 
   # The lane above witnesses the single-valued-flag check only through
-  # --program; --object-guard has never been exercised as a repeated flag.
+  # --program; this one witnesses it through --object-guard.
   # Both occurrences name the same real, empty guard directory -- the check
   # counts occurrences, not distinct values, so that is enough to trigger it.
   uri_add_exit_code_test(
@@ -548,11 +544,11 @@ endif()
 # needs a lane of its own or a deleted refusal is invisible. The same argument
 # the nine chez-source.ss refusals above are registered under.
 #
-# Three lanes, not one per refusal in these files. The flag-vocabulary
-# refusals below the parser, and --source-guard's own absent-directory check,
-# are the same shape as refusals chez-source.ss already carries and already
-# has lanes for; re-proving a verbatim shape in a new file buys nothing. These
-# three are what is actually new here: chez-aot.ss's missing-program check,
+# Three lanes, not one per refusal in these files. The flag-vocabulary refusals
+# below the parser, and --source-guard's own absent-directory check, are the
+# same shape as refusals chez-source.ss already carries and already has lanes
+# for; re-proving a verbatim shape in a new file buys nothing. These three are
+# the checks specific to these files: chez-aot.ss's missing-program check,
 # chez-compile.ss's unpaired-roots check, and --source-guard's non-empty-guard
 # check -- the one that most directly proves the hazard the flag exists to
 # close.
@@ -581,7 +577,7 @@ if(URI_CHEZ_EXECUTABLE)
     TIMEOUT 60
     LABELS expected-red)
 
-  # The one new decision --source-guard's own checks add over chez-source.ss's
+  # The one decision --source-guard's own checks add over chez-source.ss's
   # object-guard shape: chez-source.ss's launcher-dirty-guard.chez.source lane
   # already proves this die branch works when a guard has acquired a file, but
   # only for chez-source.ss's own copy of the check. Reuses
@@ -626,7 +622,7 @@ uri_add_scheme_lane(
 
 # --- Mutation proof for the harness ----------------------------------------
 
-# The harness is the instrument every later milestone is measured with, so a
+# The harness is the instrument every other lane is measured with, so a
 # passing self-test suite is not evidence until something has proved it can
 # fail. This breaks each decision in the runner on a staged copy and requires
 # the self-tests to notice. Registered only when a Chez was discovered: it runs
@@ -651,9 +647,9 @@ endif()
 #
 # Every lane above checks the fingerprint of the text it ran against the value
 # the build computed. These prove that check can fail. Without them the
-# mechanism would be a claim: protium recorded two occasions where two of its
-# lanes printed different digests for text both said they ran, and the suite
-# stayed green, because nothing read the values back.
+# mechanism would be a claim: two lanes could print different digests for text
+# both said they ran, and the suite would stay green, because nothing read the
+# values back.
 #
 # Status 3 is what makes them falsifiable. Several lanes in this tree
 # legitimately expect 1 or 2, so a provenance failure sharing either status
@@ -703,7 +699,7 @@ uri_add_scheme_lane(
   ENVIRONMENT "URI_FINGERPRINT_FILES=${CMAKE_BINARY_DIR}/fingerprints/no-such-body.scm")
 
 # Provenance configured and never performed. SOURCES guarantees the
-# environment carries a manifest; nothing until now guaranteed anything read
+# environment carries a manifest; nothing else guarantees anything reads
 # it. This program reaches harness-summary without ever reaching
 # harness-verify-provenance!, which is precisely the shape harness-bootstrap
 # would have had if its hand-placed call had been forgotten -- and that would
@@ -732,8 +728,7 @@ uri_add_scheme_lane(
 # exits 3. This is the only lane in the tree that can fail when a compiled
 # lane's fingerprint stops describing its artifact -- a lane rather than a
 # mutation because the Scheme mutation suite stages one already-mutated
-# tree per pass and cannot express "built before the edit, run after it"
-# (design W12, slice 5a task 6).
+# tree per pass and cannot express "built before the edit, run after it".
 uri_add_scheme_lane(
   NAME uri.harness.stale-artifact.chez.aot
   BACKEND chez
@@ -745,14 +740,13 @@ uri_add_scheme_lane(
   TIMEOUT 120
   LABELS expected-red)
 
-# --- The corpus harness (M1) ------------------------------------------------
+# --- The corpus harness ----------------------------------------------------
 #
-# Decision 0005 makes RFC 3986's own vectors the anchor of the resolution
-# layer, which puts the reading of them on the critical path: a loader that is
-# one row off makes every later comparison wrong and the failure reads as a
-# parser defect. These lanes judge the reading machinery -- loader, comparator,
-# ratchet -- on the committed corpus and on hand-built inputs, before any URI
-# is parsed.
+# RFC 3986's own vectors are the anchor of the resolution layer, which puts the
+# reading of them on the critical path: a loader that is one row off makes every
+# later comparison wrong and the failure reads as a parser defect. These lanes
+# judge the reading machinery -- loader, comparator, ratchet -- on the committed
+# corpus and on hand-built inputs, before any URI is parsed.
 
 set(URI_CORPUS_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/rfc3986")
 set(URI_RATCHET_FILE "${CMAKE_CURRENT_LIST_DIR}/conformance/ratchet.txt")
@@ -761,14 +755,14 @@ set(URI_CORPUS_LIB
 set(URI_RATCHET_LIB
     "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/ratchet.sls")
 
-# M3 (decision 0024): the charset oracle and its hand-derived negative corpus.
+# The charset oracle and its hand-derived negative corpus.
 # The corpus is AUTHORED (derived from the ABNF), not extracted from the RFC
 # text, so it lives apart from the corpus-provenance-guarded rfc3986/ dir and is
 # gated instead by the cross-check against the oracle.
 set(URI_CHARSET_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/charset")
 set(URI_CHARSET_ORACLE_LIB
     "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/charset-oracle.sls")
-# The techniques the ranged-judge checks share (decisions 0034, 0036): used by
+# The techniques the ranged-judge checks share: used by
 # unit.charset and unit.host, so a fix to one lane's technique reaches the other.
 set(URI_RANGED_LIB
     "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/ranged.sls")
@@ -788,8 +782,8 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# M3 Slice ⓪ (decision 0024): the charset oracle + negative corpus cross-check.
-# Pure test-side -- no src/uri validator exists yet -- so it imports only the
+# The charset oracle + negative corpus cross-check.
+# Pure test-side -- no src/uri validator is imported -- so it imports only the
 # harness and the oracle, and reads the corpus from URI_CHARSET_DIR.
 foreach(mode source aot)
   uri_add_scheme_lane(
@@ -804,7 +798,7 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# M4 (decision 0025): the host-grammar oracle and its hand-derived negative
+# The host-grammar oracle and its hand-derived negative
 # corpus. Same discipline as the charset pair above: AUTHORED from the ABNF (§3.2),
 # apart from the corpus-provenance-guarded rfc3986/ dir, gated by the cross-check
 # against the oracle.
@@ -812,14 +806,14 @@ set(URI_HOST_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/host")
 set(URI_HOST_ORACLE_LIB
     "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/host-oracle.sls")
 
-# M9 (decision 0026): the RFC 9112 §3.2.3 authority-form corpus. Hand-derived (RFC
+# The RFC 9112 §3.2.3 authority-form corpus. Hand-derived (RFC
 # 9112 is not vendored), like host/ and charset/ above; NOT corpus-provenance-guarded.
 # It grades both authority-form entry points; the test reads it directly.
 set(URI_AUTHORITY_FORM_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/authority-form")
 
-# M4 Slice ⓪ (decision 0025): the host oracle + negative corpus cross-check.
-# Pure test-side -- no src/uri host validator exists yet -- so it imports only the
-# harness and the oracle, and reads the corpus from URI_HOST_DIR.
+# The host oracle + negative corpus cross-check. Pure test-side -- no src/uri
+# host validator is imported -- so it imports only the harness and the oracle,
+# and reads the corpus from URI_HOST_DIR.
 foreach(mode source aot)
   uri_add_scheme_lane(
     NAME uri.unit.host-oracle.chez.${mode}
@@ -833,16 +827,17 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# --- The RFC 3986 conformance audit, Slice ⓪ (decision 0028) ----------------
+# --- The RFC 3986 conformance audit: the oracle ----------------------------
 #
-# The whole-URI oracle + its self-tests, graded on its OWN before any differential
-# against the product (that is the audit's Slice ①). (uri test abnf-oracle) reads
-# RFC 3986 Appendix A's STRUCTURAL grammar and COMPOSES the two audited component
-# oracles (charset + host), so the lane carries all three oracle libs plus the
-# corpus harness lib: the self-tests accept the §1.1.2 / §5.4 positives (read
-# through (uri test corpus)) and reject a hand-built structural negative set. Pure
-# test-side, like the charset/host-oracle lanes above -- no src validator is
-# imported -- and it reads the positive corpora from URI_CORPUS_DIR.
+# The whole-URI oracle + its self-tests, graded on its OWN before any
+# differential against the product (see conformance.abnf-differential below).
+# (uri test abnf-oracle) reads RFC 3986 Appendix A's STRUCTURAL grammar and
+# COMPOSES the two audited component oracles (charset + host), so the lane
+# carries all three oracle libs plus the corpus harness lib: the self-tests
+# accept the §1.1.2 / §5.4 positives (read through (uri test corpus)) and reject
+# a hand-built structural negative set. Pure test-side, like the
+# charset/host-oracle lanes above -- no src validator is imported -- and it
+# reads the positive corpora from URI_CORPUS_DIR.
 set(URI_ABNF_ORACLE_LIB
     "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/abnf-oracle.sls")
 
@@ -862,14 +857,14 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# --- The M2 pure seam ------------------------------------------------------
+# --- The pure seam ---------------------------------------------------------
 #
-# The first product code (decision 0008, 0004, 0009): the vocabulary the
+# The vocabulary the
 # grammar, the harness and an embedder agree on, and the components type the
 # scanner fills and the core reads. Both are pure `(rnrs)` libraries under src/,
 # so the src library root the lane already passes resolves them, and both run in
 # source and aot modes like every other Scheme lane. No grammar and no
-# generator are imported here -- these are the parts of M2 that stand alone.
+# generator are imported here -- these are the parts that stand alone.
 foreach(mode source aot)
   uri_add_scheme_lane(
     NAME uri.unit.vocabulary.chez.${mode}
@@ -892,13 +887,11 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# The generator ABI (decision 0002 item 3), the first of the two lanes it asks
-# for. This one reads the ABI out of a FRESHLY emitted smoke machine; the second
-# reads it out of the committed artifact and arrives with the grammar. Source
-# only: the lane asks "is the pin wired and speaking ABI 9", which is the same
-# question in both modes, and an aot twin would compile the whole generator per
-# lane to re-answer it. The source/aot pair returns with the first real grammar,
-# where it has something to prove.
+# The generator ABI. This lane reads the ABI out of a FRESHLY emitted smoke
+# machine; uri.determinism.generated-artifact reads it out of the committed
+# artifact. Source only: the lane asks "is the pin wired and speaking ABI 9",
+# which is the same question in both modes, and an aot twin would compile the
+# whole generator per lane to re-answer it.
 uri_add_scheme_lane(
   NAME uri.unit.generator-abi.chez.source
   BACKEND chez
@@ -909,7 +902,7 @@ uri_add_scheme_lane(
   TIMEOUT 180
   LABELS unit)
 
-# --- The grammar (M2 Slice ①) ----------------------------------------------
+# --- The grammar -----------------------------------------------------------
 #
 # `(uri grammar)` imports `(uri vocabulary)`, so a lane that had one and not the
 # other would build against a stale table. The scanner is judged through the
@@ -933,7 +926,7 @@ foreach(mode source aot)
 endforeach()
 
 # The scanner ships as a checked-in derived artifact, committed so it is
-# reviewable as a diff and loadable without a generator (decision 0002 item 4).
+# reviewable as a diff and loadable without a generator.
 # This lane re-emits and compares bytes, reads the ABI out of the committed text,
 # and runs the ARTIFACT ITSELF against the interpreter -- so a grammar edit
 # without a `make parser-refresh`, a hand-edited artifact, and a stale ABI all
@@ -952,7 +945,7 @@ uri_add_scheme_lane(
   TIMEOUT 180
   LABELS determinism)
 
-# --- (uri collect): the shell (M2 Slice ③) ---------------------------------
+# --- (uri collect): the shell ----------------------------------------------
 #
 # The imperative shell: it feeds bytes to the committed scanner and assembles a
 # five-field uri-components, reading the on-rooted and verdict signals. Judged on
@@ -982,14 +975,14 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# --- (uri percent): the pure percent mechanics (M5 Slice 0) ----------------
+# --- (uri percent): the pure percent mechanics -----------------------------
 #
-# The first M5 core library (design §5): percent decode/encode over bytevectors,
+# A core library: percent decode/encode over bytevectors,
 # the §2.3 unreserved set, and the two hex primitives `(uri normalize)` reuses.
 # A pure `(rnrs)` library under src/, so the src library root the lane already
 # passes resolves it, and it runs in source and aot like every other Scheme
 # lane. No scanner and no generator are imported: it operates on bytevectors,
-# not on a parse, which is the whole point of the core/shell split (design §2).
+# not on a parse, which is the whole point of the core/shell split.
 foreach(mode source aot)
   uri_add_scheme_lane(
     NAME uri.unit.percent.chez.${mode}
@@ -1002,14 +995,14 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# --- (uri normalize): §6.2.2 syntax-based normalization (M5 Slice 1) --------
+# --- (uri normalize): §6.2.2 syntax-based normalization --------------------
 #
 # The §6 POLICY over `(uri percent)`'s mechanics: the §6.2.2.1a scheme AND HOST
-# case fold (host case is M4/decision 0025, closing decision 0020's deferral), the
-# §6.2.2.1b hex-uppercasing and §6.2.2.2 unreserved-decoding, with dot-segments
-# (§6.2.2.3/M6) still deferred -- pinned here as tests. It imports `(uri percent)`,
-# `(uri components)` and now `(uri host)` (for the host span), so a lane needs all
-# three on its path. Pure `(rnrs)`; source and aot like every other Scheme lane.
+# case fold, the §6.2.2.1b hex-uppercasing and §6.2.2.2 unreserved-decoding.
+# Dot-segment removal (§6.2.2.3) is `(uri path)`'s and is not done here --
+# pinned as tests. It imports `(uri percent)`, `(uri components)` and `(uri
+# host)` (for the host span), so a lane needs all three on its path. Pure
+# `(rnrs)`; source and aot like every other Scheme lane.
 foreach(mode source aot)
   uri_add_scheme_lane(
     NAME uri.unit.normalize.chez.${mode}
@@ -1026,13 +1019,13 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# --- (uri path): §5.2.4 remove-dot-segments + §5.2.3 merge (M6 Slice 0) ------
+# --- (uri path): §5.2.4 remove-dot-segments + §5.2.3 merge ------------------
 #
 # The mechanics `(uri resolve)` (§5.2.2) is built on: two pure functions over
-# path bytevectors, no scanner and no components (design §3.1, decision 0010).
+# path bytevectors, no scanner and no components.
 # remove-dot-segments is graded step-for-step against the committed §5.2.4
 # corpus (dot-segments.scm), so the lane imports `(uri test corpus)` and needs
-# URI_CORPUS_DIR on its environment -- the same wiring the M1 corpus lane uses.
+# URI_CORPUS_DIR on its environment -- the same wiring the corpus lane uses.
 # Pure `(rnrs)`; source and aot like every other Scheme lane.
 foreach(mode source aot)
   uri_add_scheme_lane(
@@ -1048,12 +1041,12 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# --- (uri recompose): §5.3 component recomposition (M6 Slice 1) -------------
+# --- (uri recompose): §5.3 component recomposition --------------------------
 #
-# Components back to a URI-reference bytevector, guarded on DEFINED not nonempty
-# (decision 0008). Pure `(rnrs)` over `(uri components)`; the sharp cases are the
-# absent-vs-present-empty pairs the §5.4 corpus never reaches. Recompose lands at
-# M6 with resolve, not M7, because §5.2.2 ends by recomposing (decision 0021).
+# Components back to a URI-reference bytevector, guarded on DEFINED not nonempty.
+# Pure `(rnrs)` over `(uri components)`; the sharp cases are the
+# absent-vs-present-empty pairs the §5.4 corpus never reaches. Recomposition is
+# part of resolution because §5.2.2 ends by recomposing.
 foreach(mode source aot)
   uri_add_scheme_lane(
     NAME uri.unit.recompose.chez.${mode}
@@ -1067,7 +1060,7 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# --- (uri resolve): §5.2.2 transform references (M6 Slice 1) ----------------
+# --- (uri resolve): §5.2.2 transform references -----------------------------
 #
 # The strict §5.2.2 decision tree over components, using `(uri path)` for merge
 # and remove-dot-segments. Judged at the COMPONENT level, isolated from the
@@ -1087,13 +1080,13 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# --- conformance.resolution: RFC 3986 §5.4, the M6 GATE ---------------------
+# --- conformance.resolution: RFC 3986 §5.4, the gate ------------------------
 #
-# The one normative corpus (decision 0005), gated at 100% (decision 0011 item 3).
+# The one normative corpus, gated at 100%.
 # Each of the 42 rows is resolved end to end -- `(uri collect)` parses the base
 # and the reference, `(uri resolve)` transforms per §5.2.2, `(uri recompose)`
-# renders per §5.3 -- and compared BYTE-EXACT to the RFC's published target
-# (decision 0021). The two-way ratchet (all 42 `passing`) makes both a
+# renders per §5.3 -- and compared BYTE-EXACT to the RFC's published target.
+# The two-way ratchet (all 42 `passing`) makes both a
 # regression and an unrecorded pass a failure, so this lane needs the scanner,
 # the whole core, and both the corpus and ratchet harness libraries.
 foreach(mode source aot)
@@ -1118,11 +1111,11 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# --- property.round-trip: RFC 3986's round-trip property (M7) ---------------
+# --- property.round-trip: RFC 3986's round-trip property --------------------
 #
-# The brief's test instrument #2: parse -> normalize (§6.2.2) -> recompose (§5.3)
-# -> parse reaches a fixed point (decision 0022 -- a ONE-STEP identity on the
-# once-normalized components, NOT normalize idempotence). A universal property,
+# parse -> normalize (§6.2.2) -> recompose (§5.3) -> parse reaches a fixed
+# point (a ONE-STEP identity on the once-normalized components, NOT normalize
+# idempotence). A universal property,
 # not a ratchet. Drives the whole read+core stack, so it needs the scanner, the
 # shell, and the percent/normalize/recompose core; graded over the committed
 # corpora (mode uri), so URI_CORPUS_DIR is on its environment.
@@ -1144,13 +1137,13 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# --- unit.charset: the M3 charset validator (decision 0024, Slice ②) --------
+# --- unit.charset: the charset validator ------------------------------------
 #
 # Grades (uri charset) against the independent oracle (byte-for-byte agreement),
 # the negative corpus (each row rejected with its code + absolute offset, end to
 # end through uri-parse-validate), and the positive corpora (all accepted). It
 # drives the whole read stack (the shell rebases the offset), so it needs
-# URI_COLLECT (which now carries percent + charset) and the generated parser,
+# URI_COLLECT (which carries percent + charset) and the generated parser,
 # plus the charset-oracle and corpus harness libraries. Both corpus dirs are on
 # its environment.
 foreach(mode source aot)
@@ -1172,14 +1165,14 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# --- unit.host: the M4 host-grammar validator (decision 0025, Slices ①②) -----
+# --- unit.host: the host-grammar validator ----------------------------------
 #
 # Grades (uri host) against the independent host oracle (agreement on a battery
 # plus the exhaustive dec-octet / h16 / group-count sweeps), the negative corpus
 # (each row rejected with its code + absolute offset, end to end through
 # uri-parse-validate), and the positive corpora (all accepted). Same shape as
 # unit.charset: it drives the whole read stack (the shell rebases the authority
-# offset), so it needs URI_COLLECT (which now carries host too) and the generated
+# offset), so it needs URI_COLLECT (which carries host too) and the generated
 # parser, plus the host-oracle and corpus harness libraries.
 foreach(mode source aot)
   uri_add_scheme_lane(
@@ -1200,7 +1193,7 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# --- unit.authority-form: the RFC 9112 §3.2.3 pair (decision 0026, M9) --------
+# --- unit.authority-form: the RFC 9112 §3.2.3 pair ---------------------------
 #
 # Grades the authority-form pair on (uri collect) -- uri-parse-authority-form
 # (lenient) and uri-parse-authority-form-validate (strict) -- against the
@@ -1224,11 +1217,11 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# --- conformance.abnf-differential: the RFC 3986 audit, Slice ① (decision 0028) --
+# --- conformance.abnf-differential: the RFC 3986 audit -----------------------
 #
 # The DIFFERENTIAL: uri-parse-validate ⇄ (uri test abnf-oracle) over a broad space
-# (0028 item 3) -- the §1.1.2 / §5.4 positives (both accept), the M3 charset + M4
-# host negative corpora (both reject), an EXHAUSTIVE sweep of every length-0..5 word
+# -- the §1.1.2 / §5.4 positives (both accept), the charset + host negative
+# corpora (both reject), an EXHAUSTIVE sweep of every length-0..5 word
 # over a 12-byte reduced alphabet in all three modes (~814k input×mode pairs), and a
 # hand+agent adversarial corpus of the DEEP structures the length bound cannot reach
 # (each carrying its ABNF verdict, a third independent reading). Any disagreement
@@ -1260,7 +1253,7 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
-# The corpus is DERIVED from the vendored RFC text (decision 0005). This lane
+# The corpus is DERIVED from the vendored RFC text. This lane
 # re-derives it and compares, so a hand edit to a vector -- the one thing that
 # would make a green lane meaningless -- reddens instead. It runs the same
 # functions `make corpus-refresh` runs, and needs no Scheme runtime, so it also

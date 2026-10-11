@@ -1,10 +1,10 @@
 #!r6rs
 ;;; unit.corpus -- the reading machinery, judged before any URI is parsed.
 ;;;
-;;; Decision 0005 makes RFC 3986's own vectors the anchor of the resolution
+;;; RFC 3986's own vectors are the anchor of the resolution
 ;;; layer, which puts the READING of them on the critical path: a loader that
 ;;; is one row off makes every later comparison wrong, and the failure reads as
-;;; a parser defect. M1 has no parser, so these lanes judge the loader, the
+;;; a parser defect. No parser is involved: these lanes judge the loader, the
 ;;; ratchet and the comparator on the committed corpus and on hand-built
 ;;; inputs, and nothing else.
 (import (rnrs)
@@ -69,8 +69,8 @@
           (check-equal "reference" (rv-reference v) "")
           (check-equal "target"    (rv-target v)    "http://a/b/c/d;p?q"))))
 
-    ;; Decision 0015 item 2 rejects erratum 4547. If the corpus is ever edited
-    ;; to adopt it, this is what says so.
+    ;; The corpus follows the published RFC, not erratum 4547. If the corpus is
+    ;; ever edited to adopt it, this is what says so.
     (harness-case "excess dot-segments resolve as published, not as erratum 4547"
       (lambda ()
         (check-equal "../../../g"
@@ -144,7 +144,7 @@
           (check "names the expected" (harness-string-contains? d "http://a/b/c/g"))
           (check "names the actual"   (harness-string-contains? d "http://a/b/c/X")))))
 
-    ;; Absent is not empty -- decision 0008's distinction, which reaches the
+    ;; Absent is not empty -- the distinction that reaches the
     ;; comparator because a resolver that returned nothing at all would
     ;; otherwise compare equal to one that returned "".
     (harness-case "no result is not the same as an empty result"
@@ -154,9 +154,8 @@
 
 ;;; --- the ratchet --------------------------------------------------------
 ;;;
-;;; Decision 0005 and the sibling's decision 0008 item 6 both require a TWO-WAY
-;;; gate. A manifest that only fails when a passing vector breaks is a TODO
-;;; list: it lets a vector start passing unnoticed, which is how a milestone's
+;;; The gate is TWO-WAY. A manifest that only fails when a passing vector breaks
+;;; is a TODO list: it lets a vector start passing unnoticed, which is how an
 ;;; exit criterion stops being falsifiable.
 (harness-group "ratchet"
   (lambda ()
@@ -214,9 +213,9 @@
         (let ((r2 (ratchet-parse '("# a comment" "" "passing  5.4.1/g"))))
           (check-equal "count" (length (ratchet-entries r2)) 1))))))
 
-;;; M1's exit criterion, said once as a case: every vector in the committed
+;;; Completeness, said once as a case: every vector in the committed
 ;;; corpus has a status, and the two sets are the same set.
-(harness-group "m1-exit"
+(harness-group "corpus-completeness"
   (lambda ()
     (harness-case "every corpus vector has a ratchet status and vice versa"
       (lambda ()

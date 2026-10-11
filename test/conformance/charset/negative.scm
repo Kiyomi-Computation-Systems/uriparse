@@ -1,11 +1,10 @@
-;;; M3 negative corpus -- inputs RFC 3986's charset productions REJECT.
+;;; Charset negative corpus -- inputs RFC 3986's charset productions REJECT.
 ;;;
 ;;; AUTHORED, NOT EXTRACTED. Unlike test/conformance/rfc3986/, which is derived
 ;;; from the vendored RFC text by cmake/UriCorpus.cmake, this file is HAND-DERIVED
 ;;; from the ABNF (test/conformance/rfc3986/rfc3986.abnf) -- the RFC lists no
 ;;; invalid URIs, so there is nothing to extract. Its provenance and separate
-;;; count are recorded in PROVENANCE beside it (decisions 0005 item 3, 0024 item
-;;; 6). Every offset is defended from the ABNF in its note and cross-checked
+;;; count are recorded in PROVENANCE beside it. Every offset is defended from the ABNF in its note and cross-checked
 ;;; against (uri test charset-oracle), an independent reading of the same ABNF.
 ;;;
 ;;; A row is (mode input component code offset note):
@@ -13,15 +12,15 @@
 ;;;   input     the bytes to parse -- a STRING (its UTF-8 bytes) for ASCII cases,
 ;;;             a #vu8(...) bytevector for the > 0x7F and control-byte cases a
 ;;;             string cannot carry
-;;;   component the M3 component the offending byte falls in
-;;;   code      the core error code the validator must raise (decision 0024 item 5)
+;;;   component the component the offending byte falls in
+;;;   code      the core error code the validator must raise
 ;;;   offset    the ABSOLUTE byte offset in `input` of the offending position --
 ;;;             the byte itself for a bad literal, the "%" for a malformed
-;;;             pct-encoded (decision 0024 item 3)
+;;;             pct-encoded
 ;;;   note      the ABNF ground for the rejection
 ;;;
-;;; SCOPE (decision 0024 item 2): scheme, path, query, fragment, pct-encoded only.
-;;; port and the authority-interior charsets are M4.
+;;; SCOPE: scheme, path, query, fragment, pct-encoded only. port and the
+;;; authority-interior charsets are covered by test/conformance/host/.
 (negatives
   ;; --- scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ) ------------------
   (uri ":x"      scheme invalid-scheme 0

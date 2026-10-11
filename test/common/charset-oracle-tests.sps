@@ -1,15 +1,14 @@
 #!r6rs
-;;; unit.charset-oracle -- the M3 charset oracle and its negative corpus, judged
-;;; before any validator exists (decision 0024, Slice ⓪).
+;;; unit.charset-oracle -- the charset oracle and its negative corpus, judged
+;;; independently of the src validator.
 ;;;
-;;; Two artifacts land in Slice ⓪ and this lane gates them against each other:
+;;; Two artifacts are gated against each other here:
 ;;; (uri test charset-oracle), a reading of RFC 3986's component charsets derived
-;;; from the ABNF independently of the src validator that does not exist yet; and
+;;; from the ABNF independently of the src validator; and
 ;;; the hand-derived negative corpus. The corpus is CROSS-CHECKED against the
 ;;; oracle -- a row whose (component, code, offset) the oracle disagrees with
-;;; reddens -- so neither can drift from the ABNF unnoticed (oracle discipline,
-;;; decisions 0005 / 0012 / 0024 item 6). The src (uri charset) validator is
-;;; graded against BOTH in Slice ②.
+;;; reddens -- so neither can drift from the ABNF unnoticed (oracle discipline).
+;;; The src (uri charset) validator is graded against BOTH in unit.charset.
 (import (rnrs)
         (uri test harness)
         (uri test charset-oracle))

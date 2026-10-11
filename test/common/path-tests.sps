@@ -3,13 +3,13 @@
 ;;; merge (§5.2.3), the mechanics `(uri resolve)` (§5.2.2) is built on.
 ;;;
 ;;; remove-dot-segments is graded TWO ways. Its final result is pinned on stress
-;;; vectors derived from the RFC (independently of this code, decision 0005's
-;;; discipline). And its full STEP TRACE is graded against the committed §5.2.4
-;;; corpus (dot-segments.scm) -- buffer states after every named step -- because
-;;; the RFC gives the two worked examples as traces, "not only as the two end
-;;; results: the end result of the first is reachable by several wrong algorithms
-;;; and the trace is not" (PROVENANCE). A resolver that reaches "/a/g" by the
-;;; wrong 2A/2B/2C/2D/2E sequence still reddens.
+;;; vectors derived from the RFC (independently of this code). And its full STEP
+;;; TRACE is graded against the committed §5.2.4 corpus (dot-segments.scm) --
+;;; buffer states after every named step -- because the RFC gives the two worked
+;;; examples as traces, "not only as the two end results: the end result of the
+;;; first is reachable by several wrong algorithms and the trace is not"
+;;; (PROVENANCE). A resolver that reaches "/a/g" by the wrong 2A/2B/2C/2D/2E
+;;; sequence still reddens.
 ;;;
 ;;; merge is pinned on the six RFC-derived branch vectors: both branches, the
 ;;; empty-base-path authority case, and the no-slash base-path edge.
@@ -19,7 +19,7 @@
         (uri path))
 
 ;; `a` builds a bytevector from an ASCII string; `s` reads one back. A path is
-;; bytes (decision 0010); the ASCII spelling is the reader's convenience, and the
+;; bytes; the ASCII spelling is the reader's convenience, and the
 ;; corpus rows are strings, so the trace comparison reads bytevectors back out.
 (define (a str) (string->utf8 str))
 (define (s bv) (utf8->string bv))
@@ -75,7 +75,7 @@
         (check-equal "/..bar"   (remove-dot-segments (a "/..bar"))   (a "/..bar"))
         (check-equal "..g"      (remove-dot-segments (a "..g"))      (a "..g"))))
 
-    ;; Total over ANY byte string (decision 0011): a NUL and a high byte are
+    ;; Total over ANY byte string: a NUL and a high byte are
     ;; ordinary segment bytes, moved by 2E, and a real dot-segment beside them
     ;; is still removed -- the function neither raises nor mishandles non-ASCII.
     ;; /<NUL>/.. -> the <NUL> segment is emitted, then "/.." pops it -> "/".
@@ -149,7 +149,7 @@
                      (remove-dot-segments (a "mid/content=5/../6")) (a "mid/6"))))))
 
 ;;; --- merge: §5.2.3, the six RFC-derived branch vectors ----------------------
-;;; base-has-authority? is the base authority being DEFINED (decision 0008), not
+;;; base-has-authority? is the base authority being DEFINED, not
 ;;; nonempty -- the caller reads it off the base components.
 (harness-group "merge"
   (lambda ()

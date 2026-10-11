@@ -1,20 +1,20 @@
 #!r6rs
 ;;; (uri test charset-oracle): the RFC 3986 component charsets, derived from the
-;;; ABNF INDEPENDENTLY of any src validator, plus the reader for M3's negative
+;;; ABNF INDEPENDENTLY of any src validator, plus the reader for the negative
 ;;; corpus and the cross-check that ties the two together.
 ;;;
-;;; ORACLE DISCIPLINE (decisions 0005, 0012). This library is the reference
-;;; against which `(uri charset)` (M3 Slice ②) is graded, so it is written from
-;;; RFC 3986 Appendix A (test/conformance/rfc3986/rfc3986.abnf) and RFC 5234
-;;; Appendix B, NOT from the src validator that does not exist yet. `oracle-scan`
+;;; ORACLE DISCIPLINE. This library is the reference against which
+;;; `(uri charset)` is graded, so it is written from RFC 3986 Appendix A
+;;; (test/conformance/rfc3986/rfc3986.abnf) and RFC 5234 Appendix B, NOT from the
+;;; src validator. `oracle-scan`
 ;;; is a second, deliberately naive implementation of exactly the property the
 ;;; product must have, and two implementations of one property that agree on
 ;;; every byte are the check.
 ;;;
-;;; SCOPE (decision 0024 item 2): scheme, path, query, fragment, and pct-encoded.
-;;; PORT and every authority-interior charset (userinfo, host, reg-name,
-;;; IP-literal) are M4's -- the authority is one opaque span until then -- so the
-;;; oracle names no authority production.
+;;; SCOPE: scheme, path, query, fragment, and pct-encoded. PORT and every
+;;; authority-interior charset (userinfo, host, reg-name, IP-literal) belong to
+;;; the host oracle -- this one treats the authority as one opaque span -- so it
+;;; names no authority production.
 ;;;
 ;;; PURE, except `negative-load`, the one procedure that touches a port.
 (library (uri test charset-oracle)
@@ -26,10 +26,10 @@
     oracle-component-literal?
     ;; the reference validator: component + bytes -> (values code index) | (#f #f)
     oracle-scan
-    ;; M3's negative corpus
+    ;; the negative corpus
     negative-load negative-parse
     nv? nv-mode nv-input nv-component nv-code nv-offset nv-note
-    ;; the Slice ⓪ cross-check: corpus row vs oracle, #f when consistent
+    ;; the cross-check: corpus row vs oracle, #f when consistent
     negative-cross-check
     charset-oracle-error? charset-oracle-error-detail)
   (import (rnrs))
@@ -44,7 +44,7 @@
                       (make-message-condition detail))))
 
   ;; --- the byte sets, from the ABNF ---------------------------------------
-  ;; Byte values, because the parser is byte-level (decision 0010). RFC 5234 B.1
+  ;; Byte values, because the parser is byte-level. RFC 5234 B.1
   ;; leaves ALPHA/DIGIT/HEXDIG to be supplied; HEXDIG admits lower-case here
   ;; because RFC 3986 §6.2.2.1 treats "%3a" and "%3A" as the same octet and the
   ;; parser is non-normalising -- both are valid pct-encoded.
@@ -69,7 +69,7 @@
     (or (oracle-unreserved? b) (oracle-sub-delim? b)
         (fx=? b #x3A) (fx=? b #x40)))
 
-  ;; The literal (non-"%") bytes each M3 component admits. First-byte rules
+  ;; The literal (non-"%") bytes each component admits. First-byte rules
   ;; (scheme's leading ALPHA) are the scan's, not this per-byte test.
   ;;   scheme rest = ALPHA / DIGIT / "+" / "-" / "."
   ;;   path        = pchar / "/"
@@ -82,7 +82,7 @@
       ((query fragment) (or (oracle-pchar-literal? b)
                             (fx=? b #x2F) (fx=? b #x3F)))
       (else (refuse 'oracle-component-literal?
-                    (string-append "no M3 component named "
+                    (string-append "no charset component named "
                                    (symbol->string component))))))
 
   ;; --- the reference validator --------------------------------------------
@@ -124,15 +124,15 @@
                  ((oracle-component-literal? component (byte i)) (loop (fx+ i 1)))
                  (else (values code i))))))
       (else (refuse 'oracle-scan
-                    (string-append "no M3 component named "
+                    (string-append "no charset component named "
                                    (symbol->string component))))))
 
-  ;; --- the negative corpus (decision 0024 item 6) -------------------------
+  ;; --- the negative corpus -------------------------
   ;;
   ;; A row is (mode input component code offset note). `input` is a STRING (its
   ;; UTF-8 bytes, convenient for the ASCII cases) or a BYTEVECTOR (exact bytes,
   ;; for the > 0x7F and control-byte cases a string cannot carry). `offset` is
-  ;; ABSOLUTE in the input -- the contract M3 reports (decision 0024 item 3).
+  ;; ABSOLUTE in the input -- the contract `(uri charset)` reports.
   (define-record-type nv (fields mode input component code offset note))
 
   (define (row->bytes x who)
@@ -169,19 +169,19 @@
               (begin (close-port p) (negative-parse (reverse acc)))
               (loop (cons d acc)))))))
 
-  ;; --- the Slice ⓪ cross-check --------------------------------------------
+  ;; --- the cross-check --------------------------------------------
   ;;
   ;; negative-cross-check : Nv -> (Option String)
   ;;
-  ;; #f when the row is consistent with the oracle; else a diagnostic. Without
-  ;; the offset seam (Slice ①) the check cannot ask the shell for the component
-  ;; start, so it verifies, from the raw input and the oracle alone:
+  ;; #f when the row is consistent with the oracle; else a diagnostic. The check
+  ;; cannot ask the shell for the component start, so it verifies, from the raw
+  ;; input and the oracle alone:
   ;;   (1) the byte AT the recorded absolute offset is genuinely offending for
   ;;       the named code -- an invalid literal, or a "%" that opens a malformed
   ;;       pct-encoded; and
   ;;   (2) the recorded code is the one the reference validator raises for the
   ;;       named component. Whether that offset is the FIRST such position is
-  ;;       Slice ②'s job, once the validator and the plumbed offset exist.
+  ;;       judged against the validator's own reported offset, not here.
   (define (negative-cross-check v)
     (define bv (nv-input v))
     (define n (bytevector-length bv))

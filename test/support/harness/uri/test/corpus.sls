@@ -2,10 +2,10 @@
 ;;; (uri test corpus): reading RFC 3986's own vectors, and comparing against
 ;;; them.
 ;;;
-;;; Decision 0005 makes the RFC's vectors the anchor of the resolution layer.
-;;; That puts THIS library on the critical path: a loader that is one row off
-;;; makes every later comparison wrong, and the failure reads as a parser
-;;; defect rather than as a reading defect. So it is judged on its own, by
+;;; The RFC's vectors are the anchor of the resolution layer. That puts THIS
+;;; library on the critical path: a loader that is one row off makes every later
+;;; comparison wrong, and the failure reads as a parser defect rather than as a
+;;; reading defect. So it is judged on its own, by
 ;;; test/common/corpus-tests.sps, before any URI is parsed.
 ;;;
 ;;; THE FILES ARE DERIVED, NOT AUTHORED. cmake/UriCorpus.cmake extracts them
@@ -126,7 +126,7 @@
   ;;
   ;; These carry no expected decomposition. The RFC gives them as
   ;; illustrations, so the only thing a lane may assert over them is that they
-  ;; parse (decision 0005 item 3), and the loader hands back bare strings so
+  ;; parse, and the loader hands back bare strings so
   ;; there is no expectation to accidentally invent.
   (define (corpus-parse-examples data)
     (map (lambda (row)
@@ -146,10 +146,10 @@
   ;; so agreement must be the false value and there is no truthy "ok" to
   ;; mistake for a diagnostic.
   ;;
-  ;; A #f ACTUAL IS NOT AN EMPTY ONE. Decision 0008's distinction reaches even
-  ;; here: a resolver that produced nothing at all and one that produced ""
-  ;; must not compare the same, so the actual is tested for stringhood before
-  ;; it is compared.
+  ;; A #f ACTUAL IS NOT AN EMPTY ONE. The distinction between absent and empty
+  ;; reaches even here: a resolver that
+  ;; produced nothing at all and one that produced "" must not compare the same,
+  ;; so the actual is tested for stringhood before it is compared.
   (define (compare-target id expected actual)
     (cond ((not (string? actual))
            (string-append id ": expected \"" expected "\" but there was no result"))

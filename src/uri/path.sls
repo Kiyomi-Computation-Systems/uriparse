@@ -1,16 +1,16 @@
 #!r6rs
 ;;; (uri path): the two path routines RFC 3986 §5.2 resolution refers to, as
-;;; pure functions over path bytevectors (decision 0010).
+;;; pure functions over path bytevectors.
 ;;;
 ;;;   remove-dot-segments  §5.2.4  interpret and remove "." and ".." segments
 ;;;   merge                §5.2.3  splice a relative reference onto a base path
 ;;;
 ;;; A path is opaque bytes here: `/` is not in `pchar`, so segmentation is a
-;;; total function of the path bytes and belongs in the core (design §3.1). No
+;;; total function of the path bytes and belongs in the core. No
 ;;; scanner, no components -- these two functions are what `(uri resolve)`
 ;;; (§5.2.2) calls, and they operate on the `path` bytevector alone.
 ;;;
-;;; TOTAL, and non-validating (decision 0011): every byte string is a path; a
+;;; TOTAL, and non-validating: every byte string is a path; a
 ;;; malformed one is simply moved through §5.2.4's case E like any other segment.
 ;;; No `(rnrs unicode)`; `/` and `.` are ASCII bytes.
 ;;;
@@ -169,7 +169,7 @@
   ;;   (b) otherwise -> (base path up to and including its rightmost "/") ++
   ;;       ref-path, or just ref-path when the base path has no "/".
   ;; `base-has-authority?` is whether the base's authority component is DEFINED
-  ;; (decision 0008: present, even if empty) -- the caller reads it off the base
+  ;; (present, even if empty) -- the caller reads it off the base
   ;; components, since a bare path cannot carry that fact.
   (define (merge base-has-authority? base-path ref-path)
     (if (and base-has-authority? (fx=? (bytevector-length base-path) 0))

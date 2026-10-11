@@ -11,11 +11,11 @@
 # blind spot one layer down, for the runner underneath SpecSupport and every
 # specification alike.
 #
-# A prior review deleted the branch that turns a caught-for-the-wrong-reason
-# result into a failure and ran the whole CMake-layer mutation suite: 89/89,
-# unaffected, because nothing mutated the mechanism that reads EXPECT_STATUS
-# and EXPECT_OUTPUT_MATCHES in the first place. This file, and the mutations
-# in MutationSuite.cmake that target it, are what closes that gap.
+# Deleting the branch that turns a caught-for-the-wrong-reason result into a
+# failure would leave the whole CMake-layer mutation suite unaffected, because
+# nothing else mutates the mechanism that reads EXPECT_STATUS and
+# EXPECT_OUTPUT_MATCHES. This file, and the mutations in MutationSuite.cmake
+# that target it, close that gap.
 
 cmake_minimum_required(VERSION 3.26)
 
@@ -108,7 +108,7 @@ uri_mutation_verdict("0" "irrelevant output" "1" "irrelevant" verdict reason)
 spec_check_equal("${verdict}" "not-caught"
   "rc 0 is not-caught even when EXPECT_STATUS and EXPECT_OUTPUT_MATCHES are both declared")
 
-# Neither declared: plain nonzero-means-caught, the pre-slice-3 rule.
+# Neither declared: plain nonzero-means-caught, the baseline rule.
 uri_mutation_verdict("1" "" "" "" verdict reason)
 spec_check_equal("${verdict}" "caught" "nonzero with neither declared is caught")
 

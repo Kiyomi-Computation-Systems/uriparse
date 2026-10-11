@@ -6,29 +6,30 @@
 ;;; scheme when it equals the base's -- is NOT taken: the one §5.4.2 row it
 ;;; touches (`http:g`) resolves to `http:g`, not `http://a/b/c/g`, and the RFC
 ;;; calls the shortcut a backward-compatibility allowance for older parsers
-;;; (decision 0001 puts RFC 1630 partial-URI compatibility out of scope). The
+;;; (RFC 1630 partial-URI compatibility is out of scope). The
 ;;; corpus records the loophole in a `(note ...)` and this project implements the
 ;;; strict row.
 ;;;
-;;; PURE over `uri-components` (design §2, §5): the base and R are the components
-;;; `(uri collect)` produces; the target is components, which `(uri recompose)`
-;;; (§5.3) renders to a string. Resolution does NOT normalize (§6 is a separate
+;;; PURE over `uri-components`: the base and R are the components `(uri
+;;; collect)` produces; the target is components, which `(uri recompose)` (§5.3)
+;;; renders to a string. Resolution does NOT normalize (§6 is a separate
 ;;; operation) and does not touch the query or fragment's own bytes -- only the
-;;; path is dot-segment-removed, which is why the scanner must have already split
-;;; the query and fragment off the path (RFC 3986 §5.2.4's Note; M2 does this).
+;;; path is dot-segment-removed, which is why the scanner must have already
+;;; split the query and fragment off the path (RFC 3986 §5.2.4's Note), as the
+;;; scanner does.
 ;;;
-;;; The absent/empty distinction (decision 0008) is load-bearing here: §5.2.2
+;;; The absent/empty distinction is load-bearing here: §5.2.2
 ;;; branches on `defined(R.authority)` and `defined(R.query)` (present, even if
 ;;; empty), and on `R.path == ""` (present and empty). `http:/p` and `http:///p`
 ;;; resolve differently precisely because the first has an absent authority and
 ;;; the second an empty-but-present one.
 ;;;
-;;; A CALLER WANTING NORMALIZED RESULTS normalizes FIRST, then resolves (decision
-;;; 0020's ordering note): `(uri normalize)`'s `pct-normalize` decodes `%2E` to a
-;;; literal `.`, so a normalized path can carry dot-segments that §5.2.4 here then
-;;; removes -- resolving a RAW path would let `%2E%2E%2F` survive as live `../`.
-;;; This library resolves whatever components it is given; the composition order
-;;; is the caller's to get right, and normalize-before-resolve is the safe one.
+;;; A CALLER WANTING NORMALIZED RESULTS normalizes FIRST, then resolves: `(uri
+;;; normalize)`'s `pct-normalize` decodes `%2E` to a literal `.`, so a
+;;; normalized path can carry dot-segments that §5.2.4 here then removes --
+;;; resolving a RAW path would let `%2E%2E%2F` survive as live `../`. This
+;;; library resolves whatever components it is given; the composition order is
+;;; the caller's to get right, and normalize-before-resolve is the safe one.
 ;;;
 ;;; resolve-components : Components Components -> Components
 (library (uri resolve)
@@ -54,8 +55,8 @@
   ;; §5.2.2's pseudocode, arm for arm. `base` is the base URI's components (it
   ;; must have a defined scheme to be absolute); `r` is the reference's. Both
   ;; must carry a PRESENT path -- a bytevector, possibly empty, never `#f` --
-  ;; which is what `(uri collect)` always produces (a path is never absent,
-  ;; design §3.1); §5.2.2 assumes it, so this reads the path unguarded. Returns
+  ;; which is what `(uri collect)` always produces (a path is never absent);
+  ;; §5.2.2 assumes it, so this reads the path unguarded. Returns
   ;; the target's components. T.fragment is always R.fragment.
   (define (resolve-components base r)
     (let ((rs (uri-components-scheme r))    (ra (uri-components-authority r))

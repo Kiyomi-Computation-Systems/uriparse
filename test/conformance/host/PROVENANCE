@@ -1,4 +1,4 @@
-M4 the host grammar -- the negative corpus
+The host grammar -- the negative corpus
 
 PROVENANCE: OURS, DERIVED FROM THE ABNF (not extracted from the RFC text)
 
@@ -7,22 +7,20 @@ from the vendored RFC text by cmake/UriCorpus.cmake and re-derived by the lane
 uri.harness.corpus-provenance. RFC 3986 lists no invalid URIs, so there is
 nothing to extract: negative.scm is HAND-AUTHORED, derived from the collected
 ABNF at test/conformance/rfc3986/rfc3986.abnf (§3.2, itself RFC-derived) and RFC
-5234 Appendix B for ALPHA / DIGIT / HEXDIG. It is the M4 sibling of
-test/conformance/charset/ (M3).
+5234 Appendix B for ALPHA / DIGIT / HEXDIG. It is the sibling of
+test/conformance/charset/.
 
-It is therefore a SEPARATE provenance with a SEPARATE count (decision 0005 item 3,
-decision 0025 item 7): it is never averaged into the normative §5.4 / §1.1.2
+It is therefore a SEPARATE provenance with a SEPARATE count: it is never averaged into the normative §5.4 / §1.1.2
 figures, and it is NOT guarded by the corpus-provenance lane. Its guard is
 instead:
 
   - every row's (component, code, offset) is cross-checked against
     (uri test host-oracle) -- an INDEPENDENT reading of the same ABNF -- by the
-    lane uri.unit.host-oracle; a row inconsistent with the oracle reddens
-    (decision 0025 item 7, oracle discipline of decisions 0005 / 0012);
+    lane uri.unit.host-oracle; a row inconsistent with the oracle reddens;
   - per-production coverage floors keep the set from silently shrinking; and
-  - in M4 Slices ①②, (uri host) is run over this corpus through uri-parse-validate
-    and must reject every row with the recorded code and absolute offset, and over
-    the positive corpora (§5.4, §1.1.2) which it must still ACCEPT.
+  - (uri host) is run over this corpus through uri-parse-validate and must
+    reject every row with the recorded code and absolute offset, and over the
+    positive corpora (§5.4, §1.1.2) which it must still ACCEPT.
 
 WHAT IS HERE
 
@@ -31,11 +29,11 @@ WHAT IS HERE
                  tagged with the ABNF production it violates and the ABSOLUTE
                  offset of the offending position (the "%" for a malformed
                  pct-encoded; the opening "[" for any IP-literal-interior fault,
-                 including a dec-octet range error -- decision 0025 items 3-4).
+                 including a dec-octet range error).
                  Every input is "http://<authority>...", so the authority begins
                  at offset 7. Every offset is defended in the row's note.
 
-TWO M4-SPECIFIC INVARIANTS THE CORPUS PINS (decision 0025 item 3)
+TWO HOST-SPECIFIC INVARIANTS THE CORPUS PINS
 
   - dec-octet is REACHABLE ONLY inside a bracketed literal. A bare "999.1.1.1"
     fails IPv4address but is a valid reg-name (§3.2.2 first-match-wins), so it is
@@ -47,6 +45,6 @@ TWO M4-SPECIFIC INVARIANTS THE CORPUS PINS (decision 0025 item 3)
 
 WHAT IS NOT HERE, AND WHY
 
-  scheme / path / query / fragment charsets are M3's (test/conformance/charset/).
-  The abnfgen positive generator and a host-aware mutator (decision 0012) stay
-  deferred v0.2 tooling; this corpus is hand-derived, as M3's was.
+  scheme / path / query / fragment charsets belong to test/conformance/charset/.
+  The project has no ABNF-driven generator or host-aware mutator; this corpus
+  is hand-derived, as the charset corpus is.

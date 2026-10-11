@@ -2,7 +2,7 @@
 #
 # The determinism lane (uri.determinism.generated-artifact.chez.source) runs the
 # SAME emitter and compares the bytes, so this convenience and the check that
-# guards it cannot drift -- the whole point of decision 0002 item 4. Run via
+# guards it cannot drift. Run via
 # `make parser-refresh` or `cmake -P cmake/UriParserRefresh.cmake`.
 cmake_minimum_required(VERSION 3.26)
 

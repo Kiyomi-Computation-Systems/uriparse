@@ -2,13 +2,13 @@
 ;;; unit.grammar -- the URI scanner (modes 1 & 2), judged against the split
 ;;; oracle. The scanner's ABI is the spans plus the `on-rooted` verdict; the
 ;;; expected decompositions were derived from RFC 3986's ABNF independently of
-;;; this grammar (the M2 split oracle), so a bug shared between grammar and test
+;;; this grammar (the split oracle), so a bug shared between grammar and test
 ;;; cannot hide.
 ;;;
 ;;; The scanner emits the five coarse components; the `authority` span is the
-;;; whole authority (userinfo/host/port are the core's, decision 0019). A
+;;; whole authority (userinfo/host/port are the core's). A
 ;;; path-absolute's leading `/` is dropped from the `path` span and recovered by
-;;; `on-rooted` (decision 0018): the path COMPONENT is `(if rooted "/" "") ++
+;;; `on-rooted`: the path COMPONENT is `(if rooted "/" "") ++
 ;;; path-span`, and both the raw span and that reconstruction are asserted.
 (import (rnrs)
         (uri test harness)
@@ -26,12 +26,12 @@
   (let ((s (make-bytevector (- to from)))) (bytevector-copy! bv from s 0 (- to from)) (utf8->string s)))
 
 ;; parse : Nat String [chunk] -> parse-record (a tagged alist)
-;; A span is PRESENT iff its COMPLETION callback fires (decision 0008 item 5:
-;; the completion is the one signal that is always exactly once, because an empty
-;; data fragment is suppressed across a feed boundary). Its bytes are the
-;; concatenation of its data fragments in arrival order -- so a span open across
-;; several feeds reads back the same as one delivered whole. A span whose
-;; completion never fires is absent (#f). `chunk` feeds one byte at a time.
+;; A span is PRESENT iff its COMPLETION callback fires (the completion is the
+;; one signal that is always exactly once, because an empty data fragment is
+;; suppressed across a feed boundary). Its bytes are the concatenation of its
+;; data fragments in arrival order -- so a span open across several feeds reads
+;; back the same as one delivered whole. A span whose completion never fires is
+;; absent (#f). `chunk` feeds one byte at a time.
 (define (parse mode str . chunk?)
   (let ((frags '()) (completes '()) (rooted #f) (verdict #f))
     (define (data-cb name)
@@ -98,7 +98,7 @@
                                              (symbol->string (diagnostic-node d)))))
                 (verification-diagnostics V)))))
 
-;;; --- the mode field (decision 0004) -------------------------------------
+;;; --- the mode field ------------------------------------------------------
 (harness-group "modes"
   (lambda ()
     (harness-case "mode 0 (unset) refuses at offset 0"
@@ -207,7 +207,7 @@
              (check-equal "verdict"   (pr-verdict r) (list-ref row 6))))))
      mode3-oracle)))
 
-;;; --- absent is not empty (decision 0008), the load-bearing pairs ---------
+;;; --- absent is not empty, the load-bearing pairs -------------------------
 (harness-group "absent-is-not-empty"
   (lambda ()
     (harness-case "empty authority (\"\") is not no authority (#f)"
@@ -231,7 +231,7 @@
         (check-equal "//h path empty" (pr-span (parse 2 "//h") 'path) "")
         (check-equal "empty path present" (pr-span (parse 2 "") 'path) "")))))
 
-;;; --- the errors (decision 0009): code AND offset -------------------------
+;;; --- the errors: code AND offset -----------------------------------------
 (harness-group "errors"
   (lambda ()
     (harness-case "mode 1 with no colon before a delimiter is scheme-required at the delimiter"
@@ -279,8 +279,8 @@
 ;;; --- the grammar declares only names the vocabulary knows ----------------
 (harness-case "every span and error the grammar uses is in the vocabulary"
   (lambda ()
-    ;; A cross-check so the grammar and (uri vocabulary) cannot drift: the five
-    ;; spans Slice ① opens and the four errors it declares must all be vocabulary
+    ;; A cross-check so the grammar and (uri vocabulary) cannot drift: the spans
+    ;; the grammar opens and the four errors it declares must all be vocabulary
     ;; entries (mode-unset/scheme-required/scheme-forbidden/unexpected-eof).
     (for-each (lambda (s) (check (string-append (symbol->string s) " is a span")
                                  (uri-span-name? s)))

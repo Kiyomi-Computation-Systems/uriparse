@@ -1,4 +1,4 @@
-M9 authority-form -- the RFC 9112 §3.2.3 corpus
+authority-form -- the RFC 9112 §3.2.3 corpus
 
 PROVENANCE: OURS, HAND-DERIVED FROM RFC 9112 §3.2.3 (not extracted from any text)
 
@@ -10,13 +10,12 @@ to extract: corpus.scm is HAND-AUTHORED from RFC 9112 §3.2.3
 
     authority-form = uri-host ":" port
 
-which reuses RFC 3986 §3.2's `host` and `port` verbatim. It is the M9 sibling of
-test/conformance/host/ (M4) and test/conformance/charset/ (M3), each a hand-derived
-corpus standing in for the deferred abnfgen tooling (decisions 0012, 0025 item 6).
+which reuses RFC 3986 §3.2's `host` and `port` verbatim. It is the sibling of
+test/conformance/host/ and test/conformance/charset/, each a hand-derived
+corpus rather than a generated one.
 
-It is therefore a SEPARATE provenance with a SEPARATE count (decision 0005 item 3,
-decision 0026 item 6): it is never averaged into the normative §5.4 / §1.1.2 figures
-or the M3/M4 corpora, and it is NOT guarded by the corpus-provenance lane.
+It is therefore a SEPARATE provenance with a SEPARATE count: it is never
+averaged into the normative §5.4 / §1.1.2 figures or the charset/host corpora, and it is NOT guarded by the corpus-provenance lane.
 
 WHAT IS HERE
 
@@ -26,7 +25,7 @@ WHAT IS HERE
                no scheme, no "//", no "http://" prefix -- so the authority begins at
                OFFSET 0 and every recorded offset is already the caller's.
 
-WHAT authority-form IS (decision 0026)
+WHAT authority-form IS
 
   A CONNECT request-target: `host:port`, with no scheme and no "//". It is a strict
   SUBSET of RFC 3986 `authority = [ userinfo "@" ] host [ ":" port ]` --
@@ -43,13 +42,14 @@ WHAT authority-form IS (decision 0026)
   (the "@"), the RFC 3986 host grammar via `validate-authority` (a host/port charset
   fault, e.g. `invalid-reg-name`), and `port-required` (at the target's end).
 
-HOW IT IS GUARDED (decision 0026 item 6)
+HOW IT IS GUARDED
 
   - the corpus IS the RFC 9112 §3.2.3 spec table: each row's (lenient, strict) verdict
     with its exact code and ABSOLUTE offset is asserted through the two entry points by
-    the lane uri.unit.authority-form. Unlike the M4 host corpus, there is no fourth
-    oracle here: the HOST grammar's correctness already rides on M4's three-provenance
-    guard (validate-authority <-> (uri test host-oracle) <-> the M4 corpus), and
+    the lane uri.unit.authority-form. Unlike the host corpus, there is no fourth
+    oracle here: the HOST grammar's correctness already rides on the host corpus's
+    three-provenance guard (validate-authority <-> (uri test host-oracle) <-> the
+    host corpus), and
     authority-form adds only the splice/-2 re-map, the `not-authority-form` floor, and
     the two §3.2.3 rules -- a small policy guarded by this table plus mutation
     witnesses (the -2 re-map, the leftmost host < port order, the bracket-aware userinfo
@@ -62,14 +62,14 @@ HOW IT IS GUARDED (decision 0026 item 6)
   - the bracket-aware userinfo rule is pinned both ways: `user@[::1]:443` (a real
     userinfo "@" BEFORE the "[") is userinfo-forbidden, while `[a@b]:443` (an "@" INSIDE
     the literal) is NOT userinfo -- it falls through to the host grammar (invalid-userinfo,
-    as M4 reports for http://[a@b]). A first-"@"-anywhere scan would mis-fire
+    as the host corpus reports for http://[a@b]). A first-"@"-anywhere scan would mis-fire
     userinfo-forbidden on the second and redden.
 
 A KNOWN ABNF EDGE, DELIBERATELY NOT A ROW
 
   `:443` (empty host, present port) is ACCEPTED by both forms: `uri-host` includes
   `reg-name = *( ... )`, which the ABNF permits to be EMPTY, so an empty host is
-  grammatically valid (decision 0003 -- adjudicate against the ABNF, not intuition).
+  grammatically valid (adjudicate against the ABNF, not intuition).
   It is left out of the corpus rather than implying an empty-host CONNECT target is
   meaningful; the port-required boundary is pinned by `host:` and `host` instead.
 
@@ -77,6 +77,5 @@ WHAT IS NOT HERE, AND WHY
 
   origin-form and absolute-form request-targets already parse in `relative-ref` and
   `uri` mode; asterisk-form (`*`) is a one-byte literal the caller checks, not a
-  parse. A vendored RFC 9112 and an authority-form generator stay deferred tooling
-  (the decision 0012 line), not silently skipped; this corpus is the hand-derived
-  stand-in, as M3's and M4's were.
+  parse. RFC 9112 is not vendored and no authority-form generator exists;
+  this corpus is hand-derived, as the charset and host corpora are.

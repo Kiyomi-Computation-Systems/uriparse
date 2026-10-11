@@ -1,10 +1,10 @@
-;;; M9 authority-form corpus -- RFC 9112 §3.2.3 CONNECT request-targets.
+;;; Authority-form corpus -- RFC 9112 §3.2.3 CONNECT request-targets.
 ;;;
 ;;; AUTHORED, NOT EXTRACTED. RFC 9112 is not vendored (only RFC 3986 is), so -- like
-;;; test/conformance/host/ (M4) and test/conformance/charset/ (M3) -- this file is
+;;; test/conformance/host/ and test/conformance/charset/ -- this file is
 ;;; HAND-DERIVED from RFC 9112 §3.2.3 (`authority-form = uri-host ":" port`), which
 ;;; reuses RFC 3986 §3.2's `host` and `port`. Its provenance and separate count are
-;;; recorded in PROVENANCE beside it (decision 0026 item 6).
+;;; recorded in PROVENANCE beside it.
 ;;;
 ;;; It grades BOTH entry points at once. A row is (input lenient strict note):
 ;;;   input    the raw authority-form target -- a STRING (its UTF-8 bytes). NO scheme,

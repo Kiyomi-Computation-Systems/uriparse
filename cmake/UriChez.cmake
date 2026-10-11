@@ -24,10 +24,9 @@
 #
 # WHY THREADING IS NOT CHECKED
 #
-# The sibling protium project requires threaded Chez because libuv gives it a
-# loop-owner thread model. uri has no threads anywhere in its design,
-# so gating on a threaded build here would be a copied requirement rather than a
-# real one. The flag is recorded as portability evidence, not enforced.
+# uri has no threads anywhere in its design, so gating on a threaded build
+# would be an invented requirement rather than a real one. The flag is recorded
+# as portability evidence, not enforced.
 #
 # This module defines functions and does not run discovery on include, so its
 # functional core is specifiable under `cmake -P` without a Chez present. Call
@@ -42,8 +41,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/UriProbe.cmake")
 # The floor is what this project has actually verified, not what it guesses it
 # could tolerate: CI builds exactly this version from source on Linux, and
 # macOS is verified locally on an arm64 host rather than on a hosted runner.
-# Lowering the pin means CI has verified something older; raising it needs a
-# reason recorded in .plans/decisions.
+# Lowering the pin means CI has verified something older.
 set(URI_CHEZ_MINIMUM_VERSION "10.4.1")
 
 # Searched in this order. `scheme` is first because it is what upstream installs,
@@ -122,9 +120,8 @@ function(uri_chez_classify output path
   endif()
   set(version "${CMAKE_MATCH_1}")
 
-  # A floor, not an equality: the upstream plan's Tier 2 matrix explicitly
-  # includes additional implementation versions, so exact-matching would
-  # contradict it.
+  # A floor, not an equality: newer releases of Chez are supported, so
+  # exact-matching would reject them.
   # The floor must be present before it can be enforced. `if(x VERSION_LESS "")`
   # evaluates FALSE in CMake, so an unset or out-of-scope minimum would accept
   # every version silently -- the one guard behind this project's portability
@@ -194,10 +191,10 @@ endfunction()
 # candidate that cannot even be executed is a verdict on that candidate, not on
 # the host, and the search has to be able to move on to the next name.
 #
-# This was learned the hard way. When the probe raised, a `chezscheme` on PATH
-# that was a symlink to a Petite binary aborted the entire search -- Chez locates
-# its boot files from argv[0], so the wrong name makes it die rather than answer
-# -- and a perfectly good `chez` two entries later was never reached.
+# A probe that raised would let a `chezscheme` on PATH that is a symlink to a
+# Petite binary abort the entire search -- Chez locates its boot files from
+# argv[0], so the wrong name makes it die rather than answer -- and a perfectly
+# good `chez` two entries later would never be reached.
 #
 # Status is `ok` or `no-answer`. execute_process reports a failure to run at all
 # as a non-numeric RESULT_VARIABLE, which covers both a timeout and a subprocess

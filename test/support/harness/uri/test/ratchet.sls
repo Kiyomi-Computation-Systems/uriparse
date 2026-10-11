@@ -1,11 +1,10 @@
 #!r6rs
 ;;; (uri test ratchet): which RFC 3986 vectors this project claims to resolve.
 ;;;
-;;; A TWO-WAY GATE (decision 0005; the sibling's decision 0008 item 6 is the
-;;; same rule). A manifest that only fails when a passing vector breaks is a
-;;; TODO list: it lets a vector start passing unnoticed, and a milestone whose
-;;; exit criterion can drift upward without anyone noticing has stopped being
-;;; falsifiable. So there are three violations, not one:
+;;; A TWO-WAY GATE. A manifest that only fails when a passing vector breaks is a
+;;; TODO list: it lets a vector start passing unnoticed, and a claim that can
+;;; drift upward without anyone noticing has stopped being falsifiable. So there
+;;; are three violations, not one:
 ;;;
 ;;;   * a `passing` row whose vector failed   -- a regression
 ;;;   * a `not-yet` row whose vector passed   -- an unrecorded gain

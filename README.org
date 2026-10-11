@@ -1,93 +1,56 @@
 * uriparse
 
-#+begin_quote
-*CI runs on one cell, Linux amd64*, and its first run passed on 2026-10-01
-([[file:.plans/decisions/0039-the-first-funded-ci-run-passes-and-settles-0017-item-3.md][decision 0039]]).
-Windows and arm64 Linux are not run
-([[file:.plans/decisions/0006-ci-covers-the-linux-cell-alone.md][decision 0006]]).
-#+end_quote
-
 An RFC 3986 URI parser for Chez Scheme, in portable R6RS.
 
 #+begin_quote
 ✨ *AI Disclosure:* LLMs are used extensively in the planning and development of this project.
 #+end_quote
 
-** Status: v0.6.2 — released 2026-10-01
+** What it does
 
-The scanner splits a URI reference into five components — scheme, authority,
-path, query, fragment — for all three modes (M2), and ~(uri collect)~ assembles
-them; the pure core percent decodes/encodes and applies RFC 3986 §6.2.2
-syntax-based normalization (M5). It *resolves* references: ~(uri path)~ (§5.2.4
-remove-dot-segments, §5.2.3 merge), ~(uri resolve)~ (§5.2.2 strict
-transform-references) and ~(uri recompose)~ (§5.3) turn a base and a reference
-into a target URI — and **all 42 rows of RFC 3986 §5.4 pass** (M6). Now the
-round-trip property is *measured* (M7): ~parse → normalize → recompose → parse~
-reaches a fixed point over every committed URI, so the pipeline is internally
-consistent. It also *validates*: ~uri-parse-validate~ judges every component's
-charset (M3) and the whole authority host grammar — userinfo, host as reg-name /
-IPv4address / IP-literal → IPv6address / IPvFuture, and port (M4); ~(uri normalize)~
-now folds *host* case too, completing RFC 3986 §6.2.2.1 (M4); and
-~uri-parse-authority-form~ parses an RFC 9112 authority-form ~host:port~ CONNECT
-target (M9). ~uri-parse~ itself stays lenient — validation is the separate
-~uri-parse-validate~ pass. That validation is now *audited*: ~uri-parse-validate~
-is recognizer-equivalent to RFC 3986 Appendix A per mode — it accepts a byte
-string iff the bytes are that production — over an exhaustive small-input sweep,
-the normative corpora, and an adversarial corpus, with **zero deviations**
-([[file:.plans/decisions/0028-the-rfc-3986-conformance-audit-is-recognizer-equivalence-against-an-independent-whole-uri-oracle.md][decision 0028]],
-[[file:.plans/decisions/0030-the-rfc-3986-conformance-audit-is-clean-recognition-equivalence-is-earned.md][decision 0030]]).
-For a server reusing one parser per connection, ~uri-collector-reset!~ returns a
-collector to its just-constructed state in place, with no reallocation (issue #11);
-and ~uri-parse-result-validate~ applies that same audited validation to a parse
-result — a reused collector's ~uri-collect-finish!~ or any other — so a validating
-server judges the reused result with no re-parse (issue #18). A server that keeps a
-component as a span of its own buffer (an origin-form path or query) judges its
-charset in place with ~validate-component~ over ~[start, end)~, copying nothing
-(issue #21), and judges a ~Host~ header value in place the same way with
-~validate-authority~ over ~[start, end)~ (issue #24).
-Standing behind it all (M1): the RFC's own vectors, the
-loader that reads them, the comparator, the two-way ratchet, and the harness and
-build layer.
+- *Parses.* ~(uri collect)~ splits a URI reference into its five components —
+  scheme, authority, path, query, fragment — in any of three modes (~uri~,
+  ~relative-ref~, ~uri-reference~). Input may arrive in any number of chunks.
+- *Validates.* ~uri-parse-validate~ checks every component's charset and the
+  authority grammar: userinfo, host (reg-name, IPv4address, IP-literal →
+  IPv6address / IPvFuture) and port. It accepts exactly the byte strings RFC 3986
+  Appendix A accepts, per mode.
+- *Resolves.* ~(uri path)~ (§5.2.3 merge, §5.2.4 remove-dot-segments),
+  ~(uri resolve)~ (§5.2.2 transform-references) and ~(uri recompose)~ (§5.3) turn
+  a base and a reference into a target URI. All 42 examples in RFC 3986 §5.4 pass.
+- *Normalizes.* ~(uri normalize)~ applies §6.2.2 syntax-based normalization:
+  scheme and host case, uppercase percent-encoding hex, and decoding of
+  unreserved characters. ~(uri percent)~ decodes and encodes.
+- *Parses CONNECT targets.* ~uri-parse-authority-form~ parses an RFC 9112
+  authority-form ~host:port~.
+- *Fits a server.* ~uri-collector-reset!~ reuses a collector without
+  reallocating. ~uri-parse-result-validate~ validates a result you already have.
+  ~validate-component~ and ~validate-authority~ check a ~[start, end)~ range of
+  your own buffer in place, copying nothing.
 
-What this project will *not* claim until it is measured:
+** Scope and limits
 
-- Not a blanket "RFC 3986 compliant". The *validation* recognizer is now audited
-  conformant (above) — but that claim is *scoped*, not a whole-library grant. It
-  is RECOGNITION (accept/reject) equivalence per mode, not an
-  error-code/offset-equivalence claim (those are the M3/M4 lanes' own gates); the
-  exhaustive sweep is bounded (length 5, a 12-byte alphabet), with deeper
-  structures covered adversarially, not exhaustively; and ~uri-parse~ ITSELF stays
-  a lenient splitter *by design* — it accepts bytes the ABNF rejects, and that
-  split between the two entry points is the point, not a gap
-  ([[file:.plans/decisions/0024-charset-validation-is-the-cores-over-the-split-components.md][decision 0024]],
-  [[file:.plans/decisions/0025-the-host-grammar-is-the-cores-over-the-opaque-authority.md][decision 0025]],
-  [[file:.plans/decisions/0030-the-rfc-3986-conformance-audit-is-clean-recognition-equivalence-is-earned.md][decision 0030]]).
-- ~(uri normalize)~ does not remove dot-segments. It applies all of RFC 3986
-  §6.2.2.1 — *scheme* case, *host* case (M4), uppercase hex, decode unreserved —
-  but dot-segment removal is reference resolution's job (§5.2.4), and lives in
-  ~(uri resolve)~, not the normalizer
-  ([[file:.plans/decisions/0020-v01-normalizes-scheme-and-percent-and-defers-host-case.md][decision 0020]],
-  [[file:.plans/decisions/0025-the-host-grammar-is-the-cores-over-the-opaque-authority.md][decision 0025]]).
-- Resolution is *strict* (§5.2.2 with strict = true). ~http:g~ resolved against
-  ~http://a/b/c/d;p?q~ is ~http:g~, not the RFC-1630 backward-compatible
-  ~http://a/b/c/g~ — that partial-URI compatibility is out of scope
-  ([[file:.plans/decisions/0015-errata-4547-and-5428-are-adjudicated-against-the-abnf.md][decision 0015]],
-  [[file:.plans/decisions/0001-the-project-is-chez-uri-and-where-it-stops.md][decision 0001]]).
-  A caller wanting a *normalized* target normalizes before resolving — decoding
-  ~%2E~ to ~.~ manufactures dot-segments that resolution then removes
-  ([[file:.plans/decisions/0021-reference-resolution-recomposes-at-m6.md][decision 0021]]).
-- The round trip holds for every *parse output*, not for every hand-built
-  component. ~(uri recompose)~ (§5.3) is a faithful inverse of ~(uri collect)~,
-  but two scheme-absent shapes it can be *handed* do not survive it: a relative
-  path whose first segment contains ~:~ (recomposes to a *scheme*) and a
-  no-authority path beginning ~//~ (recomposes to an *authority*). §5.3 omits
-  §4.2's disambiguating ~./~ on purpose; a relative-reference serializer that
-  adds it is a v0.2 function above recompose
-  ([[file:.plans/decisions/0022-the-round-trip-property-is-a-one-step-parse-recompose-identity.md][decision 0022]]).
-- Not "portable". The source is R6RS and imports only ~(rnrs)~,
-  ~(byte-machine ...)~ and its own libraries — asserted by a lane, not trusted
-  — but no second implementation is in CI, and a property is measured or it is
-  not claimed ([[file:.plans/decisions/0007-src-is-pure-r6rs-and-chez-is-confined.md][decision 0007]]).
+- ~uri-parse~ is a lenient splitter by design: it accepts bytes the ABNF
+  rejects. Strict checking is the separate ~uri-parse-validate~ pass.
+- The validation claim is accept/reject equivalence with Appendix A, per mode.
+  It is checked by an exhaustive sweep of short inputs (length 5, a 12-byte
+  alphabet), the RFC's own vectors, and an adversarial corpus. Error codes and
+  offsets are tested separately, not covered by that claim.
+- ~(uri normalize)~ does not remove dot-segments. That is reference
+  resolution's job (§5.2.4) and lives in ~(uri resolve)~. To get a normalized
+  target, normalize before resolving: decoding ~%2E~ to ~.~ creates dot-segments
+  that resolution then removes.
+- Resolution is strict (§5.2.2 with strict = true): ~http:g~ against
+  ~http://a/b/c/d;p?q~ is ~http:g~, not the RFC 1630 compatible
+  ~http://a/b/c/g~.
+- Recomposition round-trips every parse result, but not every hand-built
+  component set. A scheme-less relative path whose first segment contains ~:~
+  recomposes to a scheme, and a no-authority path beginning ~//~ recomposes to an
+  authority. §5.3 omits §4.2's disambiguating ~./~ on purpose.
+- Portability: the source is R6RS and imports only ~(rnrs)~,
+  ~(byte-machine ...)~ and its own libraries, and a test checks this. Only Chez
+  Scheme is tested. CI runs Linux amd64. Development happens on macOS. Windows
+  and arm64 are not run.
 
 ** Requirements
 
@@ -177,19 +140,18 @@ base, normalizing, and recomposing live in ~(uri resolve)~, ~(uri normalize)~ an
 [[file:test/vendor/rfc3986.txt][the vendored RFC text]] by ~cmake/UriCorpus.cmake~, with the source's digest
 recorded in ~PROVENANCE~. ~make corpus-refresh~ rewrites it and a registered
 lane re-derives and compares, so a vector edited by hand reddens rather than
-surviving. RFC 3986 §5.4 is the only normative vector set this project has, and
-M6 is gated on all 42 of its rows passing.
+surviving. RFC 3986 §5.4 is the only normative vector set the RFC provides, and
+all 42 of its rows must pass.
 
 ** Layout
 
-| ~.plans/~           | plans, and ~decisions/~ — the record of every choice a reader would otherwise reverse-engineer |
-| ~src/~              | the shipped libraries, pure R6RS: the scanner, the seam, the shell, and the core — percent, charset, host, normalize, path, resolve, recompose |
-| ~test/conformance/~ | the derived corpus and the ratchet                                                             |
-| ~test/support/~     | the harness and the build-layer specifications                                                 |
-| ~docs/~             | user-facing documentation only                                                                 |
+| ~src/~              | the shipped libraries, pure R6RS: the generated scanner, the shell ~(uri collect)~, and the core — percent, charset, host, normalize, path, resolve, recompose |
+| ~tools/~            | the generator that emits ~src/generated/uri-scanner.sls~ from ~(uri grammar)~                                                                      |
+| ~test/conformance/~ | the derived corpus and the ratchet                                                                                                                  |
+| ~test/support/~     | the harness and the build-layer specifications                                                                                                      |
+| ~docs/~             | user-facing documentation                                                                                                                           |
 
-Start with [[file:.plans/2026-09-18-chez-uri-design.md][the design]]: what byte-machine actually enforces, the span and
-callback surface those constraints permit, and where v0.1 stops.
+Release history is in [[file:CHANGELOG.md][CHANGELOG.md]].
 
 ** License
 
