@@ -1,7 +1,7 @@
 # 0022: the round-trip property is a one-step parse∘recompose identity on the once-normalized components
 
 Date: 2026-09-18
-Status: accepted
+Status: accepted, then **amended in part by [0042](0042-the-easy-layer-normalizes-dot-segments-and-guards-the-double-slash-shape.md)**
 Plan: [the design](../2026-09-18-chez-uri-design.md) §7 (the instrument table),
 the [brief](../2026-09-18-chez-uri-project-brief.md) "The test instrument comes
 first" (instrument #2, the round-trip property)
@@ -15,6 +15,14 @@ pattern of pinning an RFC boundary as a recorded note, not faking it),
 [0020](0020-v01-normalizes-scheme-and-percent-and-defers-host-case.md) and
 [0021](0021-reference-resolution-recomposes-at-m6.md) (normalize / recompose, and
 the milestone-scope-decision pattern this mirrors)
+
+> **Amendment (0042).** The Context's claim that §5.2.2 resolution never
+> synthesizes a `//`-leading no-authority path is false. Against `foo:/a`,
+> `.//bar` and `/.//bar` both resolve to `{foo, #f, "//bar"}`, which recomposes
+> to `foo://bar` and re-parses with authority `bar`. Item 4 stands: `recompose`
+> is unchanged. The shape is pinned as a third expected non-round-trip in
+> `property.round-trip`, and `(uri easy)` guards it. The domain claim over parse
+> outputs (item 3) is unaffected.
 
 ## Context
 

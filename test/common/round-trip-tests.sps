@@ -17,8 +17,9 @@
 ;;; vectors that the committed corpora (all lowercase, no `%`) cannot reach: the
 ;;; normalize delta and the absent/empty distinction put through the loop, the
 ;;; exhaustive empty/absent matrix, positive RELATIVE-reference round trips (mode
-;;; `uri-reference`), the `%%341` non-idempotence pin, and the §4.2/§3.3
-;;; recompose boundary over hand-built components.
+;;; `uri-reference`), the `%%341` non-idempotence pin, the §4.2/§3.3
+;;; recompose boundary over hand-built components, and the §3.3 shape that
+;;; §5.2.2 resolution reaches from a base with no authority.
 ;;;
 ;;; A universal property, not a ratchet: red iff any in-scope vector fails.
 (import (rnrs)
@@ -27,6 +28,7 @@
         (uri components)
         (uri collect)
         (uri normalize)
+        (uri resolve)
         (uri recompose))
 
 (define (corpus-path name)
@@ -254,5 +256,42 @@
         (let ((c (parse-components 'uri-reference "//x")))
           (check-equal "\"//x\" parses with authority x" (uri-components-authority c) (a "x"))
           (check-equal "and an empty path" (uri-components-path c) (a "")))))))
+
+;;; --- §5.2.2 resolution reaches the §3.3 shape, from a no-authority base -----
+;;; The §3.3 shape above is unreachable from PARSING, but not from RESOLUTION.
+;;; §5.2.4 rewrites "/./" to "/", so a reference whose path (merged or rooted)
+;;; begins "/.//" resolves to a path beginning "//". With no authority in the
+;;; base, §5.3 emits that path straight after "foo:", and the result re-parses
+;;; with the "//" as the authority delimiter: a different URI. An authority in
+;;; the base keeps the "//" inside the path, so http-style bases never meet it.
+;;; (uri resolve) and (uri recompose) follow the RFC's algorithms as written, so
+;;; this is pinned as an expected non-round-trip: a change to either must
+;;; redden here rather than drift.
+(harness-group "§5.2.2 resolution reaches the §3.3 shape from a no-authority base"
+  (lambda ()
+    (define (resolve-strings base ref)
+      (resolve-components (parse-components 'uri base)
+                          (parse-components 'uri-reference ref)))
+    (for-each
+     (lambda (ref)
+       (harness-case (string-append "foo:/a + " ref " resolves to a //-leading path that does not round-trip")
+         (lambda ()
+           (let* ((t (resolve-strings "foo:/a" ref))
+                  (rp (recompose-reparse 'uri t)))
+             (check "the target is {foo, no authority, \"//bar\"}"
+                    (uri-components=? t (comp (a "foo") #f (a "//bar") #f #f)))
+             (check-equal "it recomposes to foo://bar" (recompose t) (a "foo://bar"))
+             (check "the recomposition re-parses" (uri-components? rp))
+             (check "the target does NOT round-trip" (not (uri-components=? rp t)))
+             (check-equal "it re-parses with authority \"bar\""
+                          (uri-components-authority rp) (a "bar"))))))
+     (list ".//bar" "/.//bar"))
+    (harness-case "an authority in the base keeps the // inside the path"
+      (lambda ()
+        (let* ((t (resolve-strings "http://h/a" "/.//bar"))
+               (rp (recompose-reparse 'uri t)))
+          (check-equal "the path is //bar" (uri-components-path t) (a "//bar"))
+          (check "and the target round-trips"
+                 (and (uri-components? rp) (uri-components=? rp t))))))))
 
 (harness-finish)

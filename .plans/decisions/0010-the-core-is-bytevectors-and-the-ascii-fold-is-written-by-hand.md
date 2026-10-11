@@ -1,8 +1,14 @@
 # 0010: the core is bytevectors, and the ASCII fold is written by hand
 
 Date: 2026-09-18
-Status: accepted
+Status: accepted, then **item 3 superseded by [0040](0040-the-easy-layer-is-strings-at-the-edge-one-record-and-a-validated-domain.md)**
 Plan: [the design](../2026-09-18-chez-uri-design.md) §5
+
+> **Amendment (0040).** Item 3 ("no string-level convenience layer in v0.1") is
+> superseded: `(uri easy)` is that layer. Items 1, 2, 4 and 5 stand. The core
+> stays bytevectors, and `utf8->string` stays at the edge, which is where
+> `(uri easy)` sits. Item 3's objection, a second surface that no vector
+> exercises, is answered by running the committed vectors through it.
 
 ## Context
 

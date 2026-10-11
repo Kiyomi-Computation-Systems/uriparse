@@ -3760,3 +3760,90 @@ use the accessors; it can then pin uriparse v0.6.2 alongside it. (4) Carried fro
 2026-12-01 CMake hold review; the 24.04 → 26.04 move as its own commit (0038 item 4);
 chez-httparse's runner pin before 2026-10-19; the result-level authority-form validator (0032
 item 4), if a request measures the need; v0.6+ tooling (0012, 0022); the next sibling request.
+
+---
+
+EASY LAYER — `(uri easy)` AND `(uri query)`. Plan: .plans/2026-10-11-easy-layer.md (PR #36,
+branch docs/easy-layer-plan, open). Decisions in force: 0040 (strings at the edge, one record, a
+validated domain; supersedes 0010 item 3), 0041 (`(uri query)` splits the query over its bytes;
+amends 0001), 0042 (`uri-normalize` removes dot segments, and a guard covers the `//` shape
+resolution can reach; amends 0022). Target v0.7.0, additive: no existing library changes shape.
+
+WHAT IT SHIPS. `(uri easy)`: string parsers for the three modes that return an opaque `Uri`
+record over validated components; raw accessors, except `uri-scheme` and `uri-host`, which
+return their §6.2.2 form; decoded readings (path segments, query and form pairs, `uri-decode`,
+`uri-encode`) that split before they decode and are strict UTF-8; `uri->string`, `uri-resolve`,
+`uri-normalize`, `uri=?`, and `uri->components` / `components->uri` down to the low layer;
+`&uri-error` with a reason, a character offset and the input. `(uri query)`: `query-pairs` and
+`form-pairs`, pure, over bytevectors.
+
+SLICE PLAN (one PR per slice; GATE after ⓪, since the records are what the code is held to):
+  ⓪  records 0040–0042 and the amendment headers; the 0022 counterexample pinned in
+     property.round-trip; README "Scope and limits"; CHANGELOG. No src/. — GATE.
+  ①  `(uri query)`: hand-derived vectors, plus an independent oracle in the harness graded by an
+     exhaustive sweep over a small alphabet.
+  ②  `(uri easy)`, parse and read.
+  ③  `(uri easy)`, render, resolve, normalize and compare; the §5.4 corpus run through strings.
+  ④  docs/easy.org, README, CHANGELOG [0.7.0], the version bump and tag.
+  CLOSE — merge gate + closing ritual (ask first) + reflection.
+
+SETTLED IN REVIEW (2026-10-11, the maintainer, in session). Bad input raises a condition. The
+first version covers read, render and resolve; building from parts is a later plan. THE QUERY
+SPLIT was questioned first ("why string-split when we have a parser?"). Answer: RFC 3986's query
+has no internal grammar, spans do not nest (0008), and per-pair spans would change the scanner
+ABI chez-http-server builds on; so it is a core sub-split like (uri host)'s, and it must split
+before it decodes or `%26` becomes a live `&`. Then: `(uri query)` as a separate library. NAME:
+`(uri easy)`, not `(uri)`, because one-part names map to different files across
+implementations. CASE: the plan's first draft returned scheme and host as written; reviewing
+the question changed the recommendation, because a raw `uri-host` lets `Example.COM` past a
+`string=?` allowlist check. Accessors normalize; the record and `uri->string` stay raw.
+`uri-resolve` and `uri=?` accept strings as well as records.
+
+FOUND WHILE PLANNING (measured 2026-10-11, macOS arm64, Chez 10.4.1 tarm64osx). (1) 0022's
+Context says §5.2.2 resolution never synthesizes a `//`-leading no-authority path. False:
+`foo:/a` with `.//bar` or `/.//bar` resolves to {foo, #f, "//bar"}, which recomposes to
+`foo://bar` and re-parses with authority `bar`. An `http://` base hides it, because the
+authority keeps the `//` inside the path, and the §5.4 corpus is all `http://a/...`. (2) Chez's
+`utf8->string` maps invalid bytes to U+FFFD, so `%FF` and `%FE` would decode to `string=?`
+strings. (3) Low-layer error offsets count bytes: `relative-ref "é:b"` fails `scheme-forbidden`
+at byte 2, character 1. (4) main moved under the plan branch: #35 merged mid-session. The
+branch already contained it, but the plan's README step named the section #35 renamed ("Parsing
+a URI" is now "Using it"), and was corrected.
+
+SLICE ⓪ OPEN (2026-10-11). Branch docs/easy-layer-slice0, STACKED on docs/easy-layer-plan,
+because the records link to the plan file. When #36 squash-merges, rebase this branch onto main
+(`git rebase --onto main docs/easy-layer-plan`), or the PR re-shows the plan's commits. In the
+branch: records 0040, 0041, 0042; amendment headers on 0001, 0010 (item 3 superseded) and 0022;
+the pin, group "§5.2.2 resolution reaches the §3.3 shape from a no-authority base" in
+test/common/round-trip-tests.sps, three cases (`.//bar` and `/.//bar` against `foo:/a`, and an
+`http://h/a` control). Its lane's SOURCES gain path.sls and resolve.sls, which the test now
+imports through (uri resolve). README.org's recomposition bullet names the resolution case;
+CHANGELOG [Unreleased] records the pin and the README change. The plan's Slice ⓪ text is updated
+to match. WATCHED FAIL, on a scratch copy of src/ with each edit asserted landed: recompose
+writing "/." before a //-leading path after no authority fails 3 cases and 6 checks (both
+`foo:` cases and 0022's hand-built §3.3 case); remove-dot-segments case B dropping three bytes
+of "/./" fails 3 cases and 9 checks (the whole new group, the `http` control included). The
+lane went from 27 cases / 96 checks to 30 / 108, in both the source and aot registrations.
+Measured on d189c1e plus the working tree (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3,
+byte-machine c338a57): test-all 79/79, no-scheme 13/13.
+
+PLAN PR #36 CLOSED OUT (2026-10-11). Squash-merged as 145bc08 on 0b980a5, pinned by
+--match-head-commit d189c1e (gh needs the full SHA there; a short one is refused as "Could not
+coerce value to GitObjectID"). Merged tree 16ea20c = tested tree 16ea20c (hash compare). The
+first attempt, earlier the same day, was refused by the session's permission classifier ("merge
+without review"); the maintainer asked again and the second went through. CI DID NOT RUN on any
+of #36's three pushes (runs 38156441065, 38156641784, 38156709059), all refused over billing. A
+PR comment records that with the local count, `make test` 79/79 on d189c1e. #37 was retargeted
+to main BEFORE the plan branch went, then docs/easy-layer-slice0 was rebased with `git rebase
+--onto origin/main d189c1e`: clean, and the rebased tree equals the old head's.
+docs/easy-layer-plan deleted local and remote.
+
+REFLECTION. Three things. (1) A SENTENCE IN A DECISION RECORD IS A CLAIM NOTHING CHECKS. 0022's
+"resolution never synthesizes a //-leading no-authority path" stood from M7 until a feature
+leaned on it, and a ten-line probe disproved it. The repair is a pinned test, not a reworded
+sentence. (2) AN OPEN QUESTION IS WORTH ASKING AGAIN FROM THE CALLER'S SIDE. The draft's "scheme
+and host as written" optimized for the round-trip identity. Asked as "what will a caller do with
+uri-host?", the answer is compare it, which made the raw form an allowlist bug. Normalizing in
+the accessor and keeping the record raw keeps both properties. (3) A STACK NEEDS ITS MERGE ORDER
+WRITTEN DOWN BEFORE THE FIRST MERGE. The retarget must precede the branch deletion, and under a
+squash the stacked branch's old base commits must be cut off with --onto.
