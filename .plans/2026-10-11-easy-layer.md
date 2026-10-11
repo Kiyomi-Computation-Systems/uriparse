@@ -16,7 +16,7 @@ learning collectors, modes, bytevectors, or the absent/empty predicates:
 
 (uri-scheme u)          ; "https"
 (uri-userinfo u)        ; "user"
-(uri-host u)            ; "Example.com"
+(uri-host u)            ; "example.com"   normalized: hosts are case-insensitive
 (uri-port u)            ; 8443
 (uri-path u)            ; "/a/b%20c"
 (uri-path-segments u)   ; ("a" "b c")
@@ -43,7 +43,9 @@ one new core library, `(uri query)`, is new surface, not a change to old surface
 | easy function | built from |
 |---|---|
 | `string->uri`, `string->uri-reference`, `string->relative-ref` | `uri-parse-validate` in mode `uri` / `uri-reference` / `relative-ref` |
-| `uri-userinfo`, `uri-host`, `uri-port` | `(uri host)` `authority-host-span` over the authority |
+| `uri-scheme` | `normalize-scheme` |
+| `uri-host` | `authority-host-span` over the authority `normalize-components` returns |
+| `uri-userinfo`, `uri-port` | `(uri host)` `authority-host-span` over the raw authority |
 | `uri-path-segments` | split on `/`, then `pct-decode` per segment |
 | `uri-query-pairs`, `uri-form-pairs` | new `(uri query)` `query-pairs` / `form-pairs` |
 | `uri-decode`, `uri-encode` | `pct-decode` / `pct-encode` + `unreserved-byte?`, and a strict UTF-8 check |
@@ -66,12 +68,21 @@ These are the invariants. Each one is checked by a test, not just stated.
      false over the lenient domain (`%%341`). Every `%` here begins a valid
      triplet, so that counterexample cannot occur, and a lane asserts the property.
 
-2. **Raw by default, decoded on request.** Accessors return the text as written:
-   `uri-path` is `"/a/b%20c"`, not `"/a/b c"`, and `uri-host` keeps its case.
-   Raw is lossless. `(uri->string (string->uri-reference s))` is `s` for every
-   valid `s`, which is decision 0022's identity reached through strings.
-   Decoding is a separate, explicit call. A decoded `%2F` is a `/` that is not a
-   path separator, so decoding cannot be the default.
+2. **Raw by default, decoded on request.** The record holds the text as
+   written, and so does `uri->string`. `(uri->string (string->uri-reference s))`
+   is `s` for every valid `s`, which is decision 0022's identity reached through
+   strings. Accessors return raw text: `uri-path` is `"/a/b%20c"`, not
+   `"/a/b c"`. Decoding is a separate, explicit call. A decoded `%2F` is a `/`
+   that is not a path separator, so decoding cannot be the default.
+
+   **Two exceptions: `uri-scheme` and `uri-host` return their §6.2.2-normalized
+   form.** That means lowercase, with unreserved `%XX` decoded. RFC 3986 makes
+   both case-insensitive (§3.1, §3.2.2), so the fold throws away nothing the RFC
+   treats as meaningful. The commonest use of either is a comparison, and a raw
+   accessor makes `(string=? (uri-host u) "example.com")` miss `Example.COM`.
+   That miss is an allowlist or denylist bypass, not just an inconvenience.
+   `uri-authority` and `uri-userinfo` stay raw (userinfo is case-sensitive), so
+   `uri-host` and `uri-authority` can differ in case, and the docs say so.
 
 3. **Absent is not empty, in strings too.** `#f` is absent; `""` is present and
    empty (decision 0008, carried to the edge). `(uri-query (string->uri "http://a"))`
@@ -125,7 +136,7 @@ string->relative-ref  : String -> Uri          ; relative only
 uri-string?           : String [Mode] -> Boolean   ; Mode defaults to 'uri
 uri?                  : Any -> Boolean
 
-;; --- raw fields (as written) ---
+;; --- fields (raw, except scheme and host: §6.2.2-normalized) ---
 uri-scheme            : Uri -> (Option String)
 uri-authority         : Uri -> (Option String)
 uri-userinfo          : Uri -> (Option String)
@@ -168,10 +179,10 @@ imports both.
 
 | accessor | absent (`#f`) when | present-empty when | notes |
 |---|---|---|---|
-| `uri-scheme` | a relative reference | never (the grammar requires 1+ chars) | case as written; `uri-normalize` lowercases |
-| `uri-authority` | no `//` | `file:///x` | raw `userinfo@host:port` |
-| `uri-userinfo` | no `@` before the host | `http://@a` | bracket-aware via `authority-host-span` |
-| `uri-host` | no authority | `file:///x` | IP-literal keeps its `[` `]`: they are part of RFC 3986's `host` production. `mailto:a@b` has *no* host: `a@b` is its path |
+| `uri-scheme` | a relative reference | never (the grammar requires 1+ chars) | lowercase: `HTTP:` reads `"http"` |
+| `uri-authority` | no `//` | `file:///x` | raw `userinfo@host:port`, case as written |
+| `uri-userinfo` | no `@` before the host | `http://@a` | raw, case as written. Bracket-aware via `authority-host-span` |
+| `uri-host` | no authority | `file:///x` | normalized: `Ex%41mple.COM` reads `"example.com"`, `[::A]` reads `"[::a]"`. A triplet that is not unreserved keeps its uppercase hex: `%C3%A9.COM` reads `"%C3%A9.com"`. An IP-literal keeps its `[` `]`, because they are part of RFC 3986's `host` production. `mailto:a@b` has *no* host: `a@b` is its path |
 | `uri-port` | no port **or an empty port** (`http://a:`) | — | an integer. `080` reads 80. No range check: RFC 3986 `port = *DIGIT` has none, and 65535 is a TCP fact |
 | `uri-path` | never | `http://a` | always a string |
 | `uri-query` | no `?` | `http://a?` | raw |
@@ -371,7 +382,9 @@ measured counts there, not here.
   through `uri-decode`).
 - `test/common/easy-tests.sps` and its lane.
 - **Vectors:** each row of the field-semantics table, both its absent and its
-  empty case. Port: `http://a:8080`, `http://a:`, `http://a:080`,
+  empty case. Case: `HTTP://User@Ex%41mple.COM/` reads scheme `"http"`, host
+  `"example.com"`, userinfo `"User"`, and authority `"User@Ex%41mple.COM"`, and
+  it renders back unchanged. Port: `http://a:8080`, `http://a:`, `http://a:080`,
   `http://[::1]:443`. UTF-8, positive: `%C3%A9`, `%F0%9F%98%80`. Negative:
   `%FF`, `%C0%AF` (overlong `/`), `%ED%A0%80` (surrogate), `%F4%90%80%80`
   (above U+10FFFF), `%E2%82` (truncated). Offsets: `string->relative-ref "é:b"` →
@@ -381,7 +394,11 @@ measured counts there, not here.
 - **Mutations:** `utf8->string` in place of the strict check (`%FF` and `%FE`
   then compare equal); the byte offset passed through (`é:b` reads 2);
   `uri-parse` in place of `uri-parse-validate` (`http://a b/` is accepted); a
-  first-`:` port split (`[::1]:443`); `#f` and `""` collapsed in any accessor.
+  first-`:` port split (`[::1]:443`); `#f` and `""` collapsed in any accessor;
+  a raw host or scheme returned (`Example.COM`); the fold applied to the whole
+  authority (userinfo `User` reads `user`); the fold applied inside a triplet
+  (`%C3` reads `%c3`); and the fold leaking into the record (the render no
+  longer round-trips).
 
 ### ③ `(uri easy)`: render, resolve, normalize, compare
 
@@ -425,16 +442,20 @@ measured counts there, not here.
 - §6.2.3 scheme-based and §6.2.4 protocol-based normalization; IRIs and IDNA;
   WHATWG URL; a ranged `(uri query)`; a lenient easy parser.
 
-## Open questions for review
+## Settled in review (2026-10-11)
 
-1. **The name.** `(uri easy)` follows the `racket/gui/easy` convention. The
-   shorter `(import (uri))` reads better, but a one-part library name resolves to
-   different files across implementations (Racket appends `/main`, Chez looks
-   for `uri.sls`), which costs portability. Recommendation: `(uri easy)`.
-2. **Scheme and host case.** Python, Go and WHATWG lowercase the scheme on
-   parse. This plan returns it as written, so that rule 2's identity holds and
-   no accessor lies about the input. Comparison goes through `uri=?`.
-   Recommendation: as written.
-3. **String arguments to `uri-resolve` and `uri=?`.** They are convenient, but
-   they mean two types per argument. Recommendation: accept both. The parse
-   mode for each position is fixed above, so there is no guessing.
+These were open in the first draft. The maintainer settled them, and Slice ⓪'s
+records carry them.
+
+1. **The name is `(uri easy)`**, in `src/uri/easy.sls`. A one-part name such as
+   `(uri)` would read better, but it resolves to different files across
+   implementations (Racket appends `/main`, Chez looks for `uri.sls`). A two-part
+   name maps the same way everywhere, as `(uri collect)` does. It also follows
+   the `racket/gui/easy` convention.
+2. **`uri-scheme` and `uri-host` return the normalized form; the record and
+   rendering stay raw.** This is rule 2's exception. The first draft returned
+   both as written. Lowercasing at parse (Python and WHATWG) was rejected because
+   it breaks the round-trip identity for uppercase input.
+3. **`uri-resolve` and `uri=?` accept a `Uri` or a `String` per argument.** The
+   parse mode for each position is fixed (the base is parsed absolute, the rest
+   as a URI reference). An invalid string raises `&uri-error`, as everywhere else.
