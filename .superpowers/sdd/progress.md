@@ -3698,8 +3698,8 @@ one from the first commit, and no change could redden it. The repair is not "eig
 lane that reports its own count and refuses a stale exemption, so the next added lane is judged
 rather than miscounted. (2) A GREEN REHEARSAL IS HALF THE EVIDENCE. 79/79 under 3.31.6 shows
 the spec passes there, not that it can fail there. Re-running the witnesses with that binary is
-what shows the check still catches something on the runner's CMake ([[a crash can count as a
-catch]] in reverse: a pass can count as a check). (3) THE FIRST FAILURE IS ALSO A TEST OF THE
+what shows the check still catches something on the runner's CMake. A crash can count as a
+catch; in reverse, a pass can count as a check. (3) THE FIRST FAILURE IS ALSO A TEST OF THE
 FAILURE PATH. The list-splitting ";" only appears when a finding is printed, so a spec watched
 only passing would have shipped it.
 
