@@ -4480,3 +4480,28 @@ the Akku index anyway: caret on 0.x admits no 0.8.x. MEASURED (macOS arm64, Chez
 4.3.3, byte-machine c1f7791): test-all 91/91, no-scheme 13/13; `make check-akku` in ubuntu:24.04
 amd64 with Akku 1.1.0: 15 src/ libraries, consumer green, with byte-machine 0.8.0's own manifest
 and .akkuignore in the dependency. NEXT: byte-machine on the Akku index, then chez-uri (0045).
+
+PR #47 CLOSED OUT (2026-10-11, the closing ritual, on the maintainer's word). Squash-merged as
+2cc18ed on cb11061, pinned by --match-head-commit fecfae8; main had not moved. Merged tree 8d17e3d
+= tested tree 8d17e3d (hash compare). CI DID NOT RUN: run 38178268454 was refused over billing
+(annotation read); a PR comment records it with the local evidence. Before chore/byte-machine-0.8.0
+was deleted (local and remote), no open PR was based on it (checked). The shared checkout, clean,
+fast-forwarded to 2cc18ed, and its submodule, clean, was moved to the new pin with `git submodule
+update --init` (c338a57 -> c1f7791). The worktree was removed after both trees were checked clean
+and its tree compared equal to 2cc18ed's. #48 (CI without the token) stays open and now needs a
+rebase: both add a `### Changed` section to CHANGELOG [Unreleased] and append to this ledger.
+
+REFLECTION. Three things. (1) A FAST-FORWARD DOES NOT MOVE A SUBMODULE. `git merge --ff-only`
+moved the gitlink to c1f7791 and left vendor/byte-machine checked out at c338a57 (`+` in `git
+submodule status`). A build there would have run the old runtime while the tree claimed the new
+one, and nothing in the suite compares the two. Catching up main after a pin bump includes `git
+submodule update`. (2) THE REGENERATOR'S OUTPUT WAS READ, NOT ITS SILENCE. "Byte-identical" rests
+on parser-refresh's exit 0 and "wrote 28766 bytes" at the new pin, not on a clean diff alone
+(regenerate-and-diff-needs-the-regenerator-to-run). (3) A LANE MOVED THE MANIFEST WITH THE PIN.
+#45's floor check refused the bump by name until Akku.manifest said ^0.8.0, and that was right on
+its merits: caret on 0.x admits no 0.8.x, so ^0.7.0 could never resolve from the index.
+
+NEXT. (1) #48: rebase onto 2cc18ed and re-test, then merge; then the maintainer can delete the
+SUBMODULES_READ_TOKEN secret. (2) byte-machine on the Akku index, then chez-uri (0045). (3) Publish
+the site: enable Pages and restore Actions billing (fifteen PRs, #33 to #47, merged without a CI
+verdict). (4) Carried: the easy layer's optional extensions; the sibling items in #43's NEXT (5).
