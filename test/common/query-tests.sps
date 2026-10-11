@@ -90,7 +90,23 @@
     (harness-case "the oracle's query reading satisfies every row"
       (lambda () (check-table "oracle-query-pairs" oracle-query-pairs row-query)))
     (harness-case "the oracle's form reading satisfies every row"
-      (lambda () (check-table "oracle-form-pairs" oracle-form-pairs row-form)))))
+      (lambda () (check-table "oracle-form-pairs" oracle-form-pairs row-form)))
+    ;; The split must never write to the caller's bytes, however its pieces are
+    ;; cut: form-pairs rewrites `+` on its own copy.
+    (harness-case "neither reading modifies its argument"
+      (lambda ()
+        ;; "a+b" is one piece spanning the whole input: the case where a split
+        ;; that handed over the caller's own bytes would expose them.
+        (for-each
+         (lambda (input)
+           (for-each
+            (lambda (split name)
+              (let ((bv (string->utf8 input)))
+                (split bv)
+                (check-equal (string-append name " leaves \"" input "\" alone")
+                             bv (string->utf8 input))))
+            (list query-pairs form-pairs) (list "query-pairs" "form-pairs")))
+         '("a+b=c+d" "a+b"))))))
 
 ;; --- the exhaustive sweep --------------------------------------------------
 ;;

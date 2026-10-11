@@ -166,8 +166,9 @@ components->uri       : Components -> Uri
 ;; --- errors ---
 uri-error?            : Any -> Boolean
 uri-error-reason      : UriError -> Symbol
-uri-error-offset      : UriError -> (Option Nat)
+uri-error-offset      : UriError -> Nat
 uri-error-input       : UriError -> String
+uri-error-reasons     : (Listof Symbol)    ; every reason above, written out
 ```
 
 The accessor is `uri-error-reason`, not `uri-error-code`, because `(uri
@@ -279,9 +280,16 @@ under a different meaning.
 - the easy layer's own: `invalid-utf-8` (decode), `base-not-absolute` (resolve),
   `ambiguous-components` (`components->uri`).
 
-A test asserts that this list is exactly the union of the libraries' code lists
-plus the three new reasons. A new low-layer code then reddens the test instead
-of passing through undocumented. The raised condition also carries `&who` (the
+Every reason carries an offset, so `uri-error-offset` is a `Nat`. The low layer
+reports one with every error result. `base-not-absolute` and
+`ambiguous-components` point at 0: the base as a whole lacks a scheme, and the
+recomposed string as a whole re-parses differently.
+
+`uri-error-reasons` exports this list, the way each low-layer library exports
+its code list. It is written out in `(uri easy)`, not derived from those lists,
+and a test asserts that it is exactly their union plus the easy layer's own
+reasons. A new low-layer code then reddens the test instead of passing through
+undocumented. A derived list would make that test pass by construction. The raised condition also carries `&who` (the
 easy function) and `&message` (`"invalid-reg-name at 7"`), so an unhandled one
 prints usefully. For `invalid-utf-8`, the input is the text being decoded and
 the offset is where the bad sequence's first `%` sits in it.

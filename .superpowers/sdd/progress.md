@@ -3882,3 +3882,80 @@ The two 22,712s are the alphabet's symmetry: %26 and %2B are spelled the same wa
 [Unreleased] gains the (uri query) entry. Measured on b981dde plus this commit (macOS
 arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3, byte-machine c338a57): test-all 81/81, no-scheme
 13/13.
+
+SLICE ② OPEN AND DONE IN BRANCH (2026-10-11). Branch feat/uri-easy-read, STACKED on
+feat/uri-query (#38). `(uri easy)` in src/uri/easy.sls with the slice-② exports: the three
+parsers, uri-string?, uri?, the eight fields, uri-path-segments, uri-query-pairs,
+uri-form-pairs, uri-decode, uri-encode, and the &uri-error accessors. test/common/easy-tests.sps,
+lane uri.unit.easy.chez.{source,aot}: 23 cases, 252 checks; its SOURCES are the first to name
+the harness PRNG (no lane listed prng.sls before). ONE ADDITION TO THE PLAN: `uri-error-reasons`
+is exported, a list WRITTEN OUT in easy.sls, because a list derived from the low layer's code
+lists would make "equals the union" true by construction; the plan and 0040 item 6 say so.
+DESIGN CHOICES THE CODE CARRIES: (1) decoded readings judge UTF-8 ONCE over the whole raw path
+or query, then split and convert. Splitting on an ASCII delimiter can neither cut a well-formed
+sequence nor mend an ill-formed one, so one judgement covers every piece, and the offset lands in
+the whole text (`a=%C3&b=%A9` fails at 2). (uri query) needed no change. (2) The decode offset
+maps a decoded index back to its source `%` with (uri percent)'s hex-digit-value, then to a
+character index; the parse offset converts the low layer's byte offset by counting UTF-8 lead
+bytes. (3) uri-host reads a normalize-components COPY; the record is never folded. WATCHED FAIL:
+the library missing, then 30 mutations on scratch copies of src/, each an exact single-occurrence
+substitution refused if it does not land. Every one reddened its intended case:
+  lossy decode (no UTF-8 check)        21 failures in 4 cases, %FF/%FE included
+  byte offset, parse | decode          2 | 1 (é:b and 😀:b | "é%FF")
+  uri-parse for uri-parse-validate     7 (the validation case and the message)
+  port split at the first ":"          3 (u:1@a, [::1]:443, [::1])
+  absent read as "" | userinfo @a #f   4 | 1
+  raw host | raw scheme                5 | 1
+  fold authority | userinfo | triplet  2 | 1 | 1
+  fold written into the record         3 (host read twice; authority after host)
+  UTF-8 table: C0 lead, E0 overlong, ED surrogate, F0 overlong, F4 max, F5 lead, truncation,
+    and an OVER-strict E0 (rejects U+0800)  1-2 each; the over-strict one also fails the
+    generated encode/decode round trip
+  segments: leading empty kept | decode before split   5 | 2
+  reasons: one missing | one extra     1 | 1
+  guards removed: string, uri?, mode, uri-decode's string   3 | 4 | 1 | 1
+The round trip draws 2000 strings from (uri test prng) seed 20261011, code points from every
+UTF-8 length with surrogates excluded, and also checks each encoding is a valid path. CHANGELOG
+[Unreleased] gains the (uri easy) entry; the selection count moved there from the query entry.
+Measured on ff06dcc plus this commit (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3,
+byte-machine c338a57): test-all 83/83, no-scheme 13/13.
+
+REVIEW FIXES ON #39 (2026-10-11, /code-review xhigh over main...feat/uri-easy-read, all ten
+findings fixed in this branch on the maintainer's word). (1) THE Uri RECORD IS OPAQUE: without
+`(opaque #t)`, `record-rtd` reached the mutable component bytevectors, so a caller could write
+into validated bytes. Not sealed: with the rtd unreachable and the type name unexported, nothing
+outside can subtype it. (2–4) THREE TEST GAPS CLOSED: decode rows with a malformed `%` before the
+bad sequence (`%%FF`→1, `%zz%FF`→3, `%F%FF`→2); `a=&b` through uri-query-pairs and
+uri-form-pairs (empty is not absent); userinfo with a `:` beside an IP-literal and a port.
+(5) THE OFFSET MAP ASKS pct-decode: source-index restated (uri percent)'s triplet rule with
+hex-digit-value; triplet-at? now decodes the three-byte window and asks whether it became one
+byte, so the mapping cannot drift from the decoder. Error path only. (6) uri-error-offset IS A
+Nat: the low layer reports an offset with every error result, so a #f guard would be dead code
+no test could watch fail; the contract was tightened instead, and the plan now gives slice ③'s
+base-not-absolute and ambiguous-components offset 0. (7) uri-host normalizes the authority
+alone (a components with only that field), not the path, query and fragment. (8) decode-strictly
+returns its decoded bytes, so uri-decode decodes once; the path and query readings still decode
+the whole text for the judgement and then each piece, the cost of judging once. (9) CHANGELOG
+[Unreleased] states the lane count once (83 and 13), in the newest entry. (10) (uri query)'s
+plus->space works on a copy instead of rewriting its argument in place. WATCHED FAIL: the opaque
+case failed on the unfixed code (2 failures) and again with `(opaque #t)` removed; a triplet-at?
+that calls any `%` a triplet fails the three new decode rows; collapsing an empty value to #f
+fails the two `a=&b` checks; a userinfo cut at its first `:` fails the new row. FOR (10) THE
+CONTRAST IS THE WITNESS: with `slice` handing over the caller's own bytevector for a whole-input
+piece, the OLD in-place rewrite fails only the new "neither reading modifies its argument" check
+(the table stays green, since the pairs are still right), and the NEW copying plus->space passes
+under the same split. Counts after: unit.easy 24 cases / 274 checks, unit.query 6 / 106. Measured
+on 8922cd2 plus this commit (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3, byte-machine
+c338a57): test-all 83/83, no-scheme 13/13.
+
+SLICE ⓪ PR #37 CLOSED OUT (2026-10-11). Squash-merged as 18f528a on 145bc08, pinned by
+--match-head-commit b981dde. Merged tree 3c1eb8b = tested tree 3c1eb8b (hash compare). CI DID
+NOT RUN: both pushes (runs 38157173938, 38158823366) were refused over billing; a PR comment
+records it with the local counts. The ledger's order held: #38 retargeted to main FIRST, then
+`git rebase --onto origin/main b981dde feat/uri-query` and `git rebase --onto feat/uri-query
+ff06dcc feat/uri-easy-read`, both clean, each rebased tree byte-identical to its old head (empty
+`git diff --stat`); test-all 83/83 on the top; force-pushed with leases on the old heads; then
+docs/easy-layer-slice0 deleted local and remote. #38 now targets main (head 682ac92), #39 sits
+on it (head ec67047 before this commit). This close-out is committed on #39's branch, the top of
+the stack, so no later rebase meets it at the end of the file the way #36's met slice ①'s.
+NEXT MERGE: #38 the same way (retarget #39 first, rebase --onto, then delete feat/uri-query).
