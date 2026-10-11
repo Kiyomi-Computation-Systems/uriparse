@@ -1,96 +1,69 @@
 * uriparse
 
-An RFC 3986 URI parser for Chez Scheme, in portable R6RS.
+[[https://github.com/Kiyomi-Computation-Systems/uriparse/actions/workflows/ci.yml][https://github.com/Kiyomi-Computation-Systems/uriparse/actions/workflows/ci.yml/badge.svg?branch=main]]
+
+A URI parser for Chez Scheme, written in portable R6RS. It follows
+[[https://www.rfc-editor.org/rfc/rfc3986][RFC 3986]].
 
 #+begin_quote
 ✨ *AI Disclosure:* LLMs are used extensively in the planning and development of this project.
 #+end_quote
 
+** Why
+
+uriparse is built for servers that read URIs straight off the wire.
+
+- *Bytes in, bytes out.* A URI is parsed as a bytevector, not a string, so
+  nothing is decoded or guessed before the parse.
+- *Streaming.* Input can arrive in any number of chunks, and the result is the
+  same however it was split.
+- *Reusable.* One collector can serve every request on a connection. Resetting
+  it reallocates nothing.
+- *No copies to validate.* A check can run over a range of your own buffer in
+  place.
+- *Lenient parsing, strict validation, kept apart.* ~uri-parse~ splits whatever
+  it can. ~uri-parse-validate~ rejects exactly what the RFC grammar rejects. You
+  pick the one you need.
+- *Absent is not empty.* ~http://a~ has no query and ~http://a?~ has an empty
+  one, and the results say so: ~#f~ for absent, an empty bytevector for empty.
+
 ** What it does
 
-- *Parses.* ~(uri collect)~ splits a URI reference into its five components —
-  scheme, authority, path, query, fragment — in any of three modes (~uri~,
-  ~relative-ref~, ~uri-reference~). Input may arrive in any number of chunks.
-- *Validates.* ~uri-parse-validate~ checks every component's charset and the
-  authority grammar: userinfo, host (reg-name, IPv4address, IP-literal →
-  IPv6address / IPvFuture) and port. It accepts exactly the byte strings RFC 3986
-  Appendix A accepts, per mode.
-- *Resolves.* ~(uri path)~ (§5.2.3 merge, §5.2.4 remove-dot-segments),
-  ~(uri resolve)~ (§5.2.2 transform-references) and ~(uri recompose)~ (§5.3) turn
-  a base and a reference into a target URI. All 42 examples in RFC 3986 §5.4 pass.
-- *Normalizes.* ~(uri normalize)~ applies §6.2.2 syntax-based normalization:
-  scheme and host case, uppercase percent-encoding hex, and decoding of
-  unreserved characters. ~(uri percent)~ decodes and encodes.
-- *Parses CONNECT targets.* ~uri-parse-authority-form~ parses an RFC 9112
-  authority-form ~host:port~.
-- *Fits a server.* ~uri-collector-reset!~ reuses a collector without
-  reallocating. ~uri-parse-result-validate~ validates a result you already have.
-  ~validate-component~ and ~validate-authority~ check a ~[start, end)~ range of
-  your own buffer in place, copying nothing.
+- *Parse.* Split a URI into scheme, authority, path, query and fragment. Three
+  modes: an absolute URI (~uri~), a relative reference (~relative-ref~), or
+  either (~uri-reference~).
+- *Validate.* Check each component's characters, plus the authority's userinfo,
+  host (registered name, IPv4, IPv6 or IPvFuture) and port.
+- *Resolve.* Resolve a relative reference against a base URI, including
+  removing ~.~ and ~..~ segments, and turn components back into a URI. Every
+  resolution example in RFC 3986 passes.
+- *Normalize.* Lowercase the scheme and host, uppercase percent-encoding hex,
+  and decode percent-encoded characters that never needed encoding.
+- *Parse CONNECT targets.* Read the bare ~host:port~ form an HTTP ~CONNECT~
+  request uses (RFC 9112's authority-form).
 
-** Scope and limits
+** Using it
 
-- ~uri-parse~ is a lenient splitter by design: it accepts bytes the ABNF
-  rejects. Strict checking is the separate ~uri-parse-validate~ pass.
-- The validation claim is accept/reject equivalence with Appendix A, per mode.
-  It is checked by an exhaustive sweep of short inputs (length 5, a 12-byte
-  alphabet), the RFC's own vectors, and an adversarial corpus. Error codes and
-  offsets are tested separately, not covered by that claim.
-- ~(uri normalize)~ does not remove dot-segments. That is reference
-  resolution's job (§5.2.4) and lives in ~(uri resolve)~. To get a normalized
-  target, normalize before resolving: decoding ~%2E~ to ~.~ creates dot-segments
-  that resolution then removes.
-- Resolution is strict (§5.2.2 with strict = true): ~http:g~ against
-  ~http://a/b/c/d;p?q~ is ~http:g~, not the RFC 1630 compatible
-  ~http://a/b/c/g~.
-- Recomposition round-trips every parse result, but not every hand-built
-  component set. A scheme-less relative path whose first segment contains ~:~
-  recomposes to a scheme, and a no-authority path beginning ~//~ recomposes to an
-  authority. §5.3 omits §4.2's disambiguating ~./~ on purpose.
-- Portability: the source is R6RS and imports only ~(rnrs)~,
-  ~(byte-machine ...)~ and its own libraries, and a test checks this. Only Chez
-  Scheme is tested. CI runs Linux amd64. Development happens on macOS. Windows
-  and arm64 are not run.
-
-** Requirements
-
-- Chez Scheme 10.4.1 or newer, the full system (not Petite: the ahead-of-time
-  lane needs ~compile-program~)
-- CMake 3.26 or newer
-
-Discovery tries ~scheme~, ~chez~, ~chezscheme~ in that order. If it cannot find
-a runtime, point it at one:
+The libraries live in ~src/~ and depend on
+[[https://github.com/Kiyomi-Computation-Systems/byte-machine][byte-machine]],
+included as a git submodule in ~vendor/byte-machine~.
 
 #+begin_src sh
-cmake --preset dev -DURI_CHEZ_EXECUTABLE=/absolute/path/to/scheme
+git clone --recurse-submodules https://github.com/Kiyomi-Computation-Systems/uriparse.git
 #+end_src
 
-** Building and testing
-
-#+begin_src sh
-make          # list every target
-make test     # the pull-request selection
-make test-all # the complete selection
-make no-scheme # the CMake layer alone, on a host with no Scheme
-#+end_src
-
-** Parsing a URI
-
-~(uri collect)~ splits a URI into its five components and ~(uri components)~ reads
-them. The core is bytevectors throughout, so a URI goes in as UTF-8 bytes and each
-field comes back as bytes — or ~#f~ when the component is *absent*, which is never
-confused with present-but-empty.
+Parse a URI and read its components:
 
 #+begin_src scheme
 (import (rnrs)
         (uri collect)
         (uri components))
 
-;; Parse a URI. The core works in bytevectors, so the input is UTF-8 bytes.
+;; The parser works on bytes, so the input is UTF-8.
 (define result
   (uri-parse 'uri (string->utf8 "https://example.com/path?q=1#top")))
 
-;; Print one component, or "<absent>" when it never appeared (absent, not empty).
+;; Print one component, or "<absent>" when the URI has none.
 (define (show name bv)
   (display name) (display ": ")
   (display (if bv (utf8->string bv) "<absent>"))
@@ -105,8 +78,6 @@ confused with present-but-empty.
     (show "fragment"  (uri-components-fragment c))))
 #+end_src
 
-Run it against the source libraries — ~src~ and the vendored ~byte-machine~:
-
 #+begin_src sh
 scheme --libdirs "src:vendor/byte-machine/src" --script parse.scm
 #+end_src
@@ -119,41 +90,91 @@ query: q=1
 fragment: top
 #+end_example
 
-The mode is ~uri~ (an absolute URI); ~relative-ref~ and ~uri-reference~ are the
-other two. Validating the component charsets and the host grammar is
-~uri-parse-validate~ (parse and judge in one call), or ~uri-parse-result-validate~
-to judge a result you already have — a reused collector's ~uri-collect-finish!~ —
-without re-parsing. To judge one component's charset by itself, ~(uri charset)~'s
-~validate-component~ takes the component's name, a bytevector, and an optional
-~start~ and ~end~, and reports the first bad byte relative to ~start~. ~(uri host)~'s
-~validate-authority~ does the same for an authority (~userinfo@host:port~), and
-~authority-host-span~ gives the host's bounds within it, again relative to ~start~.
-Parsing a bare
-~host:port~ CONNECT target (RFC 9112 authority-form) is ~uri-parse-authority-form~.
-Resolving a reference against a
-base, normalizing, and recomposing live in ~(uri resolve)~, ~(uri normalize)~ and
-~(uri recompose)~.
+Where to go next:
 
-** The corpus
+| To…                                        | use                                                       |
+|--------------------------------------------+-----------------------------------------------------------|
+| parse input that arrives in chunks         | ~make-uri-collector~, ~uri-collect-feed!~, ~uri-collect-finish!~ |
+| reuse a collector for the next request     | ~uri-collector-reset!~                                    |
+| parse and validate in one call             | ~uri-parse-validate~                                      |
+| validate a result you already have         | ~uri-parse-result-validate~                               |
+| validate one component in your own buffer  | ~validate-component~ in ~(uri charset)~                   |
+| validate an authority in your own buffer   | ~validate-authority~, ~authority-host-span~ in ~(uri host)~ |
+| parse a ~CONNECT~ target                   | ~uri-parse-authority-form~, ~uri-parse-authority-form-validate~ |
+| resolve a reference against a base         | ~(uri resolve)~                                           |
+| normalize                                  | ~(uri normalize)~                                         |
+| turn components back into a URI           | ~(uri recompose)~                                         |
 
-[[file:test/conformance/rfc3986/][test/conformance/rfc3986/]] is *derived*, not authored: extracted from
-[[file:test/vendor/rfc3986.txt][the vendored RFC text]] by ~cmake/UriCorpus.cmake~, with the source's digest
-recorded in ~PROVENANCE~. ~make corpus-refresh~ rewrites it and a registered
-lane re-derives and compares, so a vector edited by hand reddens rather than
-surviving. RFC 3986 §5.4 is the only normative vector set the RFC provides, and
-all 42 of its rows must pass.
+Each exported procedure carries a type signature in a comment above its
+definition.
 
-** Layout
+** Scope and limits
 
-| ~src/~              | the shipped libraries, pure R6RS: the generated scanner, the shell ~(uri collect)~, and the core — percent, charset, host, normalize, path, resolve, recompose |
-| ~tools/~            | the generator that emits ~src/generated/uri-scanner.sls~ from ~(uri grammar)~                                                                      |
-| ~test/conformance/~ | the derived corpus and the ratchet                                                                                                                  |
-| ~test/support/~     | the harness and the build-layer specifications                                                                                                      |
-| ~docs/~             | user-facing documentation                                                                                                                           |
+- ~uri-parse~ is deliberately lenient: ~http://a/b c~ parses. Run
+  ~uri-parse-validate~ when you need the input to be a valid URI; it rejects
+  that one with ~invalid-pchar~.
+- Validation accepts exactly the inputs the RFC 3986 grammar accepts. This is
+  tested against an exhaustive sweep of short inputs, the RFC's own examples,
+  and a hand-written adversarial set.
+- Normalization does not remove ~.~ and ~..~ segments; resolution does. If you
+  want both, normalize first and then resolve.
+- Resolution is strict: ~http:g~ resolved against ~http://a/b/c/d;p?q~ stays
+  ~http:g~. The older, looser behaviour the RFC mentions is not supported.
+- Recomposing gives back what was parsed. It does not repair components built
+  by hand into something ambiguous, such as a scheme-less path whose first
+  segment contains ~:~.
+- Only Chez Scheme is tested. CI runs on Linux amd64; development happens on
+  macOS. Windows and arm64 are untested.
+
+** Developing
+
+*** Requirements
+
+- Chez Scheme 10.4.1 or newer, the full system rather than Petite (the
+  compiled test lanes need ~compile-program~)
+- CMake 3.26 or newer
+
+The build looks for ~scheme~, ~chez~ and ~chezscheme~, in that order. To point
+it somewhere else:
+
+#+begin_src sh
+cmake --preset dev -DURI_CHEZ_EXECUTABLE=/absolute/path/to/scheme
+#+end_src
+
+*** Building and testing
+
+#+begin_src sh
+make           # list every target
+make test      # the pull-request selection
+make test-all  # every test
+make no-scheme # the CMake layer alone, on a machine with no Scheme
+#+end_src
+
+*** Generated files
+
+Two kinds of file are generated, committed, and checked by a test that
+regenerates them and compares. Edit the source, not the output:
+
+- ~src/generated/uri-scanner.sls~ comes from ~(uri grammar)~. Run
+  ~make parser-refresh~ after changing the grammar.
+- ~test/conformance/rfc3986/~ is extracted from the RFC text in ~test/vendor/~.
+  Run ~make corpus-refresh~ after changing the extractor.
+
+*** Layout
+
+| ~src/uri/~          | the libraries                                                       |
+| ~src/generated/~    | the generated scanner                                               |
+| ~tools/~            | the program that writes the generated scanner                       |
+| ~cmake/~            | build modules: Chez discovery, test registration, corpus extraction |
+| ~test/common/~      | the test programs                                                   |
+| ~test/conformance/~ | test data: RFC examples and hand-written negative cases             |
+| ~test/support/~     | the test harness and the build-layer specifications                 |
+| ~vendor/~           | the byte-machine submodule                                          |
 
 Release history is in [[file:CHANGELOG.md][CHANGELOG.md]].
 
 ** License
 
 © [[https://kiyomicomputation.systems/][Kiyomi Computation Systems LLC]]. Licensed under BSD 3-Clause — see
-[[file:LICENSE][LICENSE]].
+[[file:LICENSE][LICENSE]]. Third-party material, including the RFC 3986 text used
+by the tests, is listed in [[file:NOTICE][NOTICE]].
