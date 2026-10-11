@@ -24,8 +24,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   they decode, and decode to strict UTF-8: an invalid sequence raises `invalid-utf-8`
   instead of becoming U+FFFD. `uri-encode` escapes everything but unreserved characters.
   Bad input raises `&uri-error` with a reason from `uri-error-reasons`, a character
-  offset and the input. Rendering, resolution and normalization follow. The complete
-  selection is 83 lanes and the no-Scheme layer 13.
+  offset and the input.
+- **`(uri easy)`, rendering, resolution and normalization.** `uri->string` gives back the
+  URI as written. `uri-resolve` resolves a reference against a base (RFC 3986 §5.2.2,
+  strict) and does not normalize; either argument may be a `Uri` or a string, and a
+  base without a scheme raises `base-not-absolute`.
+  `uri-normalize` is the whole of §6.2.2: case, percent-encoding, then dot segments, so
+  `http://h/a/%2E%2E/b` becomes `http://h/b`; a relative-path reference such as `../b`
+  keeps its dot segments. `uri=?` compares after normalizing. Nothing the layer builds
+  renders to a different URI: where RFC 3986's algorithms leave a `//`-leading path with
+  no authority (`foo:/a` with `.//bar`), the path is written `/.//bar`, not `//bar`.
+  `uri->components` and `components->uri` cross to the low layer by copying, and the
+  second refuses a set that would re-parse differently (`ambiguous-components`). The
+  complete selection is 85 lanes and the no-Scheme layer 13.
 - **`uri.harness.hand-set-mode.cmake.direct`.** A registration in `test/CMakeLists.txt`
   that sets `URI_EXECUTION_MODE` by hand, bypassing `uri_add_scheme_lane`, must now set
   the mode its name declares. A non-Scheme registration may set one only when it is

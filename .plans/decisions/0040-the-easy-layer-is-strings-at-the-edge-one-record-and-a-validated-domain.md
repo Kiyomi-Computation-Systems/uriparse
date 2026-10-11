@@ -1,7 +1,7 @@
 # 0040: the easy layer is strings at the edge, one record, and a validated domain
 
 Date: 2026-10-11
-Status: accepted
+Status: accepted, then **item 7 amended in review** (2026-10-11, #40)
 Plan: [the easy-layer plan](../2026-10-11-easy-layer.md)
 Supersedes: [0010](0010-the-core-is-bytevectors-and-the-ascii-fold-is-written-by-hand.md)
 item 3 ("no string-level convenience layer in v0.1")
@@ -13,6 +13,12 @@ empty), [0020](0020-v01-normalizes-scheme-and-percent-and-defers-host-case.md)
 (the parse∘recompose identity),
 [0041](0041-the-query-is-split-by-a-core-library-over-its-bytes-never-by-the-grammar.md),
 [0042](0042-the-easy-layer-normalizes-dot-segments-and-guards-the-double-slash-shape.md)
+
+> **Amendment (review of #40).** Item 7's string base is parsed as a URI
+> reference, not with `string->uri`, and then must have a scheme. A base without
+> one raises `base-not-absolute` whether it came as a string or a `Uri`; parsing
+> it as absolute had made the same mistake raise `scheme-required` for a string.
+> The base is judged before the reference is read, so its fault is reported first.
 
 ## Context
 

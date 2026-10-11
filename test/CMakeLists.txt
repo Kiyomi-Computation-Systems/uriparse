@@ -759,6 +759,9 @@ uri_add_scheme_lane(
 # corpus and on hand-built inputs, before any URI is parsed.
 
 set(URI_CORPUS_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/rfc3986")
+# The authored adversarial corpus, read by conformance.abnf-differential and
+# unit.easy-resolve. Defined here, before either lane, so the path has one spelling.
+set(URI_DIFFERENTIAL_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/differential")
 set(URI_RATCHET_FILE "${CMAKE_CURRENT_LIST_DIR}/conformance/ratchet.txt")
 set(URI_CORPUS_LIB
     "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/corpus.sls")
@@ -1055,11 +1058,25 @@ endforeach()
 # --- (uri easy): strings in, a record out ------------------------------------
 #
 # The layer over everything above: it parses and validates through (uri
-# collect), reads the host through (uri host) and (uri normalize), and the query
-# through (uri query). Graded on its own contract -- fields absent vs empty,
-# scheme and host normalized while the record stays raw, character offsets,
-# strict UTF-8 decoding, and refusals that name the public caller. The
-# encode/decode round trip draws its strings from the seeded harness PRNG.
+# collect), reads the host through (uri host) and (uri normalize), the query
+# through (uri query), and resolves and renders through (uri path), (uri
+# resolve) and (uri recompose). Every lane that imports it loads all of those,
+# so the list is named once.
+set(URI_EASY ${URI_COLLECT}
+             ${URI_GENERATED_PARSER}
+             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/normalize.sls"
+             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/query.sls"
+             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/path.sls"
+             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/resolve.sls"
+             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/recompose.sls"
+             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/easy.sls")
+# The raise checks both easy lanes share, so they judge a condition alike.
+set(URI_RAISED_LIB "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/raised.sls")
+
+# Parsing and reading: fields absent vs empty, scheme and host normalized while
+# the record stays raw, character offsets, strict UTF-8 decoding, and refusals
+# that name the public caller. The encode/decode round trip draws its strings
+# from the seeded harness PRNG.
 foreach(mode source aot)
   uri_add_scheme_lane(
     NAME uri.unit.easy.chez.${mode}
@@ -1067,14 +1084,33 @@ foreach(mode source aot)
     PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/easy-tests.sps"
     SOURCES ${URI_HARNESS_MANIFEST}
             ${URI_GENERATOR_SOURCES}
-            ${URI_COLLECT}
-            ${URI_GENERATED_PARSER}
-            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/normalize.sls"
-            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/query.sls"
-            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/easy.sls"
+            ${URI_EASY}
             "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/prng.sls"
+            ${URI_RAISED_LIB}
             "${CMAKE_CURRENT_LIST_DIR}/common/easy-tests.sps"
     TIMEOUT 120
+    LABELS unit)
+endforeach()
+
+# Rendering, resolving, normalizing and comparing: the RFC 3986 §5.4 rows run
+# through uri-resolve as strings, and the round-trip, faithful-rendering and
+# idempotence properties run over every committed corpus input that validates
+# -- the rfc3986/ examples and §5.4 rows, and the accepted rows of the authored
+# adversarial corpus.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.easy-resolve.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/easy-resolve-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            ${URI_GENERATOR_SOURCES}
+            ${URI_EASY}
+            ${URI_CORPUS_LIB}
+            ${URI_RAISED_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/easy-resolve-tests.sps"
+    ENVIRONMENT "URI_CORPUS_DIR=${URI_CORPUS_DIR}"
+                "URI_DIFFERENTIAL_DIR=${URI_DIFFERENTIAL_DIR}"
+    TIMEOUT 180
     LABELS unit)
 endforeach()
 
@@ -1289,8 +1325,8 @@ endforeach()
 # reddens naming it. It drives the whole read stack, so it needs URI_COLLECT + the
 # generated parser + the generator sources, plus all three oracle libs and the corpus
 # harness lib; it reads the four corpus dirs. The authored adversarial corpus lives
-# in its own dir (like charset/ and host/), apart from the provenance-guarded rfc3986/.
-set(URI_DIFFERENTIAL_DIR "${CMAKE_CURRENT_LIST_DIR}/conformance/differential")
+# in its own dir (like charset/ and host/), apart from the provenance-guarded rfc3986/;
+# URI_DIFFERENTIAL_DIR is set beside URI_CORPUS_DIR.
 
 foreach(mode source aot)
   uri_add_scheme_lane(

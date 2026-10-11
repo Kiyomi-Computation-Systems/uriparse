@@ -87,6 +87,34 @@
                       (lambda () (corpus-parse-resolution (list (list (quote base) "b")
                                                      (list (quote vectors) (list "5.4.1" "g"))))))))))
 
+(harness-group "adversarial"
+  (lambda ()
+    (harness-case "a well-formed row reads field by field"
+      (lambda ()
+        (let ((rows (corpus-parse-adversarial
+                     (list (list 'cases
+                                 (list 'uri "a://b" 'accept "a host")
+                                 (list 'relative-ref (u8-list->bytevector (list 37)) 'reject "a lone %"))))))
+          (check-equal "two rows" (length rows) 2)
+          (check-equal "mode" (av-mode (car rows)) 'uri)
+          (check-equal "input" (av-input (car rows)) "a://b")
+          (check-equal "expect" (av-expect (car rows)) 'accept)
+          (check-equal "note" (av-note (car rows)) "a host")
+          (check "a bytevector input is kept" (bytevector? (av-input (cadr rows)))))))
+    (harness-case "the loader refuses a malformed row"
+      (lambda ()
+        (for-each
+         (lambda (bad)
+           (check-raises (car bad) corpus-error?
+                         (lambda () (corpus-parse-adversarial (list (list 'cases (cdr bad)))))))
+         (list (list "three elements" 'uri "a://b" 'accept)
+               (list "an unknown mode" 'url "a://b" 'accept "n")
+               (list "a numeric input" 'uri 42 'accept "n")
+               (list "an unknown verdict" 'uri "a://b" 'maybe "n")
+               (list "a symbol note" 'uri "a://b" 'accept 'n)))
+        (check-raises "no (cases ...) form" corpus-error?
+                      (lambda () (corpus-parse-adversarial (list (list 'rows)))))))))
+
 (harness-group "dot-segments"
   (lambda ()
     (define steps (corpus-load-dot-segments (corpus-path "dot-segments.scm")))

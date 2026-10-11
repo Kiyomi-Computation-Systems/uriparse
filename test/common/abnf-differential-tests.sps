@@ -211,37 +211,19 @@
 ;; input is a STRING or a #vu8(...) bytevector. Checked THREE ways: oracle vs ABNF,
 ;; product vs ABNF (so a shared oracle/product blind spot still reddens against the
 ;; hand verdict), and -- implied by those two -- oracle vs product.
-(define (adversarial-load path)
-  (let ((p (open-file-input-port path (file-options) (buffer-mode block)
-                                 (native-transcoder))))
-    (let loop ((acc '()))
-      (let ((d (get-datum p)))
-        (if (eof-object? d)
-            (begin (close-port p) (reverse acc))
-            (loop (cons d acc)))))))
-
-(define (adversarial-rows data)
-  (let loop ((ds data))
-    (cond ((null? ds) (error 'adversarial-rows "no (cases ...) form"))
-          ((and (pair? (car ds)) (eq? (caar ds) 'cases)) (cdar ds))
-          (else (loop (cdr ds))))))
-
-(define (row-bytes x)
-  (cond ((string? x) (string->utf8 x))
-        ((bytevector? x) x)
-        (else (error 'row-bytes "input is neither string nor bytevector"))))
+;; The loader refuses a row whose input is neither a string nor a bytevector.
+(define (row-bytes x) (if (string? x) (string->utf8 x) x))
 
 (harness-group "the adversarial corpus: product, oracle, and the ABNF verdict agree"
   (lambda ()
-    (define rows (adversarial-rows
-                  (adversarial-load (differential-path "adversarial.scm"))))
+    (define rows (corpus-load-adversarial (differential-path "adversarial.scm")))
     (harness-case "every adversarial row: oracle and product match the ABNF verdict"
       (lambda ()
         (for-each
          (lambda (row)
-           (let* ((mode (car row)) (bv (row-bytes (cadr row)))
-                  (expect-accept (eq? (caddr row) 'accept))
-                  (note (cadddr row)))
+           (let* ((mode (av-mode row)) (bv (row-bytes (av-input row)))
+                  (expect-accept (eq? (av-expect row) 'accept))
+                  (note (av-note row)))
              (check-equal (string-append "oracle: " note)
                           (oracle-accepts? mode bv) expect-accept)
              (check-equal (string-append "product: " note)
@@ -249,7 +231,7 @@
          rows)))
     (harness-case "the corpus covers both verdicts (no one-sided set)"
       (lambda ()
-        (define (count v) (length (filter (lambda (r) (eq? (caddr r) v)) rows)))
+        (define (count v) (length (filter (lambda (r) (eq? (av-expect r) v)) rows)))
         (check-equal "has accept rows" (> (count 'accept) 0) #t)
         (check-equal "has reject rows" (> (count 'reject) 0) #t)))))
 
