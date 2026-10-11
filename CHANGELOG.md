@@ -27,7 +27,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   offset and the input.
 - **`(uri easy)`, rendering, resolution and normalization.** `uri->string` gives back the
   URI as written. `uri-resolve` resolves a reference against a base (RFC 3986 §5.2.2,
-  strict) and does not normalize; either argument may be a `Uri` or a string.
+  strict) and does not normalize; either argument may be a `Uri` or a string, and a
+  base without a scheme raises `base-not-absolute`.
   `uri-normalize` is the whole of §6.2.2: case, percent-encoding, then dot segments, so
   `http://h/a/%2E%2E/b` becomes `http://h/b`; a relative-path reference such as `../b`
   keeps its dot segments. `uri=?` compares after normalizing. Nothing the layer builds

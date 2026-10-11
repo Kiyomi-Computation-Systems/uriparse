@@ -3997,3 +3997,35 @@ path, where dot removal is the identity. Kept, because it makes the predicate §
 no behaviour depends on it. CHANGELOG [Unreleased] gains the entry and the count moves to it.
 Measured on f40a59b plus this commit (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3,
 byte-machine c338a57): test-all 85/85, no-scheme 13/13.
+
+REVIEW FIXES ON #40 (2026-10-11, /code-review xhigh over main...feat/uri-easy-resolve, nine
+findings, all fixed in this branch on the maintainer's word). (1)+(3) ONE REASON FOR A BASE
+WITHOUT A SCHEME, JUDGED FIRST: a string base was parsed as an absolute URI, so "/a" raised
+scheme-required while a Uri "/a" raised base-not-absolute; and the reference was parsed before
+the base was checked. Now a string base is parsed as a URI reference, its scheme checked, and
+only then is the reference read. (2) components->uri refuses a #f path as an assertion (it had
+read as ambiguous-components). (4) THE GUARDED PATH READS AS THE PATH IT NAMES: uri-path-segments
+of "/.//bar" with no authority is ("" "bar"); uri-path still returns "/.//bar" as held, and any
+other "/./" stays a "." segment. (5) refusal checks for uri->string and uri=?. (6)
+components->uri builds its error string only on the error paths. (7) ONE ADVERSARIAL LOADER:
+(uri test corpus) exports corpus-parse-adversarial / corpus-load-adversarial (record av: mode
+input expect note), refusing a malformed row like the derived files' loaders; abnf-differential
+and easy-resolve both read through it. abnf-differential's count is unchanged (9 cases, 718
+checks, the same as main's copy of the file run against this tree). (8) ONE RAISE JUDGEMENT:
+(uri test raised) exports raised, check-raised and check-refuses, product-independent like (uri
+test ranged); both easy lanes use it, and easy-resolve now also checks a &uri-error is not an
+assertion, the strictness its copy had lost. (9) URI_DIFFERENTIAL_DIR is set once, beside
+URI_CORPUS_DIR, before either lane that reads it. 0040 (item 7) and 0042 gain amendment notes;
+the plan and CHANGELOG follow. WATCHED FAIL: the four behaviour fixes failed first on the
+unfixed code (8 failures in 3 cases), then again as mutations of the fixed code: base parsed
+absolute 1, reference read first 3, no escape in segments 3, escape ignoring the authority 1,
+no #f-path check 1; uri->string past `parts` 1; uri=?'s as-uri with another who 1 and 2; a
+&uri-error that is also an assertion now fails BOTH lanes (easy-resolve 9, easy 32 — before,
+easy-resolve's copy would have passed it); corpus-parse-adversarial without its length, verdict
+or mode check 1 each. ONE EQUIVALENT SURVIVOR: the who uri=? hands to `normalize` is
+unobservable, since as-uri has already refused any non-Uri. HOUSEKEEPING NOTE: an unquoted
+mutation name containing ">" (uri->string-...) redirected one run's output into a stray file at
+the repo root under zsh; it was found by git status, read, and removed, and the remaining names
+were quoted. Counts after: unit.easy-resolve 23 cases / 921 checks, unit.easy 24 / 274,
+unit.corpus 25 / 64. Measured on 0a60b6e plus this commit (macOS arm64, Chez 10.4.1 tarm64osx,
+CMake 4.3.3, byte-machine c338a57): test-all 85/85, no-scheme 13/13.

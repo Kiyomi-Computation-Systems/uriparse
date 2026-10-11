@@ -11,9 +11,11 @@
 ;;; THE FILES ARE DERIVED, NOT AUTHORED. cmake/UriCorpus.cmake extracts them
 ;;; from the vendored RFC text and a lane re-derives and compares. This library
 ;;; therefore does not tolerate a malformed row: a shape it does not recognise
-;;; is a defect in the extractor, and guessing at it would hide that.
+;;; is a defect in the extractor, and guessing at it would hide that. The one
+;;; AUTHORED file it reads, test/conformance/differential/adversarial.scm, is
+;;; held to the same rule: a malformed row is refused, never skipped.
 ;;;
-;;; PURE, except for the three `-load` procedures, which are the only thing
+;;; PURE, except for the four `-load` procedures, which are the only thing
 ;;; here that touches a port. Everything else is a function over data, which is
 ;;; what lets the parsing and the comparing be tested with literals.
 (library (uri test corpus)
@@ -23,6 +25,8 @@
           corpus-load-dot-segments corpus-parse-dot-segments
           ds? ds-trace ds-step ds-output ds-input
           corpus-load-examples corpus-parse-examples
+          corpus-load-adversarial corpus-parse-adversarial
+          av? av-mode av-input av-expect av-note
           compare-target
           corpus-error? corpus-error-detail)
   (import (rnrs))
@@ -136,6 +140,35 @@
          (tagged data 'uris 'corpus-parse-examples)))
 
   (define (corpus-load-examples path) (corpus-parse-examples (read-data path)))
+
+  ;; --- the authored adversarial corpus ------------------------------------
+  ;;
+  ;; Deep, structured inputs with their hand-read RFC 3986 verdicts. A row is
+  ;; (mode input expect note): mode names a production, input is a string or a
+  ;; bytevector, expect is `accept` or `reject`, and note says why.
+
+  ;; av? : Any -> Boolean
+  ;; av-mode : Av -> Symbol;  av-input : Av -> (U String Bytevector)
+  ;; av-expect : Av -> Symbol;  av-note : Av -> String
+  (define-record-type av (fields mode input expect note))
+
+  ;; corpus-parse-adversarial : (Listof Datum) -> (Listof Av)
+  (define (corpus-parse-adversarial data)
+    (map (lambda (row)
+           (unless (and (list? row) (= (length row) 4))
+             (refuse 'corpus-parse-adversarial "a row is not (mode input expect note)"))
+           (unless (memq (car row) '(uri relative-ref uri-reference))
+             (refuse 'corpus-parse-adversarial "mode is not uri, relative-ref or uri-reference"))
+           (unless (or (string? (cadr row)) (bytevector? (cadr row)))
+             (refuse 'corpus-parse-adversarial "input is neither a string nor a bytevector"))
+           (unless (memq (caddr row) '(accept reject))
+             (refuse 'corpus-parse-adversarial "expect is neither accept nor reject"))
+           (make-av (car row) (cadr row) (caddr row)
+                    (string-or-refuse (cadddr row) 'corpus-parse-adversarial "note")))
+         (tagged data 'cases 'corpus-parse-adversarial)))
+
+  ;; corpus-load-adversarial : String -> (Listof Av)
+  (define (corpus-load-adversarial path) (corpus-parse-adversarial (read-data path)))
 
   ;; --- the comparator ------------------------------------------------------
   ;;

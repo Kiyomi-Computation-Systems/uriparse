@@ -19,6 +19,7 @@
 (import (rnrs)
         (uri test harness)
         (uri test corpus)
+        (uri test raised)
         (uri components)
         (uri easy))
 
@@ -27,26 +28,13 @@
 (define (differential-path name)
   (string-append (adapter-environment-variable "URI_DIFFERENTIAL_DIR") "/" name))
 
-;; raised : (-> Any) -> (Option Condition), the raised object, or #f on return.
-(define (raised thunk)
-  (guard (e (#t e)) (thunk) #f))
-
+;; check-uri-error : String (-> Any) Symbol Symbol Nat String -> Unspecified
+;; A &uri-error from `who`, with this reason, character offset and input.
 (define (check-uri-error label thunk who reason offset input)
-  (let ((c (raised thunk)))
-    (if (and c (uri-error? c))
-        (begin
-          (check-equal (string-append label ": reason") (uri-error-reason c) reason)
-          (check-equal (string-append label ": offset") (uri-error-offset c) offset)
-          (check-equal (string-append label ": input") (uri-error-input c) input)
-          (check-equal (string-append label ": who")
-                       (and (who-condition? c) (condition-who c)) who))
-        (check-fail label "expected a uri-error"))))
-
-(define (check-refuses label thunk who)
-  (let ((c (raised thunk)))
-    (check-equal (string-append label ": an assertion naming " (symbol->string who))
-                 (and c (assertion-violation? c) (who-condition? c) (condition-who c))
-                 who)))
+  (check-raised label thunk uri-error? who
+                (list (list "reason" uri-error-reason reason)
+                      (list "offset" uri-error-offset offset)
+                      (list "input" uri-error-input input))))
 
 ;; renders-faithfully? : Uri -> Boolean
 ;; Rule 8: the string re-parses to exactly the same components.
@@ -61,15 +49,6 @@
 
 ;; --- the corpora: every committed input that validates, with its parser ----
 
-(define (read-data path)
-  (let ((p (open-file-input-port path (file-options) (buffer-mode block)
-                                 (native-transcoder))))
-    (let loop ((acc '()))
-      (let ((d (get-datum p)))
-        (if (eof-object? d)
-            (begin (close-port p) (reverse acc))
-            (loop (cons d acc)))))))
-
 (define RESOLUTION (corpus-load-resolution (corpus-path "resolution.scm")))
 (define BASE (resolution-base RESOLUTION))
 (define EXAMPLES (corpus-load-examples (corpus-path "example-uris.scm")))
@@ -77,18 +56,10 @@
 ;; The adversarial corpus's accepted rows, as (mode . string). A row's input is
 ;; a string or a bytevector; an accepted one is ASCII either way.
 (define ADVERSARIAL
-  (let loop ((ds (read-data (differential-path "adversarial.scm"))))
-    (cond ((null? ds) (error 'adversarial "no (cases ...) form"))
-          ((and (pair? (car ds)) (eq? (caar ds) 'cases))
-           (let rows ((rs (cdar ds)) (acc '()))
-             (cond ((null? rs) (reverse acc))
-                   ((eq? (caddr (car rs)) 'accept)
-                    (let ((in (cadr (car rs))))
-                      (rows (cdr rs)
-                            (cons (cons (car (car rs)) (if (string? in) in (utf8->string in)))
-                                  acc))))
-                   (else (rows (cdr rs) acc)))))
-          (else (loop (cdr ds))))))
+  (map (lambda (row)
+         (let ((in (av-input row))) (cons (av-mode row) (if (string? in) in (utf8->string in)))))
+       (filter (lambda (row) (eq? (av-expect row) 'accept))
+               (corpus-load-adversarial (differential-path "adversarial.scm")))))
 
 (define (parser-for mode)
   (case mode
@@ -168,19 +139,42 @@
          '(".//bar" "/.//bar"))
         (check-equal "an authority keeps // inside the path"
                      (uri->string (uri-resolve "http://h/a" "/.//bar")) "http://h//bar")))
+    ;; "/.//bar" with no authority is the only way to write the path "//bar", so
+    ;; its "." is the escape, not a segment: the segments are those of "//bar".
+    ;; A "/./" anywhere else is an ordinary dot segment and stays.
+    (harness-case "path segments read a guarded path as the path it names"
+      (lambda ()
+        (check-equal "resolved" (uri-path-segments (uri-resolve "foo:/a" ".//bar")) '("" "bar"))
+        (check-equal "parsed" (uri-path-segments (string->uri "foo:/.//bar")) '("" "bar"))
+        (check-equal "normalized" (uri-path-segments (uri-normalize (string->uri "foo:/a/..//bar")))
+                     '("" "bar"))
+        (check-equal "an ordinary /./" (uri-path-segments (string->uri "foo:/./a")) '("." "a"))
+        (check-equal "with an authority" (uri-path-segments (string->uri "http://h/.//x"))
+                     '("." "" "x"))
+        (check-equal "uri-path stays as held" (uri-path (uri-resolve "foo:/a" ".//bar")) "/.//bar")))
     (harness-case "the base must be absolute"
       (lambda ()
         (check-uri-error "a relative Uri base"
                          (lambda () (uri-resolve (string->uri-reference "/a") "b"))
                          'uri-resolve 'base-not-absolute 0 "/a")
         (check-uri-error "a relative string base" (lambda () (uri-resolve "/a" "b"))
-                         'uri-resolve 'scheme-required 0 "/a")
+                         'uri-resolve 'base-not-absolute 0 "/a")
+        (check-uri-error "a string base that is not even a reference"
+                         (lambda () (uri-resolve "http://a b/" "c"))
+                         'uri-resolve 'invalid-reg-name 8 "http://a b/")
+        ;; The base is the first argument, so its fault is reported first.
+        (check-uri-error "a relative base and an invalid reference"
+                         (lambda () (uri-resolve (string->uri-reference "/a") "b c"))
+                         'uri-resolve 'base-not-absolute 0 "/a")
         (check-uri-error "an invalid reference" (lambda () (uri-resolve "http://a/" "b c"))
                          'uri-resolve 'invalid-pchar 1 "b c")))
     (harness-case "a wrong argument is an assertion naming uri-resolve"
       (lambda ()
         (check-refuses "base 42" (lambda () (uri-resolve 42 "a")) 'uri-resolve)
-        (check-refuses "reference #f" (lambda () (uri-resolve "http://a/" #f)) 'uri-resolve)))))
+        (check-refuses "reference #f" (lambda () (uri-resolve "http://a/" #f)) 'uri-resolve)
+        (check-refuses "uri->string of a string" (lambda () (uri->string "http://a")) 'uri->string)
+        (check-refuses "uri=? of a number" (lambda () (uri=? 1 "http://a")) 'uri=?)
+        (check-refuses "uri=? of a number, second" (lambda () (uri=? "http://a" 1)) 'uri=?)))))
 
 ;;; --- uri-normalize -------------------------------------------------------------
 (define NORMALIZE-ROWS
@@ -319,6 +313,11 @@
         (check-refuses "components->uri of a string" (lambda () (components->uri "http://a"))
                        'components->uri)
         (check-refuses "uri->components of a string" (lambda () (uri->components "http://a"))
-                       'uri->components)))))
+                       'uri->components)
+        ;; RFC 3986's path is never undefined, so a set without one is malformed,
+        ;; not ambiguous.
+        (check-refuses "components->uri with no path"
+                       (lambda () (components->uri (make-uri-components (bv "http") (bv "a") #f #f #f)))
+                       'components->uri)))))
 
 (harness-finish)

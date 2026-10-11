@@ -197,7 +197,9 @@ needs to tell the two apart has `uri-authority`.
 **`uri-path-segments`** splits the raw path on `/`, drops the one empty segment
 before a leading `/`, and decodes each segment: `""` → `()`, `"/"` → `("")`,
 `"/a/b/"` → `("a" "b" "")`, `"a/b"` → `("a" "b")`, `"/a%2Fb"` → `("a/b")`.
-Whether the path was rooted is visible in `uri-path`, not in the list.
+Whether the path was rooted is visible in `uri-path`, not in the list. A path
+the guard escaped (`/.//bar`, no authority) reads as the path it names,
+`("" "bar")`: its `.` is the escape, not a segment.
 
 **`uri-query-pairs` / `uri-form-pairs`** return `()` for an absent query. The
 only difference between them is `+`: literal in the first, a space in the second.
@@ -210,10 +212,10 @@ how a user gets from `café` to `caf%C3%A9`.
 
 ### Resolve, normalize, compare
 
-- **`uri-resolve`** is strict §5.2.2 (as `(uri resolve)` is). A string base is
-  parsed with `string->uri`, a string reference with `string->uri-reference`. A
-  `Uri` base with no scheme raises `base-not-absolute` (§5.2.1). It does **not**
-  normalize. The §5.4 targets are un-normalized, and `uri-resolve` must
+- **`uri-resolve`** is strict §5.2.2 (as `(uri resolve)` is). Strings are parsed
+  as URI references. A base with no scheme raises `base-not-absolute` (§5.2.1),
+  whether it came as a string or a `Uri`, and the base is judged before the
+  reference is read. It does **not** normalize. The §5.4 targets are un-normalized, and `uri-resolve` must
   reproduce them exactly.
 
 - **`uri-normalize`** is the full §6.2.2 syntax-based normalizer:
@@ -265,7 +267,8 @@ non-round-trip next to the two 0022 already pins.
 validation, and requires the result to equal its argument. A hand-built set
 that would silently change meaning, such as `(#f #f "a:b" #f #f)` (which
 re-parses with scheme `a`), raises `ambiguous-components` and is not accepted
-under a different meaning.
+under a different meaning. A set whose path is `#f` is an assertion
+violation: RFC 3986's path is never undefined, only empty.
 
 ### Error reasons
 

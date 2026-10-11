@@ -241,7 +241,8 @@
                                 (+ (* port 10) (fx- (bytevector-u8-ref a i) ZERO)))))))))))
 
   ;; uri-path : Uri -> String
-  ;; Raw. Always present; "" for `http://a`.
+  ;; Raw. Always present; "" for `http://a`. A path this library had to escape
+  ;; reads as held: "/.//bar" (see guard-path), which names the path "//bar".
   (define (uri-path u) (utf8->string (uri-components-path (parts 'uri-path u))))
 
   ;; uri-query : Uri -> (Option String)
@@ -333,14 +334,20 @@
   ;; uri-path-segments : Uri -> (Listof String)
   ;; The path split on `/`, then each segment decoded. The one empty segment
   ;; before a leading `/` is dropped: "" is (), "/" is (""), "/a/b/" is
-  ;; ("a" "b" ""), "a/b" is ("a" "b"). Raises invalid-utf-8, offset into the path.
+  ;; ("a" "b" ""), "a/b" is ("a" "b"). An escaped "/.//" with no authority reads
+  ;; as the "//" it stands for, so "/.//bar" is ("" "bar"); any other "/./" is
+  ;; an ordinary "." segment. Raises invalid-utf-8, offset into the path.
   (define (uri-path-segments u)
-    (let* ((p (uri-components-path (parts 'uri-path-segments u)))
+    (let* ((c (parts 'uri-path-segments u))
+           (p (uri-components-path c))
            (n (bytevector-length p)))
       (decode-strictly 'uri-path-segments p (utf8->string p))
       (if (fx=? n 0)
           '()
-          (let loop ((s (if (fx=? (bytevector-u8-ref p 0) SLASH) 1 0)) (acc '()))
+          (let loop ((s (cond ((escaped-double-slash? c) 3)   ; past "/.", at the "//"
+                              ((fx=? (bytevector-u8-ref p 0) SLASH) 1)
+                              (else 0)))
+                     (acc '()))
             (let* ((e (find-byte p s n SLASH))
                    (acc (cons (utf8->string (pct-decode (slice p s e))) acc)))
               (if (fx=? e n) (reverse acc) (loop (fx+ e 1) acc)))))))
@@ -369,6 +376,17 @@
   (define (with-path c path)
     (make-uri-components (uri-components-scheme c) (uri-components-authority c) path
                          (uri-components-query c) (uri-components-fragment c)))
+
+  ;; escaped-double-slash? : Components -> Boolean
+  ;; No authority, and a path beginning "/.//": guard-path's escape for a path
+  ;; beginning "//", and the only way to write one that does not re-parse as an
+  ;; authority, so its "." is never a segment of the path it names.
+  (define (escaped-double-slash? c)
+    (let* ((p (uri-components-path c)) (n (bytevector-length p)))
+      (and (not (uri-components-authority c))
+           (fx>=? n 4)
+           (fx=? (bytevector-u8-ref p 0) SLASH) (fx=? (bytevector-u8-ref p 1) DOT)
+           (fx=? (bytevector-u8-ref p 2) SLASH) (fx=? (bytevector-u8-ref p 3) SLASH))))
 
   ;; guard-path : Components -> Components
   ;; With no authority, §5.3 writes the path straight after the scheme's ":", so
@@ -403,15 +421,16 @@
   (define (uri->string u) (utf8->string (recompose (parts 'uri->string u))))
 
   ;; uri-resolve : (U Uri String) (U Uri String) -> Uri
-  ;; Resolve a reference against a base, strict RFC 3986 §5.2.2. A string base is
-  ;; parsed as an absolute URI and a string reference as a URI reference; a Uri
-  ;; base without a scheme raises base-not-absolute (§5.2.1). Does not normalize.
+  ;; Resolve a reference against a base, strict RFC 3986 §5.2.2. Strings are
+  ;; parsed as URI references. A base without a scheme raises base-not-absolute
+  ;; (§5.2.1), whether it came as a string or a Uri, and is judged before the
+  ;; reference is read. Does not normalize.
   (define (uri-resolve base ref)
-    (let* ((b (as-uri 'uri-resolve 'uri base))
-           (r (as-uri 'uri-resolve 'uri-reference ref)))
+    (let ((b (as-uri 'uri-resolve 'uri-reference base)))
       (unless (uri-components-scheme (uri-parts b))
         (raise-uri-error 'uri-resolve 'base-not-absolute 0 (uri->string b)))
-      (make-uri (guard-path (resolve-components (uri-parts b) (uri-parts r))))))
+      (let ((r (as-uri 'uri-resolve 'uri-reference ref)))
+        (make-uri (guard-path (resolve-components (uri-parts b) (uri-parts r)))))))
 
   ;; relative-path-reference? : Components -> Boolean
   ;; §4.2: no scheme, no authority, and a path that does not begin with "/".
@@ -458,16 +477,20 @@
   ;; Recompose, then parse and validate the result as a URI reference, and keep
   ;; the parsed copy. Raises the low layer's reason for an invalid set, and
   ;; ambiguous-components for one that re-parses as something else, such as
-  ;; {#f #f "a:b"}, which would gain the scheme "a".
+  ;; {#f #f "a:b"}, which would gain the scheme "a". A set with no path (#f) is
+  ;; an assertion violation: RFC 3986's path is never undefined, only empty.
   (define (components->uri c)
     (unless (uri-components? c)
       (assertion-violation 'components->uri "expected uri-components" c))
+    (unless (uri-components-path c)
+      (assertion-violation 'components->uri "the path must be present; it may be empty" c))
     (let* ((bytes (recompose c))
-           (s (utf8->string bytes))
            (r (uri-parse-validate 'uri-reference bytes)))
       (cond ((not (uri-parse-ok? r))
              (raise-uri-error 'components->uri (uri-parse-error-code r)
-                              (char-offset bytes (uri-parse-error-offset r)) s))
+                              (char-offset bytes (uri-parse-error-offset r))
+                              (utf8->string bytes)))
             ((uri-components=? (uri-parse-components r) c)
              (make-uri (uri-parse-components r)))
-            (else (raise-uri-error 'components->uri 'ambiguous-components 0 s))))))
+            (else (raise-uri-error 'components->uri 'ambiguous-components 0
+                                   (utf8->string bytes)))))))

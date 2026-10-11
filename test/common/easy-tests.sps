@@ -18,36 +18,19 @@
 (import (rnrs)
         (uri test harness)
         (uri test prng)
+        (uri test raised)
         (uri vocabulary)
         (uri charset)
         (uri host)
         (uri easy))
 
-;; raised : (-> Any) -> (Option Condition), the raised object, or #f on return.
-(define (raised thunk)
-  (guard (e (#t e)) (thunk) #f))
-
-;; check-uri-error : String (-> Any) Symbol Symbol Nat String -> void
+;; check-uri-error : String (-> Any) Symbol Symbol Nat String -> Unspecified
+;; A &uri-error from `who`, with this reason, character offset and input.
 (define (check-uri-error label thunk who reason offset input)
-  (let ((c (raised thunk)))
-    (if (and c (uri-error? c))
-        (begin
-          (check-equal (string-append label ": reason") (uri-error-reason c) reason)
-          (check-equal (string-append label ": offset") (uri-error-offset c) offset)
-          (check-equal (string-append label ": input") (uri-error-input c) input)
-          (check-equal (string-append label ": who")
-                       (and (who-condition? c) (condition-who c)) who)
-          (check (string-append label ": not an assertion") (not (assertion-violation? c))))
-        (check-fail label "expected a uri-error"))))
-
-;; check-refuses : String (-> Any) Symbol -> void
-;; An assertion violation, and the who is the PUBLIC procedure, not whatever
-;; R6RS primitive happened to trip over the bad argument first.
-(define (check-refuses label thunk who)
-  (let ((c (raised thunk)))
-    (check-equal (string-append label ": an assertion naming " (symbol->string who))
-                 (and c (assertion-violation? c) (who-condition? c) (condition-who c))
-                 who)))
+  (check-raised label thunk uri-error? who
+                (list (list "reason" uri-error-reason reason)
+                      (list "offset" uri-error-offset offset)
+                      (list "input" uri-error-input input))))
 
 (define (set=? a b)
   (and (for-all (lambda (x) (memq x b)) a)

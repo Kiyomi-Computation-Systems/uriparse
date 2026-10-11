@@ -1,7 +1,7 @@
 # 0042: the easy layer normalizes dot segments, and guards the `//` shape resolution can reach
 
 Date: 2026-10-11
-Status: accepted
+Status: accepted, then **amended in review** (2026-10-11, #40)
 Plan: [the easy-layer plan](../2026-10-11-easy-layer.md)
 Amends: [0022](0022-the-round-trip-property-is-a-one-step-parse-recompose-identity.md)
 (its claim about §5.2.2 resolution)
@@ -10,6 +10,14 @@ References:
 (normalization creates dot segments),
 [0040](0040-the-easy-layer-is-strings-at-the-edge-one-record-and-a-validated-domain.md)
 (every `Uri` holds validated components)
+
+> **Amendment (review of #40).** Two readings of a guarded path. `uri-path`
+> returns it as held, `/.//bar`. `uri-path-segments` reads it as the path it
+> names, `("" "bar")`: with no authority, `/.//` is the only way to write a path
+> beginning `//`, so its `.` is the escape, never a segment. Any other `/./` is an
+> ordinary dot segment. And `components->uri` refuses a set whose path is `#f` as
+> an assertion violation, not as `ambiguous-components`: RFC 3986's path is never
+> undefined, only empty.
 
 ## Context
 
