@@ -12,7 +12,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the test suite, and must print what the doc says it prints. A program must print the
   `#+begin_example` after it, and an expression must give the value on its `;; =>` line.
   The lane checks its own checker first, on inline docs whose verdicts are known, and a
-  listed doc with no example fails. The complete selection is 87 lanes.
+  listed doc with no example fails. It reads every prose file under `docs/` (`.org`,
+  `.md`, `.markdown`, `.rst`, `.adoc`, `.txt`), not only the format it can check, so a
+  doc it cannot read fails instead of dropping out of the check, and so does a `docs/`
+  with no guide. The complete selection is 87 lanes.
 
 ## [0.7.0] - 2026-10-11
 

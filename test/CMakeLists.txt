@@ -1120,12 +1120,19 @@ endforeach()
 # says it prints: a program, the #+begin_example after it; an expression, the
 # `;; =>` value after it. The lane grades its own checker first, on inline docs
 # with known verdicts. The docs are data, read at run time, not executed sources,
-# so the list is README.org plus a glob of docs/*.org: a new guide is checked the
-# moment it exists (CONFIGURE_DEPENDS re-runs the glob), and a listed file with no
-# example fails. The examples import (uri easy), (uri collect) and (uri
-# components), so the lane loads URI_EASY.
-file(GLOB URI_DOC_GUIDES CONFIGURE_DEPENDS RELATIVE "${CMAKE_SOURCE_DIR}"
-     "${CMAKE_SOURCE_DIR}/docs/*.org")
+# so the list is README.org plus a recursive glob of every prose format under
+# docs/, not only the one the lane reads: a guide in a format it cannot read fails
+# instead of dropping out of the check, and so does a docs/ with no guide.
+# CONFIGURE_DEPENDS re-runs the glob, so a new doc is judged the moment it exists.
+# Editor backups (easy.org~, #easy.org#) match no pattern, and dotfiles such as
+# lock files (.#easy.org) are skipped by the lane. The examples import (uri easy),
+# (uri collect) and (uri components), so the lane loads URI_EASY.
+set(_uri_doc_patterns)
+foreach(ext org md markdown rst adoc txt)
+  list(APPEND _uri_doc_patterns "${CMAKE_SOURCE_DIR}/docs/*.${ext}")
+endforeach()
+file(GLOB_RECURSE URI_DOC_GUIDES CONFIGURE_DEPENDS LIST_DIRECTORIES false
+     RELATIVE "${CMAKE_SOURCE_DIR}" ${_uri_doc_patterns})
 list(SORT URI_DOC_GUIDES)
 list(JOIN URI_DOC_GUIDES " " _uri_doc_guides)
 set(URI_DOC_FILES "README.org ${_uri_doc_guides}")

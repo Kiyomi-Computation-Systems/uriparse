@@ -4194,3 +4194,28 @@ layer's scope, if wanted: building URIs from parts, a host-kind accessor, a rang
 26.04 move (0038 item 4); chez-httparse's runner pin before 2026-10-19; the result-level
 authority-form validator (0032 item 4); v0.6+ tooling (0012, 0022); the next sibling request. DONE
 since #41: the v0.7.0 GitHub Release, and the example checker as a lane (#42).
+
+THE DOC LANE'S SILENT GAP IS CLOSED (2026-10-11, on the maintainer's request; NEXT (3) of the #42
+close-out). Branch test/doc-lane-unread-formats off main b3b049f. THE GAP WAS WIDER THAN NOTED.
+The list was README.org plus a glob of docs/*.org, so the lane could not see a doc in any other
+format. That covers the guide moving to .md (the glob then matches nothing, and only README.org is
+checked). It also covers the likelier case: a docs/README.md index added BESIDE easy.org, which
+94df59 plans. A "fail when docs/ has no guide" rule alone would not catch that second one.
+THE FIX: CMake globs every prose format under docs/, recursively (org md markdown rst adoc txt,
+CONFIGURE_DEPENDS), and the lane decides per file with a pure function, doc-format:
+- a dotfile is 'skip: an Emacs lock file such as .#easy.org matches *.org, and .DS_Store is junk;
+- an .org file is 'org, the one format it reads;
+- anything else is 'unread, and that fails.
+doc-set-problems adds a docs/ with no guide it reads. Editor backups (easy.org~, #easy.org#) match
+no pattern. The set check is its own case and prints a coverage line (files, read, skipped,
+unread). Self-tests grade doc-format on eight paths and doc-set-problems on five sets: a guide;
+a lock file beside it; a Markdown index beside it; no guide; the guide moved to Markdown.
+WATCHED FAIL: on scratch file lists, a Markdown index beside the guide (red), the guide moved
+to .md (red), no guide (red), and a lock file beside the guide (green, skipped=1). Four mutations
+were each caught by the self-tests: .md read as org, unread files skipped, dotfiles not skipped,
+the no-guide rule removed. IN THE REAL BUILD, a temporary docs/probe.md was picked up by the
+CONFIGURE_DEPENDS re-glob on build and failed uri.example.docs in source and AOT, naming the file;
+with it removed (a trap made sure), green again. CHANGELOG [Unreleased]'s lane entry says so.
+94df59's Markdown move must now teach the lane to read .md in the same change, or its first .md
+file fails the build: the intended effect. Measured on b3b049f plus this commit (macOS arm64,
+Chez 10.4.1 tarm64osx, CMake 4.3.3, byte-machine c338a57): test-all 87/87, no-scheme 13/13.
