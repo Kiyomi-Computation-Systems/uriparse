@@ -4334,3 +4334,46 @@ re-measure the lane count, not add (expect 91). Review it for (1) and (2) of the
 (4) check-akku into CI when funded, in the shape of chez-cmark-gfm's akku-install job (akku
 1.1.0 tarball, pinned by sha256).
 (5) Carried unchanged from above: the easy layer's out-of-scope features, and NEXT (5)'s list.
+
+SLICE: USER DOCS, THE API REFERENCE AND THE DOCS SITE (2026-10-11, session 94df59, branch
+docs/user-docs-and-site off main 6fdd6bd, in its own worktree). Decision 0044. The maintainer asked
+for Markdown user docs in docs/ (docs/README.md as the index) in the siblings' ELI5 style, an API
+reference like chez-cmark-gfm's, and chez-cmark-gfm's site generator publishing GitHub Pages.
+COORDINATION: a1417a's #42 and #43 landed the doc lane while this was being written; this branch
+was stacked on #42, then rebased onto #43, and folds its Markdown reader into #43's doc-format.
+Early on, this session ran `git switch -c` in the shared main checkout and carried a1417a's
+uncommitted work onto its branch; it switched back within minutes, a1417a moved its commit with
+ref-only moves, nothing reached origin. Worktrees from the start would have prevented it.
+WHAT LANDS:
+- docs/: README.md (index), installing, easy (replaces easy.org), parsing, validating, resolving,
+  queries, errors, reference. 125 examples (14 programs, 111 expressions), every one run.
+- uri.example.docs reads Markdown (```scheme, ```text output, list-indented fences), widens
+  SNIPPET-ENV to (rnrs) + the twelve (uri ...) libraries, and runs a program as a top-level program
+  (as-body: an expression before a later definition). Self-tests: Markdown twins of every wrong doc,
+  each row pinned to the fragment its difference must contain, every test doc named doc.org/doc.md
+  (NEXT (3) of #43's close-out, both items).
+- uri.example.api-reference (source, aot): docs/reference.md against every src/*/*.sls export form,
+  read as data; (uri test api-reference) is chez-cmark-gfm's (site reference) plus a `constant`
+  kind. 15 libraries, 100 entries, all documented (no exemption list).
+- site/, build-site.sps, test/site/ (from byte-machine's port; README.md -> index.html), make site
+  and make check-site over CMARK_GFM_ROOT, .github/workflows/pages.yml (v* tag; chez-cmark-gfm
+  v2.0.0 by commit 3c84828; apt chezscheme + cmark-gfm; actions/checkout@v7, upload-pages-artifact@v5,
+  deploy-pages@v5). site/style.css: td code no longer breaks at hyphens.
+WITNESSES. Reader/dispatch mutants, each caught by the case aimed at it: ```text read as 'other, no
+un-indent, always the org reader, (uri percent) dropped from SNIPPET-ENV, .md classified 'unread,
+read-format? org-only, as-body removed. Reference mutants: no `constant` kind, membership check
+disabled, missing-bindings diagnostic dropped, an entry demoted to h4, an entry's Available from
+moved to (uri collect), a module row deleted: all caught. Through the build: a wrong `;; =>` in
+docs/easy.md reddened uri.example.docs.chez.source, naming the line; restored. Two of this
+session's own example values were wrong on first writing (`/a` fails at 0, `http` gives
+scheme-required at 4) and the lane caught both. No URI input was found that reaches unexpected-eof;
+docs/errors.md says so rather than inventing an example.
+MEASURED (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3, byte-machine c338a57): test-all 89/89;
+no-scheme 13/13; uri.example.docs 10 docs (1 org, 9 markdown), 0 differences in both modes;
+uri.example.api-reference 15 libraries, 100 entries, 0 diagnostics in both modes; make check-site
+green against chez-cmark-gfm v2.0.0. PAGES REHEARSED in ubuntu:24.04 amd64 (Chez 9.5.8, cmark-gfm
+0.29.0.gfm.6): check-site green, 9 pages written. actionlint clean.
+NEXT. (1) Publishing needs the maintainer: enable Pages with "GitHub Actions" as the source (a
+private repository needs a paid plan), and Actions billing must be restored, as for ci.yml.
+(2) Carried from #43's close-out: CI billing; byte-machine public; the easy layer's optional
+extensions; the carried sibling items.

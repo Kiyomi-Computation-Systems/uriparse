@@ -1117,16 +1117,17 @@ endforeach()
 # --- example.docs: the documented examples run ------------------------------
 #
 # Every Scheme example in the user-facing docs runs and must print what the doc
-# says it prints: a program, the #+begin_example after it; an expression, the
-# `;; =>` value after it. The lane grades its own checker first, on inline docs
-# with known verdicts. The docs are data, read at run time, not executed sources,
-# so the list is README.org plus a recursive glob of every prose format under
-# docs/, not only the one the lane reads: a guide in a format it cannot read fails
-# instead of dropping out of the check, and so does a docs/ with no guide.
+# says it prints: a program, the output block after it (#+begin_example, or
+# ```text in Markdown); an expression, the `;; =>` value after it. The lane
+# grades its own checker first, on inline docs with known verdicts, in both
+# formats. The docs are data, read at run time, not executed sources, so the list
+# is README.org plus a recursive glob of every prose format under docs/, not only
+# the two the lane reads: a guide in a format it cannot read fails instead of
+# dropping out of the check, and so does a docs/ with no guide.
 # CONFIGURE_DEPENDS re-runs the glob, so a new doc is judged the moment it exists.
 # Editor backups (easy.org~, #easy.org#) match no pattern, and dotfiles such as
-# lock files (.#easy.org) are skipped by the lane. The examples import (uri easy),
-# (uri collect) and (uri components), so the lane loads URI_EASY.
+# lock files (.#easy.org) are skipped by the lane. Expressions may call any
+# library the guides document, all of which are in URI_EASY.
 set(_uri_doc_patterns)
 foreach(ext org md markdown rst adoc txt)
   list(APPEND _uri_doc_patterns "${CMAKE_SOURCE_DIR}/docs/*.${ext}")
@@ -1170,6 +1171,31 @@ foreach(mode source aot)
                 "URI_VENDOR_ROOT=${CMAKE_SOURCE_DIR}/vendor"
     TIMEOUT 120
     LABELS docs)
+endforeach()
+
+# --- example.api-reference: the reference documents exactly the exports ------
+#
+# docs/reference.md against the export form of every library under src/, read
+# as data and never imported, so the lane loads no product library. Every
+# library is public and documented, the generated scanner included; the glob
+# means a new library is held to that the moment it exists. The checker,
+# (uri test api-reference), is graded on inline pages first.
+file(GLOB URI_API_LIBRARIES CONFIGURE_DEPENDS RELATIVE "${CMAKE_SOURCE_DIR}"
+     "${CMAKE_SOURCE_DIR}/src/*/*.sls")
+list(SORT URI_API_LIBRARIES)
+list(JOIN URI_API_LIBRARIES " " _uri_api_libraries)
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.example.api-reference.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/api-reference-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/api-reference.sls"
+            "${CMAKE_CURRENT_LIST_DIR}/common/api-reference-tests.sps"
+    ENVIRONMENT "URI_API_ROOT=${CMAKE_SOURCE_DIR}"
+                "URI_API_LIBRARIES=${_uri_api_libraries}"
+    TIMEOUT 120
+    LABELS example)
 endforeach()
 
 # --- (uri path): §5.2.4 remove-dot-segments + §5.2.3 merge ------------------

@@ -83,7 +83,9 @@ Read a URI from a string:
 "https://user@Example.COM:8443/x?y"
 #+end_example
 
-[[file:docs/easy.org][docs/easy.org]] covers the rest of ~(uri easy)~.
+[[file:docs/easy.md][docs/easy.md]] covers the rest of ~(uri easy)~, and
+[[file:docs/README.md][docs/]] has a guide to each part of the library and an
+[[file:docs/reference.md][API reference]].
 
 A server works in bytes. Parse a URI and read its components:
 
@@ -127,7 +129,7 @@ Where to go next:
 
 | To…                                        | use                                                       |
 |--------------------------------------------+-----------------------------------------------------------|
-| read a URI you have as a string            | ~(uri easy)~, see [[file:docs/easy.org][docs/easy.org]]                         |
+| read a URI you have as a string            | ~(uri easy)~, see [[file:docs/easy.md][docs/easy.md]]                           |
 | split a query into key/value pairs         | ~query-pairs~, ~form-pairs~ in ~(uri query)~              |
 | parse input that arrives in chunks         | ~make-uri-collector~, ~uri-collect-feed!~, ~uri-collect-finish!~ |
 | reuse a collector for the next request     | ~uri-collector-reset!~                                    |
@@ -141,7 +143,7 @@ Where to go next:
 | turn components back into a URI           | ~(uri recompose)~                                         |
 
 Each exported procedure carries a type signature in a comment above its
-definition.
+definition, and has an entry in [[file:docs/reference.md][docs/reference.md]].
 
 ** Scope and limits
 
@@ -195,9 +197,29 @@ make check-akku # install with Akku as a consumer would (needs akku)
 #+end_src
 
 The Scheme examples in this README and in ~docs/~ are run by the tests, so
-they print what they say they print. ~Akku.manifest~ describes the package for
-the [[https://akkuscm.org/][Akku]] index; ~make check-akku~ installs it into a
-throwaway project and checks that exactly the libraries in ~src/~ land.
+they print what they say they print. Another test holds
+~docs/reference.md~ to the libraries' exports: a new export needs an entry.
+~Akku.manifest~ describes the package for the [[https://akkuscm.org/][Akku]]
+index; ~make check-akku~ installs it into a throwaway project and checks that
+exactly the libraries in ~src/~ land.
+
+*** The docs site
+
+~docs/~ is also published as a website, rendered by
+[[https://github.com/Kiyomi-Computation-Systems/chez-cmark-gfm][chez-cmark-gfm]]. It
+is not a dependency of the library, so point ~CMARK_GFM_ROOT~ at a checkout of
+it (v2.0.0, the version CI uses). It needs the ~cmark-gfm~ shared library
+installed (~brew install cmark-gfm~, ~apt install cmark-gfm~).
+
+#+begin_src sh
+make check-site CMARK_GFM_ROOT=/path/to/chez-cmark-gfm  # links, anchors, nav
+make site CMARK_GFM_ROOT=/path/to/chez-cmark-gfm        # build/site/index.html
+#+end_src
+
+~docs/README.md~ becomes the home page. A new page goes in the nav in
+~site/pages.sls~; ~make check-site~ fails until it is there. The site is
+published to GitHub Pages by ~.github/workflows/pages.yml~ when a ~v*~ tag is
+pushed.
 
 *** Generated files
 
@@ -214,10 +236,12 @@ regenerates them and compares. Edit the source, not the output:
 | ~src/uri/~          | the libraries                                                       |
 | ~src/generated/~    | the generated scanner                                               |
 | ~tools/~            | the program that writes the generated scanner                       |
-| ~docs/~             | guides for users                                                    |
+| ~docs/~             | guides for users, and the API reference                             |
+| ~site/~             | the docs site generator; ~build-site.sps~ runs it                   |
 | ~cmake/~            | build modules: Chez discovery, test registration, corpus extraction |
 | ~test/common/~      | the test programs                                                   |
 | ~test/conformance/~ | test data: RFC examples and hand-written negative cases             |
+| ~test/site/~        | the docs site generator's tests and ~make check-site~               |
 | ~test/support/~     | the test harness and the build-layer specifications                 |
 | ~test/akku/~        | the Akku install check and the program it runs                      |
 | ~vendor/~           | the byte-machine submodule                                          |
