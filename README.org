@@ -206,14 +206,30 @@ exactly the libraries in ~src/~ land.
 *** The docs site
 
 ~docs/~ is also published as a website, rendered by
-[[https://github.com/Kiyomi-Computation-Systems/chez-cmark-gfm][chez-cmark-gfm]]. It
-is not a dependency of the library, so point ~CMARK_GFM_ROOT~ at a checkout of
-it (v2.0.0, the version CI uses). It needs the ~cmark-gfm~ shared library
+[[https://github.com/Kiyomi-Computation-Systems/chez-cmark-gfm][chez-cmark-gfm]]
+2.0.0. It is not a dependency of the library, so you fetch it yourself and
+point ~CMARK_GFM_ROOT~ at it. It needs the ~cmark-gfm~ shared library
 installed (~brew install cmark-gfm~, ~apt install cmark-gfm~).
 
+Get it from [[https://akkuscm.org/packages/chez-cmark-gfm/][Akku]], in any
+directory outside this repository:
+
 #+begin_src sh
-make check-site CMARK_GFM_ROOT=/path/to/chez-cmark-gfm  # links, anchors, nav
-make site CMARK_GFM_ROOT=/path/to/chez-cmark-gfm        # build/site/index.html
+akku update && akku install chez-cmark-gfm
+#+end_src
+
+or clone it at the tag CI uses. Clone on an Apple silicon Mac: Akku 1.1.0 has
+a known crash there (akku issue #69).
+
+#+begin_src sh
+git clone --branch v2.0.0 https://github.com/Kiyomi-Computation-Systems/chez-cmark-gfm.git
+#+end_src
+
+Then, with ~CMARK_GFM_ROOT~ naming that directory:
+
+#+begin_src sh
+make check-site CMARK_GFM_ROOT=/path/to/it  # links, anchors, nav
+make site CMARK_GFM_ROOT=/path/to/it        # build/site/index.html
 #+end_src
 
 ~docs/README.md~ becomes the home page. A new page goes in the nav in

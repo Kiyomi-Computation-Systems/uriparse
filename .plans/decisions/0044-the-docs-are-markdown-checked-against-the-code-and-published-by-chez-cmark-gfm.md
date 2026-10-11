@@ -53,15 +53,27 @@ Three questions follow, and each has an answer that rots quietly:
    keep true. The checker, chez-cmark-gfm's `(site reference)` with a
    `constant` kind added, lives in the harness as `(uri test api-reference)`.
 
-4. **The site is chez-cmark-gfm's generator, copied, and run on a checkout
-   named by `CMARK_GFM_ROOT`.** `site/` and `build-site.sps` come from
-   byte-machine's port (chez-httparse's, with `docs/README.md` as the home
-   page), `test/site/` holds its suites over this harness, and `make site` /
-   `make check-site` run Chez directly. chez-cmark-gfm is not a submodule and
-   is not fetched by the build: a consumer's `--recurse-submodules` clone never
-   sees it. The Pages workflow checks it out at v2.0.0 by commit
-   (`3c848281`), installs a distribution Chez and `cmark-gfm`, gates on
-   `make check-site`, and deploys on a `v*` tag.
+4. **The site is chez-cmark-gfm's generator, copied, and run on a
+   chez-cmark-gfm named by `CMARK_GFM_ROOT`.** `site/` and `build-site.sps`
+   come from byte-machine's port (chez-httparse's, with `docs/README.md` as the
+   home page), `test/site/` holds its suites over this harness, and
+   `make site` / `make check-site` run Chez directly. chez-cmark-gfm is not a
+   submodule and is not fetched by the build: a consumer's
+   `--recurse-submodules` clone never sees it.
+
+   `CMARK_GFM_ROOT` names either a git checkout (libraries in `src/`) or a
+   directory where `akku install chez-cmark-gfm` ran (libraries in
+   `.akku/lib/`); chez-cmark-gfm 2.0.0 is on the Akku index, built from the
+   same commit. A checkout wins when both are present, as in chez-cmark-gfm's
+   own tree, and `CMARK_GFM_LIBDIR` overrides the choice.
+   `test/site/cmark-gfm-root.sh` pins all five cases and runs first in
+   `make check-site`.
+
+   The Pages workflow checks chez-cmark-gfm out at v2.0.0 by commit
+   (`3c848281`) rather than through Akku, which has no distribution package
+   and would add a downloaded tarball to the job. It installs a distribution
+   Chez and `cmark-gfm`, gates on `make check-site`, and deploys on a `v*`
+   tag.
 
 ## Consequences
 
@@ -75,7 +87,12 @@ Three questions follow, and each has an answer that rots quietly:
   0045) installs `src/` alone, as chez-httparse's does.
 - The site build is distribution-Chez-safe: rehearsed on `ubuntu:24.04`
   (amd64, Chez 9.5.8, cmark-gfm 0.29.0.gfm.6), both gates green and all nine
-  pages written.
+  pages written, once against a v2.0.0 checkout and once against
+  `akku install chez-cmark-gfm` (Akku 1.1.0, index signature verified).
+  The Akku route was exercised on Linux only: Akku 1.1.0 has a known crash on
+  macOS arm64 in its libcurl FFI (akku issue #69, recorded in chez-cmark-gfm's
+  CI), and the akku on the Mac this was written on would not start at all.
+  The README points Mac users at a checkout.
 - Publishing needs the maintainer: Pages must be enabled with "GitHub Actions"
   as its source, and while the repository is private that needs a paid plan.
   Like ci.yml, the workflow cannot run until Actions billing is restored.

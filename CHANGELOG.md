@@ -36,9 +36,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   entry fails `make test`. The complete selection is 91 lanes.
 - **A docs site.** `make site` renders `docs/` to `build/site/` with chez-cmark-gfm's
   generator, copied into `site/`; `make check-site` tests the generator and checks the
-  nav, every link and anchor. Both take a chez-cmark-gfm checkout in `CMARK_GFM_ROOT`; it
-  is not a dependency of the library. `.github/workflows/pages.yml` publishes the site to
-  GitHub Pages on a `v*` tag.
+  nav, every link and anchor. Both take chez-cmark-gfm 2.0.0 in `CMARK_GFM_ROOT`, either a
+  git checkout or a directory where `akku install chez-cmark-gfm` ran; it is not a
+  dependency of the library. `.github/workflows/pages.yml` publishes the site to GitHub
+  Pages on a `v*` tag.
 
 ## [0.7.0] - 2026-10-11
 

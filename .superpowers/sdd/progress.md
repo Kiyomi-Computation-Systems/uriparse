@@ -4377,3 +4377,16 @@ NEXT. (1) Publishing needs the maintainer: enable Pages with "GitHub Actions" as
 private repository needs a paid plan), and Actions billing must be restored, as for ci.yml.
 (2) Carried from #43's close-out: CI billing; byte-machine public; the easy layer's optional
 extensions; the carried sibling items.
+
+#44 ADDENDUM: AKKU AS A SOURCE FOR THE SITE'S RENDERER (2026-10-11, on the maintainer's request).
+chez-cmark-gfm 2.0.0 is on the Akku index (akkuscm.org/packages/chez-cmark-gfm, source commit
+3c84828 = the commit pages.yml pins); byte-machine and chez-uri are not (404, absent from the
+435-name list). CMARK_GFM_ROOT now names a checkout (src/) or an `akku install` directory
+(.akku/lib/); a checkout wins when both exist; CMARK_GFM_LIBDIR overrides. test/site/
+cmark-gfm-root.sh pins the five cases through `make -n site`'s real CHEZSCHEMELIBDIRS and runs
+first in check-site; watched failing on the old Makefile (3 of 5) and on a scratch Makefile with
+the search order reversed. REHEARSED: ubuntu:24.04 amd64, Akku 1.1.0 release tarball (sha256 as
+chez-cmark-gfm's CI pins it), `akku update` (index signature verified) + `akku install
+chez-cmark-gfm` -> .akku/lib/cmark/gfm.sls; check-site green, 9 pages. Not exercised on macOS:
+this host's akku fails to start, and 1.1.0 has a known arm64 crash (akku #69); README.org points
+Mac users at a checkout. pages.yml still checks out by commit.
