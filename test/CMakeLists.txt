@@ -1029,6 +1029,29 @@ foreach(mode source aot)
     LABELS unit)
 endforeach()
 
+# --- (uri query): a query's key/value pairs ---------------------------------
+#
+# The split HTML's form encoding reads into a query: on `&`, then at the first
+# `=`, percent-decoding after the split. Graded three ways: a hand-derived
+# vector table that the product AND the oracle must satisfy, the independent
+# oracle `(uri test query-oracle)`, and an exhaustive sweep comparing the two.
+# The product imports only `(uri percent)`; the oracle only `(rnrs)`.
+set(URI_QUERY_ORACLE_LIB
+    "${URI_HARNESS_CHEZ_LIBRARY_ROOT}/uri/test/query-oracle.sls")
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.unit.query.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/query-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/percent.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/query.sls"
+            ${URI_QUERY_ORACLE_LIB}
+            "${CMAKE_CURRENT_LIST_DIR}/common/query-tests.sps"
+    TIMEOUT 120
+    LABELS unit)
+endforeach()
+
 # --- (uri path): §5.2.4 remove-dot-segments + §5.2.3 merge ------------------
 #
 # The mechanics `(uri resolve)` (§5.2.2) is built on: two pure functions over

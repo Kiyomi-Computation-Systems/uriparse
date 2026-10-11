@@ -8,6 +8,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`(uri query)`: `query-pairs` and `form-pairs`** split a query into key/value pairs.
+  They split on `&` and at each piece's first `=` *before* percent-decoding, so `q=a%26b`
+  is one pair whose value is `a&b`. A key with no `=` has the value `#f`, distinct from
+  `a=`'s empty value. Order and duplicates are kept, and `;` is not a separator.
+  `form-pairs` also reads `+` as a space, before decoding, so `%2B` stays `+`. Both are
+  total and work over bytevectors. The RFC 3986 query stays opaque everywhere else. The
+  complete selection is 81 lanes.
 - **`uri.harness.hand-set-mode.cmake.direct`.** A registration in `test/CMakeLists.txt`
   that sets `URI_EXECUTION_MODE` by hand, bypassing `uri_add_scheme_lane`, must now set
   the mode its name declares. A non-Scheme registration may set one only when it is
