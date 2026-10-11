@@ -6,8 +6,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-11
+
+Released on macOS arm64 evidence only. CI has run before (the first funded run passed on
+#28, decision 0039), but every pull request merged for this release, #33 to #40, was
+refused over billing before a single step, so no count below comes from Linux. Measured on the
+release commit on macOS arm64 (Chez Scheme 10.4.1, machine-type tarm64osx; CMake/CTest
+4.3.3): the complete selection is 85/85 and the no-Scheme layer 13/13, 0 failures.
+v0.7.0 adds a layer for programs that hold a URI as a string, `(uri easy)`, and a query
+splitter, `(uri query)`. Every existing library and signature is unchanged. It states
+**no new conformance claim** for parsing or validation; the scoped claim reads as in
+v0.3.0 to v0.6.2. What the easy layer is held to: all 42 RFC 3986 §5.4 rows reproduced
+through strings; on all 211 committed corpus inputs that validate, the string round
+trip, faithful rendering and idempotent normalization; and mutation witnesses for each
+rule (decisions 0040 to 0043).
+
 ### Added
 
+- **`docs/easy.org`**, a short guide to `(uri easy)`. Every example in it is run, and its
+  output compared with the file, before release.
 - **`(uri query)`: `query-pairs` and `form-pairs`** split a query into key/value pairs.
   They split on `&` and at each piece's first `=` *before* percent-decoding, so `q=a%26b`
   is one pair whose value is `a&b`. A key with no `=` has the value `#f`, distinct from
@@ -37,6 +54,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `uri->components` and `components->uri` cross to the low layer by copying, and the
   second refuses a set that would re-parse differently (`ambiguous-components`). The
   complete selection is 85 lanes and the no-Scheme layer 13.
+- **Decision records 0040 to 0043**, and an amendment to 0022: RFC 3986's own resolution
+  can produce the `//`-leading path above, which 0022 had said it never does.
 - **`uri.harness.hand-set-mode.cmake.direct`.** A registration in `test/CMakeLists.txt`
   that sets `URI_EXECUTION_MODE` by hand, bypassing `uri_add_scheme_lane`, must now set
   the mode its name declares. A non-Scheme registration may set one only when it is
@@ -57,7 +76,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **README.org** is rewritten around what the library does, why, how to use it, and how
   to develop it, with a CI badge. It no longer cites RFC section numbers or planning
   records. Its "Scope and limits" bullet on recomposition now names the resolution case
-  above, not only components built by hand.
+  above, not only components built by hand. It now leads with `(uri easy)`, lists the two
+  new libraries in its task table, and says which normalizer removes dot segments.
 
 ## [0.6.2] - 2026-10-01
 
@@ -576,7 +596,8 @@ host grammar are v0.2 (decisions 0011, 0023, and the README caveats).
   always agrees, and a ratchet that fails in only one direction, are both
   caught.
 
-[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.5.0...v0.6.0
