@@ -1,0 +1,26 @@
+#!r6rs ; -*- scheme -*-
+(import (akku format manifest))
+
+;; The package installs the libraries under src/: (uri ...) and the generated
+;; scanner, (generated uri-scanner). Everything under test/ is test code and
+;; is not installed. Programs install only from bin/, demos/ or programs/, and
+;; this repository has none of those, so tools/emit-machine.ss does not
+;; install. `make check-akku` installs the package as a consumer would and
+;; checks that set.
+;;
+;; depends: the scanner imports (byte-machine runtime) and (uri grammar)
+;; imports (byte-machine graph). The range's floor is the version vendored in
+;; vendor/byte-machine, which is the version the test suite runs against. The
+;; uri.docs.akku-manifest lane holds this version to the latest release in
+;; CHANGELOG.md, and that floor to the vendored copy's.
+;;
+;; No `scripts` clause: there is nothing to build.
+(akku-package ("chez-uri" "0.7.0")
+  (synopsis "An RFC 3986 URI parser for Chez Scheme, in portable R6RS")
+  (description
+   "Parse, validate, resolve and normalize URIs as RFC 3986 defines them. (uri easy) takes a URI as a string and answers with strings: the host, the port as a number, decoded path segments and query pairs."
+   "Underneath is a byte-level parser for servers: it reads bytevectors, accepts input in any number of chunks, and reuses its memory from one request to the next.")
+  (authors "Kiyomi Computation Systems LLC")
+  (homepage "https://github.com/Kiyomi-Computation-Systems/uriparse")
+  (license "BSD-3-Clause")
+  (depends ("byte-machine" "^0.7.0")))

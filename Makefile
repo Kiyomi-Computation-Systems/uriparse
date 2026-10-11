@@ -14,11 +14,13 @@
 CMAKE ?= cmake
 CTEST ?= ctest
 CTEST_FLAGS ?= --output-on-failure --no-tests=error
+AKKU ?= akku
+CHEZ ?= chez
 
 # Bare 'make' prints the target list rather than building; 'make all' still builds.
 .DEFAULT_GOAL := help
 
-.PHONY: all help doctor configure build dev test test-all no-scheme prod clean corpus-refresh parser-refresh
+.PHONY: all help doctor configure build dev test test-all no-scheme prod clean corpus-refresh parser-refresh check-akku
 
 all: build   ## build the development preset
 
@@ -77,6 +79,13 @@ corpus-refresh:   ## re-derive the RFC 3986 corpus from the vendored text
 # runs the same one and compares, so a grammar edit without a refresh reddens.
 parser-refresh:   ## re-emit the committed URI scanner from the grammar
 	$(CMAKE) -P cmake/UriParserRefresh.cmake
+
+# Installs this package with Akku as a consumer would, from the files git
+# tracks, then checks that exactly the libraries under src/ install and that a
+# program reads a URI with only Akku's library path. It is a target, not a
+# lane, because it needs akku, which no lane can assume is installed.
+check-akku:   ## install with Akku as a consumer would, and check what lands
+	@AKKU="$(AKKU)" CHEZ="$(CHEZ)" sh test/akku/check-akku.sh
 
 clean:   ## remove all build trees
 	$(CMAKE) -E rm -rf build

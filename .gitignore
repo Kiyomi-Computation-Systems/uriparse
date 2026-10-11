@@ -8,6 +8,10 @@
 # Developer-local preset overrides
 CMakeUserPresets.json
 
+# Akku's install directory, made by `akku install` in a checkout. `make
+# check-akku` installs into a temporary directory instead.
+/.akku/
+
 # Per-test working and temporary directories. uri_add_test puts these
 # under CMAKE_BINARY_DIR, so a tree here means someone configured with the
 # binary directory set to the repository root. Ignored rather than left

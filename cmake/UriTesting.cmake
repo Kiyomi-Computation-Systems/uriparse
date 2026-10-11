@@ -37,6 +37,7 @@ set(URI_TEST_LAYERS
   conformance   # RFC 3986's own vectors, cited by section
   portability   # values crossing library boundaries; runtime identity
   example       # the documented end-to-end examples
+  docs          # the documentation and packaging checked against the tree
   benchmark     # measured rates, reported rather than asserted
   expected-red) # tests that must fail, proving the harness can fail
 

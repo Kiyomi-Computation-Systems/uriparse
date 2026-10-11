@@ -15,7 +15,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   listed doc with no example fails. It reads every prose file under `docs/` (`.org`,
   `.md`, `.markdown`, `.rst`, `.adoc`, `.txt`), not only the format it can check, so a
   doc it cannot read fails instead of dropping out of the check, and so does a `docs/`
-  with no guide. The complete selection is 87 lanes.
+  with no guide.
+- **An Akku package manifest.** `Akku.manifest` describes chez-uri for the
+  [Akku](https://akkuscm.org/) package index. The package installs the 15 libraries
+  under `src/` and depends on byte-machine `^0.7.0`. The `uri.docs.akku-manifest` lane
+  holds the manifest's version to the latest release here and its dependency floor to
+  the vendored copy. `make check-akku` installs the package into a throwaway project and
+  checks that exactly the libraries in `src/` land, that no program does, and that a
+  program reads a URI through both layers with only Akku's library path. Nothing is
+  published yet: byte-machine has to be on the index first (decision 0045). The
+  complete selection is 89 lanes.
 
 ## [0.7.0] - 2026-10-11
 
