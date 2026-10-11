@@ -122,7 +122,9 @@ definition.
   ~http:g~. The older, looser behaviour the RFC mentions is not supported.
 - Recomposing gives back what was parsed. It does not repair components built
   by hand into something ambiguous, such as a scheme-less path whose first
-  segment contains ~:~.
+  segment contains ~:~. Resolution can produce one such shape too: against a
+  base with no authority, ~foo:/a~ and ~.//bar~ resolve to the path ~//bar~,
+  which recomposes to ~foo://bar~, a URI whose authority is ~bar~.
 - Only Chez Scheme is tested. CI runs on Linux amd64; development happens on
   macOS. Windows and arm64 are untested.
 

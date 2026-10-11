@@ -16,12 +16,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (nine; there are eight). The complete selection is 79 lanes and the no-Scheme layer 13.
 - **`NOTICE`**, listing the third-party material: the RFC 3986 text and the test data
   extracted from it, and the byte-machine submodule.
+- **A pinned resolution boundary in `property.round-trip`.** Against a base with no
+  authority, resolution can produce a path beginning `//`: `foo:/a` with `.//bar` (or
+  `/.//bar`) resolves to the path `//bar`, which recomposes to `foo://bar` and re-parses
+  with authority `bar`. `(uri resolve)` and `(uri recompose)` follow RFC 3986 §5.2.2 and
+  §5.3 as written, so this is pinned as an expected non-round-trip, with an `http://`
+  control whose authority keeps the `//` inside the path.
 
 ### Changed
 
 - **README.org** is rewritten around what the library does, why, how to use it, and how
   to develop it, with a CI badge. It no longer cites RFC section numbers or planning
-  records.
+  records. Its "Scope and limits" bullet on recomposition now names the resolution case
+  above, not only components built by hand.
 
 ## [0.6.2] - 2026-10-01
 

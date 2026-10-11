@@ -1139,6 +1139,8 @@ foreach(mode source aot)
             ${URI_COLLECT}
             ${URI_GENERATED_PARSER}
             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/normalize.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/path.sls"
+            "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/resolve.sls"
             "${URI_SRC_CHEZ_LIBRARY_ROOT}/uri/recompose.sls"
             ${URI_CORPUS_LIB}
             "${CMAKE_CURRENT_LIST_DIR}/common/round-trip-tests.sps"
