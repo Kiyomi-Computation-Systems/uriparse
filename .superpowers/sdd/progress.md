@@ -4266,3 +4266,71 @@ accessor, a ranged (uri query). (5) Carried: chez-httparse to byte-machine v0.7.
 CMake hold review; the 24.04 → 26.04 move (0038 item 4); chez-httparse's runner pin before
 2026-10-19; the result-level authority-form validator (0032 item 4); v0.6+ tooling (0012, 0022);
 the next sibling request.
+
+THE AKKU PACKAGE (2026-10-11, on the maintainer's word: "release this on Akku like
+chez-cmark-gfm"). WHAT "LIKE" MEANT HAD TO BE READ OFF THE ARCHIVE. chez-cmark-gfm's ADR-0017
+still says publishing is out of scope, yet akkuscm.org/packages/chez-cmark-gfm/ lists 2.0.0,
+repacked from tag v2.0.0. So the target is a real `akku publish`. Akku's lib/publish.scm says what
+that takes:
+- it signs an index entry naming the v<version> tag with the publisher's GPG key;
+- it uploads the entry to archive.akkuscm.org;
+- the archive clones the repo at that tag, so the repo must be public, submodules arrive empty, and
+  every dependency must already be on the index.
+uriparse and byte-machine are private, and byte-machine is not on the index, so nothing could
+be published. Branch chore/akku-package off main 6fdd6bd, in an EnterWorktree worktree. The
+shape is chez-httparse's unreleased packaging, renamed:
+- Akku.manifest: chez-uri 0.7.0, depending on byte-machine ^0.7.0, with no scripts and no lock;
+- uri.docs.akku-manifest (source and aot, a new `docs` layer, which the pr selection includes);
+- make check-akku, with test/akku/check-akku.sh and consumer.sps;
+- decision 0045.
+94df59 took decision 0044 by message. check-akku adds one assertion to chez-httparse's: the
+package installs nothing but libraries and notices, because a program would land in .akku/bin
+where the library-set check cannot see it. No (uri ...) or (generated ...) library is on the index
+(akkuscm.org/libraries, read 2026-10-11).
+WATCHED FAIL:
+- The lane went red with no manifest. Five manifest mutations were each caught by their own
+  diagnostic: version, floor, caret, no depends, unvendored dependency.
+- check-akku, 7 cases entered and 7 verdicts returned. It went red on: a tracked site/*.sls, a
+  programs/*.sps, a src/ library left uninstalled, no dependency (the consumer fails at import),
+  and wrong consumer output. It stayed green with .akkuignore = site, and with a top-level
+  build-site.sps. Those two are the verdicts 94df59 asked for on #44's files.
+Measured on 6fdd6bd plus this commit (macOS arm64, Chez 10.4.1, CMake 4.3.3, akku 1.1.1-beta.0):
+test-all 89/89, no-scheme 13/13, check-akku 15 libraries.
+
+PR #45 CLOSED OUT (2026-10-11, the closing ritual, on the maintainer's word). Squash-merged as
+cb26b0a on 6fdd6bd, pinned by --match-head-commit 094d1ed. Merged tree 9945081 = tested tree
+9945081 (hash compare). Before merging, origin/main had not moved. CI DID NOT RUN: run
+38167266479 was refused over billing (annotation read). A PR comment records it with the local
+counts. The worktree was removed. Its one discarded commit was 094d1ed, whose tree is main's.
+chore/akku-package was deleted locally and on the remote, and no open PR was based on it
+(checked). The main checkout, clean and on main, fast-forwarded to cb26b0a.
+
+REFLECTION. Three things.
+(1) A REPO'S OWN RECORD CAN LAG ITS PUBLISHED STATE. chez-cmark-gfm's ADR said "not published",
+and the archive said otherwise. Ask the live source (the archive, the API) before planning from
+a sibling's docs.
+(2) A WITNESS CAN MISS FOR ITS OWN REASON. The first "src/ library left uninstalled" case passed:
+`.akkuignore` matches basenames at any depth, never paths (repo-scanner.scm), so
+src/uri/query.sls ignored nothing. The count of verdicts was whole, 7 of 7. What showed the miss
+was that a case expected to fail passed. Reading Akku's source turned that into a fact about the
+tool, which decision 0045 now records.
+(3) EXACT SET, NOT "SRC INSTALLS". #44's site/ libraries would have reached every consumer's
+library path, the leak d65f95 is fixing in chez-cmark-gfm after publication. Asserting the exact
+set is what caught it before anything shipped. Separately, a `cd` into 94df59's worktree to read it
+moved this session's working directory there. Nothing was written, and the memory now says never
+to cd into a peer's worktree.
+
+NEXT. (1) CI billing: twelve PRs (#33 to #43, #45) have now merged without a CI verdict. When
+Actions runs again, run it on main (cb26b0a or later), and record the first green run since #28.
+(2) THE AKKU RELEASE, in 0045 item 6's order:
+  (a) byte-machine public, tagged (its manifest is on its main, unreleased), and published;
+  (b) bump vendor/byte-machine to that release, so the floor names a version the index has;
+  (c) uriparse public, a release tag (manifest version = CHANGELOG), `make check-akku` run and
+      recorded in the release record, then `akku publish` by the maintainer.
+  This replaces (2) above.
+(3) #44 (94df59; f90e18c + 05ab367): the Markdown docs, the reader, the self-test fixes and
+.akkuignore = site. Whichever of #44 and #45 merged second rebases, so #44 does, and it must
+re-measure the lane count, not add (expect 91). Review it for (1) and (2) of the #43 report.
+(4) check-akku into CI when funded, in the shape of chez-cmark-gfm's akku-install job (akku
+1.1.0 tarball, pinned by sha256).
+(5) Carried unchanged from above: the easy layer's out-of-scope features, and NEXT (5)'s list.
