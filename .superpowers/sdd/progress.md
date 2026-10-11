@@ -3847,3 +3847,38 @@ uri-host?", the answer is compare it, which made the raw form an allowlist bug. 
 the accessor and keeping the record raw keeps both properties. (3) A STACK NEEDS ITS MERGE ORDER
 WRITTEN DOWN BEFORE THE FIRST MERGE. The retarget must precede the branch deletion, and under a
 squash the stacked branch's old base commits must be cut off with --onto.
+
+MERGE STATE (2026-10-11, after #36). #36 is merged (above) and #37 targets main.
+feat/uri-query was rebased onto the rebased slice-⓪ head with `git rebase --onto
+docs/easy-layer-slice0 d63e2bd`; the ledger conflicted, both branches having appended here,
+and kept both. When #37 squash-merges: retarget #38 to main FIRST, then `git rebase --onto
+origin/main <#37's head> feat/uri-query`, then delete docs/easy-layer-slice0.
+
+SLICE ① OPEN AND DONE IN BRANCH (2026-10-11). Branch feat/uri-query, STACKED on
+docs/easy-layer-slice0 (0041 governs it, and both append to this ledger). `(uri query)` in
+src/uri/query.sls: `query-pairs` and `form-pairs`, pure, importing (rnrs) and (uri percent),
+exactly 0041 item 2's rules. test/common/query-tests.sps, lane uri.unit.query.chez.{source,aot}.
+THREE READINGS: a 25-row hand-derived table that BOTH the product and the oracle must satisfy
+(so the table grades the oracle too); the oracle, test/support/harness/uri/test/query-oracle.sls,
+over lists of octets with its own hex reading, importing only (rnrs); and an exhaustive sweep of
+both readings over the alphabet "a=&+%26B" (8 bytes: both separators, `+`, `%`, and the hex
+digits that spell %26 and %2B). MAXLEN SET BY MEASUREMENT: 6 ran 599,186 comparisons in 0.26 s,
+7 runs 4,793,490 in 1.73 s (source) and ~2.0 s (aot), so 7. The sweep emits its coverage line
+and asserts its count against an independently computed total. WATCHED FAIL: first with no
+library (the lane cannot load it), then against a stub returning () (the oracle passes all 25
+rows in both readings; the stub fails 23 per reading, passing only "" and "&"; the sweep finds
+599,172 disagreements, the 14 agreements being exactly the all-`&` words, 7 lengths × 2
+readings). Then eight mutations of a scratch copy of src/, each an exact single-occurrence
+substitution that refuses to run if it does not land; the sweep at MAXLEN 7:
+  decode before split (query)   table 4, sweep 22,712 disagreements
+  + → space after decode (form) table 2, sweep 22,712
+  split at the last =           table 1+1, sweep 834,768
+  keep empty pieces             table 3+3, sweep 883,554
+  ; as a separator              table 1+1, sweep 0 (; is outside the alphabet: the table's catch)
+  absent value as ""            table 4+4, sweep 2,963,712
+  output reversed               table 7+7, sweep 2,165,346
+  duplicate keys merged         table 1+1, sweep 113,408
+The two 22,712s are the alphabet's symmetry: %26 and %2B are spelled the same way. CHANGELOG
+[Unreleased] gains the (uri query) entry. Measured on b981dde plus this commit (macOS
+arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3, byte-machine c338a57): test-all 81/81, no-scheme
+13/13.
