@@ -193,6 +193,9 @@ make test-all  # every test
 make no-scheme # the CMake layer alone, on a machine with no Scheme
 #+end_src
 
+The Scheme examples in this README and in ~docs/~ are run by the tests, so
+they print what they say they print.
+
 *** Generated files
 
 Two kinds of file are generated, committed, and checked by a test that

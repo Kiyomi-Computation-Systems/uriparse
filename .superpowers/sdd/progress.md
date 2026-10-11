@@ -4110,3 +4110,36 @@ Latest. Body: the CHANGELOG [0.7.0] section read from CHANGELOG.md AT THE TAG, w
 heading, as v0.6.2's was. The extraction was asserted to be a verbatim slice (70 lines), and the
 published body read back matches it except for jq's trailing newline.
 https://github.com/Kiyomi-Computation-Systems/uriparse/releases/tag/v0.7.0. NEXT item (3) is done.
+
+THE EXAMPLE CHECKER IS A LANE (2026-10-11, on the maintainer's request; 0043's last "what reopens
+next" item and ledger NEXT (4)). Branch test/doc-examples-lane off main 7ff7424. The scratchpad
+Python checker became test/common/doc-examples-tests.sps, lane uri.example.docs.chez.{source,aot}
+(label `example`, already in the pr filter and used by no lane until now; no record says what it
+was reserved for). NO NEW DEPENDENCY: it is R6RS (rnrs eval). A program block's body is
+evaluated in `(environment ...)` built from its own import, inside a wrapper that rebinds
+display, write and newline to a string port. An expression is evaluated in (rnrs) + (uri easy)
+and compared with `equal?` against its `;; =>` value read as a datum. The program imports (uri
+easy), (uri collect) and (uri components) with `(only (lib))`, binding nothing, so `environment`
+finds them in the AOT lane, where eval works too (measured). The doc list is README.org plus a
+CONFIGURE_DEPENDS glob of docs/*.org, passed as URI_DOC_FILES: docs are data, not fingerprinted
+sources, so a new guide is checked as soon as it exists. THE CHECKER GRADES ITSELF FIRST: inline
+docs with known verdicts. One correct doc has every example counted and no difference. Eight
+wrong docs (wrong output, wrong value, a program with no example, an expression with no value,
+one that raises, a program that raises, an unclosed block, no example at all) must each give
+EXACTLY one difference. An sh block next to a Scheme one is skipped, not run. WATCHED FAIL: on
+copies of the docs (a wrong port and a wrong host: 2 differences; a wrong `;; =>`: 1); on 9
+mutations of the checker (output always agrees, value always agrees, missing example ignored,
+example search crossing a Scheme block, unclosed block dropped, empty doc passing, other
+languages run as Scheme, an expression without a value dropped), every one red; a listed file
+that is missing, and an empty list, both red; and the REGISTERED lane through ctest, with a
+real edit to docs/easy.org, red in source and AOT, then green once restored (git diff clean).
+TWO SELF-TEST GAPS FOUND BY THE MUTATIONS, both fixed before commit. (a) In the no-example case,
+the stray example after the next Scheme block did not match the program, so a search that ran
+past the block still found one difference, for the wrong reason; it now matches, so running past
+gives zero. (b) The no-example rule lived in the real-docs group, which no self-test reaches; it
+moved into check-doc. Moving it made two inline docs also empty, which the as-written run caught
+(2 differences where 1 was expected); each now carries one good example first. README.org
+gains one line saying the examples are run; CHANGELOG [Unreleased] gains the lane. Measured on
+7ff7424 plus this commit (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3, byte-machine c338a57):
+test-all 87/87, no-scheme 13/13, pr selection 87/87; the lane reports README.org 2 programs and
+docs/easy.org 1 program and 9 expressions, 0 differences, in both modes.

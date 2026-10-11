@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`uri.example.docs`**: every Scheme example in `README.org` and `docs/*.org` is run by
+  the test suite, and must print what the doc says it prints. A program must print the
+  `#+begin_example` after it, and an expression must give the value on its `;; =>` line.
+  The lane checks its own checker first, on inline docs whose verdicts are known, and a
+  listed doc with no example fails. The complete selection is 87 lanes.
+
 ## [0.7.0] - 2026-10-11
 
 Released on macOS arm64 evidence only. CI has run before (the first funded run passed on
