@@ -4390,3 +4390,40 @@ chez-cmark-gfm's CI pins it), `akku update` (index signature verified) + `akku i
 chez-cmark-gfm` -> .akku/lib/cmark/gfm.sls; check-site green, 9 pages. Not exercised on macOS:
 this host's akku fails to start, and 1.1.0 has a known arm64 crash (akku #69); README.org points
 Mac users at a checkout. pages.yml still checks out by commit.
+
+PR #44 CLOSED OUT (2026-10-11, the closing ritual, on the maintainer's word). #45 merged first, so
+#44 was rebased twice: onto cb26b0a (conflicts in Makefile, README.org, CHANGELOG.md and
+test/CMakeLists.txt, both sides kept) and then onto the #45 close-out a78dd4d (the ledger). The
+lane count was re-measured, not added: test-all 91/91 and no-scheme 13/13 on the final tree, and
+CHANGELOG [Unreleased] carries the count once, on the reference entry. #45's `make check-akku` ran
+on the combined tree in ubuntu:24.04 amd64 with Akku 1.1.0: 15 src/ libraries, consumer green, so
+`.akkuignore` = site holds. #44 was squash-merged as 3176912 on a78dd4d, pinned by
+--match-head-commit c52215b. Merged tree 261d55a = tested tree 261d55a (hash compare). CI DID NOT
+RUN: run 38168001897 was refused over billing (annotation read); a PR comment records it with the
+local counts. Before docs/user-docs-and-site was deleted (local and remote), no open PR was based on
+it (checked). The shared checkout, clean, fast-forwarded to 3176912, and the session's worktree
+was removed (--force for its submodule, after both trees were checked clean and c52215b's tree was
+compared equal to 3176912's).
+
+FOUND WHILE CLOSING: #45's check-akku, run on GNU tar, prints "--no-recursion has no effect" and
+"Exiting with failure status" in copy_tracked. The option comes after -T, and a pipeline's left
+side cannot trip set -e, so the check passes anyway and a submodule's directory is archived
+recursively. Reported to a1417a by message; not changed here.
+
+REFLECTION. Three things. (1) A REBASE CAN COMMIT A CONFLICT MARKER. `git rebase --continue` does
+not look for markers, and the check meant to guard it was `rg -c ... && git rebase --continue`. rg
+exits 0 when it finds a match, so the chain continued, and the Makefile's second hunk was committed
+into 9870caa. The count it printed was the warning. It was caught by reading that output and fixed
+by amend before any push. The guard has to fail the chain: `! rg -q '<markers>' <files> && git
+rebase --continue`. (2) RUN THE OTHER SIDE'S CHECK ON THE MERGED TREE. a1417a had witnessed
+.akkuignore on its own branch; running its check-akku on the combined tree confirmed it, and on a
+second platform it also found a defect in the check itself. (3) THE EXAMPLES TESTED THEIR AUTHOR.
+Two values in docs/errors.md were guesses, `/a` at offset 1 and `http` as unexpected-eof, and the
+lane rejected both on the first run. Where no input could be found for a code, the guide says so
+instead of showing one.
+
+NEXT. (1) Publish the site: enable Pages (Settings → Pages → Source: GitHub Actions; a private
+repository needs a paid plan) and restore Actions billing. The first v* tag after that deploys it.
+(2) check-akku on GNU tar (a1417a). (3) CI billing: thirteen PRs (#33 to #45) have now merged
+without a CI verdict. (4) byte-machine public, then on the Akku index, then chez-uri (0045).
+(5) Carried: the easy layer's optional extensions; the sibling items in #43's NEXT (5).
