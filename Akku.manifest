@@ -23,4 +23,4 @@
   (authors "Kiyomi Computation Systems LLC")
   (homepage "https://github.com/Kiyomi-Computation-Systems/uriparse")
   (license "BSD-3-Clause")
-  (depends ("byte-machine" "^0.7.0")))
+  (depends ("byte-machine" "^0.8.0")))
