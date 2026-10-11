@@ -3710,3 +3710,53 @@ uriparse v0.6.2 alongside it. (3) Carried from #30: the 2026-12-01 CMake hold re
 → 26.04 move as its own commit (0038 item 4); chez-httparse's runner pin before 2026-10-19; the
 result-level authority-form validator (0032 item 4), if a request measures the need; v0.6+
 tooling (0012, 0022); the next sibling request.
+
+---
+
+README REWRITE AND NOTICE (2026-10-11, PR #35, on the maintainer's request). README.org is
+rebuilt for a public reader around what, why and development. It opens with a CI badge (the
+ci.yml workflow, branch main). WHY: bytes in and out, streaming chunks, a reusable collector,
+in-place validation over a caller's range, lenient parsing kept apart from strict validation,
+absent vs empty. WHAT IT DOES, in plain terms. USING IT: clone with submodules, the parse
+example, and a to-X-use-Y table of the API. SCOPE AND LIMITS: each limit with a concrete case.
+DEVELOPING: requirements, make targets, the two generated artifacts and their refresh targets,
+layout. RFC SECTION NUMBERS LEFT THE README at the maintainer's word; they were RFC citations,
+not plan references (said so at the time), and the source comments keep them. NOTICE is new. It
+lists test/vendor/rfc3986.txt (verbatim, Copyright The Internet Society 2005, BCP 78, tests only)
+and the data cmake/UriCorpus.cmake extracts from it into test/conformance/rfc3986/. It also lists
+the byte-machine submodule (same owner, BSD-3-Clause, not copied in; the generated scanner is
+its compiler's output). Chez Scheme and CMake are build tools and are not listed. Whether BCP 78
+covers redistributing the extracted ABNF is a legal question, not settled here. CHANGELOG
+[Unreleased] gains the NOTICE (Added) and README (Changed) entries. THE README WAS RUN, NOT
+ONLY READ. The Scheme example, extracted from the file, prints the documented output. The why
+claims were run against src/: absent query #f vs empty #vu8(); a four-chunk feed equals the
+one-shot parse; `http://a/b c` is uri-parse-ok but uri-parse-validate rejects it with
+invalid-pchar. The first claims script called uri-collect-feed! with two arguments (it takes
+bv start end), so prose written from memory would have been wrong. Measured on cb92a8d (macOS
+arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3, byte-machine c338a57): test-all 79/79, no-scheme
+13/13. CI DID NOT RUN, refused over billing a third time (run 38155493873, 3s). Asked again, the
+maintainer chose to merge on local evidence. No 3.31.6 rehearsal: the change touches no build or
+source file. A PR comment records it. PR #35 squash-merged as 7291c18 on d640f6d, pinned by
+--match-head-commit cb92a8d. Merged tree 65271be = tested tree 65271be (hash compare).
+docs/readme-public deleted local and remote. FOUND IN PASSING, AND IT BLOCKS THE RELEASE:
+Kiyomi-Computation-Systems/byte-machine is PRIVATE (gh api visibility). A public uriparse with
+that submodule cannot be cloned or built from outside the org, so the README's
+`git clone --recurse-submodules` and NOTICE's link assume a change not yet made.
+
+REFLECTION. Three things. (1) A README IS A PROGRAM ITS READERS RUN. Its example and every
+behavioural claim were executed against src/ before they were written down, the same rule as a
+check over a comment. (2) NAME THE THING BEFORE REMOVING IT. The request called §5.2.3 a planning
+reference. It is an RFC citation, and saying so kept the source comments' RFC references, which
+serve developers, out of the removal. (3) RELEASE PREP FINDS WHAT NO PR CAN FIX. The submodule's
+visibility is a setting on another repository. The ledger and the PR body record it so the
+release step checks it.
+
+NEXT. (1) Make byte-machine public before or with uriparse. Check with `gh api
+repos/Kiyomi-Computation-Systems/byte-machine --jq .visibility`. (2) CI billing: three PRs (#33,
+#34, #35) have now merged without a CI verdict, and the README badge shows failing until a run
+passes. When Actions runs again, run it on main (7291c18 or later) and record the first green
+run since 5ecd88f. (3) chez-httparse moves to byte-machine v0.7.0, before chez-http-server can
+use the accessors; it can then pin uriparse v0.6.2 alongside it. (4) Carried from #30: the
+2026-12-01 CMake hold review; the 24.04 → 26.04 move as its own commit (0038 item 4);
+chez-httparse's runner pin before 2026-10-19; the result-level authority-form validator (0032
+item 4), if a request measures the need; v0.6+ tooling (0012, 0022); the next sibling request.
