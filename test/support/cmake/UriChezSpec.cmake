@@ -10,10 +10,8 @@
 #
 # WHY THREADING IS NOT CHECKED
 #
-# The sibling protium project requires threaded Chez because libuv gives it a
-# loop-owner thread model. uri has no threads anywhere in its design,
-# so requiring a threaded build here would be a copied requirement rather than a
-# real one, and would reject a perfectly good runtime. The probe still reports
+# uri has no threads anywhere in its design, so requiring a threaded build
+# would reject a perfectly good runtime for no reason. The probe still reports
 # the flag and discovery still records it, because portability evidence names
 # the exact runtime that produced it -- but it is evidence, not a gate.
 

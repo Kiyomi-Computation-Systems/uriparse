@@ -4,8 +4,7 @@
 #
 # This is the ONLY way test/conformance/rfc3986/*.scm is written: the initial
 # derivation and every refresh run the same code, so a refresh cannot drift
-# from however the first copy happened to be made (decision 0005, and the rule
-# the sibling applies to its own vendored corpus). The registered lane
+# from however the first copy happened to be made. The registered lane
 # CorpusProvenanceSpec.cmake calls the same functions and compares.
 cmake_minimum_required(VERSION 3.26)
 

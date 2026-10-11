@@ -1,5 +1,4 @@
-;;; RFC 3986 conformance audit -- the DIFFERENTIAL adversarial corpus (decision
-;;; 0028 item 3d, Slice ①).
+;;; RFC 3986 conformance audit -- the DIFFERENTIAL adversarial corpus.
 ;;;
 ;;; AUTHORED, NOT EXTRACTED. Like test/conformance/charset/ and test/conformance/
 ;;; host/ (and unlike the derived test/conformance/rfc3986/), this file is
@@ -17,7 +16,7 @@
 ;;;
 ;;; THE THIRD READING. Each row carries its ABNF-correct verdict, so the lane checks
 ;;; the oracle AND the product against a hand reading of Appendix A -- a shared
-;;; oracle/product blind spot still reddens against it (decisions 0005 / 0012). Get
+;;; oracle/product blind spot still reddens against it. Get
 ;;; a verdict wrong here and the row reddens on whichever of the two the ABNF agrees
 ;;; with; that is the row doing its job, not a bug in the harness.
 ;;;
@@ -105,8 +104,8 @@
   (uri #vu8(97 58 9 98)               reject "TAB (0x09) in a path")
   (uri #vu8(104 116 116 112 58 47 47 97 0 98) reject "NUL in a path")
 
-  ;; === AGENT-PROBED (Slice ① adversarial-probe workflow, 8 production families,
-  ;; every verdict independently re-derived from Appendix A; decision 0028 item 3d). ===
+  ;; === PROBED (8 production families, every verdict independently
+  ;; re-derived from Appendix A). ===
   (uri "coap+ws://host/path" accept "scheme = ALPHA *( ALPHA / DIGIT / \"+\" / \"-\" / \".\" ): 'coap+ws' is ALPHA-first with interior '+'~")
   (uri "a+-.:x" accept "scheme 'a+-.': ALPHA 'a' then '+','-','.' are all legal trailing scheme chars (a scheme may end~")
   (uri "HTTP://Example.COM" accept "ALPHA = A-Z / a-z (RFC 5234 App. B, which the file defers to), so scheme 'HTTP' is valid; host~")

@@ -34,7 +34,7 @@ if(URI_REQUIRE_CHEZ)
   uri_chez_discover()
 endif()
 
-# The byte-machine submodule and the emitter landed at M2 (decision 0002 item 2).
+# The byte-machine submodule supplies the emitter.
 # `make parser-refresh` (cmake/UriParserRefresh.cmake) re-emits the committed
 # scanner from src/uri/grammar.sls; the determinism lane runs the same emitter
 # and compares, so a grammar edit without a refresh reddens.

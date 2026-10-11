@@ -1,15 +1,14 @@
 #!r6rs
-;;; unit.host-oracle -- the M4 host-grammar oracle and its negative corpus, judged
-;;; before any validator exists (decision 0025, Slice ⓪).
+;;; unit.host-oracle -- the host-grammar oracle and its negative corpus, judged
+;;; independently of the src validator.
 ;;;
-;;; Two artifacts land in Slice ⓪ and this lane gates them against each other:
+;;; Two artifacts are gated against each other here:
 ;;; (uri test host-oracle), a reading of RFC 3986 §3.2's authority grammar derived
-;;; from the ABNF independently of the src (uri host) validator that does not exist
-;;; yet; and the hand-derived negative corpus. The corpus is CROSS-CHECKED against
+;;; from the ABNF independently of the src (uri host) validator; and
+;;; the hand-derived negative corpus. The corpus is CROSS-CHECKED against
 ;;; the oracle -- a row whose (component, code, absolute-offset) the oracle
 ;;; disagrees with reddens -- so neither can drift from the ABNF unnoticed (oracle
-;;; discipline, decisions 0005 / 0012 / 0025 item 7). The src (uri host) validator
-;;; is graded against BOTH in Slices ①②.
+;;; discipline). The src (uri host) validator is graded against BOTH in unit.host.
 (import (rnrs)
         (uri test harness)
         (uri test host-oracle))

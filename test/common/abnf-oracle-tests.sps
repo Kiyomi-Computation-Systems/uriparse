@@ -1,18 +1,18 @@
 #!r6rs
 ;;; unit.abnf-oracle -- the whole-URI recognizer graded on its OWN, before it is
-;;; ever run against the product (the RFC 3986 conformance audit, decision 0028,
-;;; Slice ⓪).
+;;; ever run against the product (the RFC 3986 conformance audit).
 ;;;
-;;; One artifact lands in Slice ⓪ and this lane grades it two ways, exactly as the
-;;; corpus loader and the two component oracles were graded before any validator
-;;; existed (decision 0005): (uri test abnf-oracle), an INDEPENDENT reading of RFC
-;;; 3986 Appendix A's structural grammar composed with the audited M3/M4 component
-;;; oracles, must ACCEPT every positive corpus -- the §1.1.2 example URIs, the §5.4
-;;; base, references, and targets -- and must REJECT a hand-built structural
-;;; negative set that walks each way the structure can be violated (a bad scheme,
-;;; a mode/production mismatch, an invalid authority, a per-component charset
-;;; fault, and the URI / relative-ref disambiguation). NO differential against
-;;; uri-parse-validate here: that is Slice ①, once the oracle itself is trusted.
+;;; One artifact is graded here, in two ways, exactly as the corpus loader and
+;;; the two component oracles are graded on their own: (uri test abnf-oracle),
+;;; an INDEPENDENT reading of RFC 3986 Appendix A's structural grammar composed
+;;; with the audited charset and host component oracles, must ACCEPT every
+;;; positive corpus -- the §1.1.2 example URIs, the §5.4 base, references, and
+;;; targets -- and must REJECT a hand-built structural negative set that walks
+;;; each way the structure can be violated (a bad scheme, a mode/production
+;;; mismatch, an invalid authority, a per-component charset fault, and the URI /
+;;; relative-ref disambiguation). NO differential against uri-parse-validate
+;;; here: that is conformance.abnf-differential, which runs once the oracle
+;;; itself is trusted.
 ;;;
 ;;; The positives are the RFC's own vectors, read through (uri test corpus); the
 ;;; structural cases are authored here, small and legible, one class per case.
@@ -92,7 +92,7 @@
 
 ;; --- the URI / relative-ref disambiguation -------------------------------
 ;;
-;; The one structural fork (decision 0028's worked example): a colon-bearing first
+;; The one structural fork (the worked example): a colon-bearing first
 ;; segment is a URI's scheme, never a relative-ref's first path segment. So each
 ;; of these is a URI, is NOT a relative-ref, and is a URI-reference only through
 ;; the URI arm. This is the property the audit most needs the oracle to get right.
@@ -126,7 +126,7 @@
         (rejects "digit-first scheme:   1abc:x"  'uri "1abc:x")
         (rejects "empty scheme:          :x"      'uri ":x")
         (rejects "space in scheme:       a b:c"   'uri "a b:c")
-        ;; the 0028 example: 1abc:x is neither URI (bad scheme) nor relative-ref
+        ;; the worked example: 1abc:x is neither URI (bad scheme) nor relative-ref
         ;; (first segment "1abc:x" bears a colon), so not a URI-reference either.
         (rejects "1abc:x not a URI-reference" 'uri-reference "1abc:x")))
     (harness-case "a mode / production mismatch is rejected"

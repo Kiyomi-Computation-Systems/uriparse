@@ -2,24 +2,23 @@
 ;;; (uri test host-oracle): RFC 3986's AUTHORITY grammar -- the userinfo/host/port
 ;;; split and the whole host grammar (reg-name, IPv4address, IP-literal →
 ;;; IPv6address / IPvFuture, dec-octet, port) -- read from the ABNF INDEPENDENTLY
-;;; of the src `(uri host)` validator that does not exist yet, plus the reader for
-;;; M4's hand-derived negative corpus and the cross-check that ties the two
-;;; together (M4, decision 0025, Slice ⓪).
+;;; of the src `(uri host)` validator, plus the reader for the hand-derived
+;;; negative corpus and the cross-check that ties the two together.
 ;;;
-;;; ORACLE DISCIPLINE (decisions 0005, 0012). This library is the reference against
-;;; which `(uri host)` (M4 Slices ①②) is graded, so it is written from RFC 3986
+;;; ORACLE DISCIPLINE. This library is the reference against
+;;; which `(uri host)` is graded, so it is written from RFC 3986
 ;;; §3.2 / Appendix A (test/conformance/rfc3986/rfc3986.abnf) and RFC 5234 App. B,
 ;;; NOT from the src validator. `oracle-scan-authority` is a second, deliberately
 ;;; naive implementation of exactly the property the product must have, and two
 ;;; implementations of one property that agree on every input are the check.
 ;;;
-;;; THE COUNTING MODEL (decision 0025 item 5). The ABNF writes `IPv6address` as nine
-;;; alternatives because ABNF cannot count; this reads it as a counter -- ≤8 `h16`
-;;; groups, at most ONE `::` (which fills ≥1 zero group), an optional trailing
-;;; `IPv4address` (`ls32`) counting as two groups -- exactly the reduction the design
-;;; note predicts. Without `::` the pieces total exactly 8; with `::` they total ≤7.
+;;; THE COUNTING MODEL. The ABNF writes `IPv6address` as nine alternatives
+;;; because ABNF cannot count; this reads it as a counter -- ≤8 `h16` groups, at
+;;; most ONE `::` (which fills ≥1 zero group), an optional trailing
+;;; `IPv4address` (`ls32`) counting as two groups. Without `::` the pieces total
+;;; exactly 8; with `::` they total ≤7.
 ;;;
-;;; OFFSET CONVENTION (decision 0025 items 3-4). `oracle-scan-authority` returns the
+;;; OFFSET CONVENTION. `oracle-scan-authority` returns the
 ;;; AUTHORITY-relative index of the first fault. A userinfo/reg-name/port literal
 ;;; fault points at the offending byte; a malformed `pct-encoded` at its `%`; and
 ;;; every IP-literal-interior fault -- including a `dec-octet` range error -- points
@@ -30,7 +29,7 @@
 ;;;
 ;;; SCOPE. userinfo / host (`reg-name`, `IPv4address`, `IP-literal`, `IPv6address`,
 ;;; `IPvFuture`) / `port` and `dec-octet`, plus reused `pct-encoded`. This is the
-;;; whole authority interior; scheme/path/query/fragment are M3's (uri charset).
+;;; whole authority interior; scheme/path/query/fragment belong to (uri charset).
 ;;;
 ;;; PURE, except `negative-load`, the one procedure that touches a port.
 (library (uri test host-oracle)
@@ -43,10 +42,10 @@
     oracle-scan-authority
     ;; the test-side authority extractor the cross-check rebases against
     authority-of
-    ;; M4's negative corpus
+    ;; the negative corpus
     negative-load negative-parse
     nv? nv-mode nv-input nv-component nv-code nv-offset nv-note
-    ;; the Slice ⓪ cross-check: corpus row vs oracle, #f when consistent
+    ;; the cross-check: corpus row vs oracle, #f when consistent
     negative-cross-check
     host-oracle-error? host-oracle-error-detail)
   (import (rnrs))
@@ -286,9 +285,10 @@
   ;; The authority bytes and their ABSOLUTE start in a corpus input. Deliberately
   ;; naive and INDEPENDENT of the src scanner: a corpus row is "<scheme>://<auth>"
   ;; optionally followed by "/", "?" or "#", so the authority is the bytes after
-  ;; the first "//" up to the first of those delimiters or the end. The Slice ②
-  ;; lane re-checks these inputs against the REAL scanner via uri-parse-validate,
-  ;; so a disagreement between this split and the scanner would surface there.
+  ;; the first "//" up to the first of those delimiters or the end. A
+  ;; separate lane re-checks these inputs against the REAL scanner via
+  ;; uri-parse-validate, so a disagreement between this split and the scanner
+  ;; would surface there.
   (define (authority-of bv)
     (define n (bytevector-length bv))
     (let ((ss (find-slashslash bv 0 n)))
@@ -316,7 +316,7 @@
             (begin (bytevector-u8-set! out j (u8 bv i))
                    (loop (fx+ i 1) (fx+ j 1)))))))
 
-  ;; --- the negative corpus (decision 0025 item 7) -------------------------
+  ;; --- the negative corpus -------------------------
   ;;
   ;; A row is (mode input component code offset note). `input` is a STRING (its
   ;; UTF-8 bytes) or a BYTEVECTOR (exact bytes for the > 0x7F / control cases).
@@ -358,7 +358,7 @@
               (begin (close-port p) (negative-parse (reverse acc)))
               (loop (cons d acc)))))))
 
-  ;; --- the Slice ⓪ cross-check --------------------------------------------
+  ;; --- the cross-check --------------------------------------------
   ;;
   ;; negative-cross-check : Nv -> (Option String)
   ;;

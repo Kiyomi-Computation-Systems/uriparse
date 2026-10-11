@@ -92,11 +92,10 @@ uri_test_require_timeout("120" "uri.unit.graph.chez.source")
 
 # --- The run directory ------------------------------------------------------
 #
-# Which directory a lane launches from is a decision, and slice 3 is the first
-# code to depend on being able to change it. Specified against the pure function
-# rather than through uri_add_test: the registrar calls add_test, which
-# script mode does not have, and creates directories, which a specification must
-# not do to whatever tree it happens to be run from.
+# The directory a lane launches from can be changed per lane. Specified against
+# the pure function rather than through uri_add_test: the registrar calls
+# add_test, which script mode does not have, and creates directories, which a
+# specification must not do to whatever tree it happens to be run from.
 uri_test_run_directory("uri.harness.example.cmake.direct" "" derived)
 spec_check_equal("${derived}" "${CMAKE_BINARY_DIR}/test-run/uri.harness.example.cmake.direct"
   "with no override, the run directory is derived from the test name")

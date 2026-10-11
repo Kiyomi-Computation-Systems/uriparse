@@ -1,11 +1,11 @@
 #!r6rs
-;;; unit.charset -- the M3 charset validator (decision 0024). Graded three ways:
+;;; unit.charset -- the charset validator. Graded three ways:
 ;;; against the INDEPENDENT oracle (they agree on every byte), against the
 ;;; negative corpus (every row rejected with the recorded code and ABSOLUTE
 ;;; offset, end to end through uri-parse-validate), and against the positive
 ;;; corpora (all accepted -- the reject-everything guard). The oracle
 ;;; (uri test charset-oracle) and the product (uri charset) are two independent
-;;; readings of the same ABNF; their agreement is the check (decisions 0005/0012).
+;;; readings of the same ABNF; their agreement is the check.
 (import (rnrs)
         (uri test harness)
         (uri charset)
@@ -22,7 +22,7 @@
 
 (harness-begin "unit.charset")
 
-;; --- the core error vocabulary (decision 0024 item 5) --------------------
+;; --- the core error vocabulary -------------------------------------------
 (harness-group "the core error vocabulary"
   (lambda ()
     (harness-case "the five codes, named per ABNF production, out of the scanner set"
@@ -81,7 +81,7 @@
                 (set! bad (cons (list b1 b2) bad)))))
           (check-equal "no %XY disagreements over 256x256" bad '()))))))
 
-;; --- validate-component over a range (issue #21, decision 0034) ------------
+;; --- validate-component over a range ---------------------------------------
 ;; An embedder holding a component as [start, end) of a larger bytevector (a
 ;; server's request-target, still in the buffer the socket filled) judges it in
 ;; place. The ranged verdict is the verdict on the span ALONE: nothing outside
@@ -179,7 +179,7 @@
                       (lambda () (verdict 'authority 42)))))
     (harness-case "judging a span allocates nothing that grows with its length"
       (lambda ()
-        ;; The point of the range (issue #21): keeping a component as a span
+        ;; The point of the range: keeping a component as a span
         ;; must not cost a per-byte copy to judge it.
         (let* ((buf (make-bytevector 4096 97))            ; "aaaa...": valid in all four
                (allocated

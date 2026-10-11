@@ -1,11 +1,11 @@
 test/conformance/differential/ -- PROVENANCE
 
 adversarial.scm -- the RFC 3986 conformance audit's DIFFERENTIAL adversarial
-corpus (decision 0028 item 3d, Slice ①).
+corpus.
 
 AUTHORED, NOT EXTRACTED
 -----------------------
-Like test/conformance/charset/ (M3) and test/conformance/host/ (M4) -- and
+Like test/conformance/charset/ and test/conformance/host/ -- and
 unlike test/conformance/rfc3986/, which is DERIVED from the vendored RFC text by
 cmake/UriCorpus.cmake and guarded by uri.harness.corpus-provenance -- this file
 is HAND-DERIVED from the ABNF (test/conformance/rfc3986/rfc3986.abnf). RFC 3986
@@ -33,11 +33,11 @@ verdict against BOTH the product (uri-parse-validate) AND the independent oracle
 ((uri test abnf-oracle)). Because the oracle and the product are two readings of
 the same ABNF, they could in principle share a blind spot; this hand verdict is a
 THIRD, independent reading that reddens against whichever of the two the ABNF
-agrees with (decisions 0005 / 0012). A wrong verdict here does not pass quietly --
+agrees with. A wrong verdict here does not pass quietly --
 it reddens on the correct side, which is the row doing its job.
 
-CONTENTS (2026-09-19)
----------------------
+CONTENTS
+--------
 213 rows: 118 accept, 95 reject.
   by mode: 171 uri, 27 relative-ref, 15 uri-reference.
   21 rows are #vu8(...) bytevectors: 19 carry a control or > 0x7F byte a string
@@ -45,9 +45,9 @@ CONTENTS (2026-09-19)
   whose trailing/interior placement a bytevector makes explicit and edit-safe.
 
 Two provenances, both HAND-DERIVED from Appendix A:
-  - 60 rows authored directly at Slice ① seed, grouped by production with a
-    one-line ABNF justification per row.
-  - 153 rows from the Slice ① adversarial-probe Workflow (decision 0028 item 3d):
+  - 60 rows authored directly, grouped by production with a one-line ABNF
+    justification per row.
+  - 153 rows from an adversarial-probe pass:
     eight per-production probe agents proposed deep vectors, and a SEPARATE
     verify pass independently re-derived each verdict from Appendix A and
     default-refuted any it could not confirm (all 157 proposed were confirmed; 4
@@ -60,8 +60,7 @@ accept | reject; note is the short Appendix-A justification.
 
 THE VERDICT THIS CORPUS HELPED EARN
 -----------------------------------
-Over the exhaustive sweep, the §1.1.2 / §5.4 positive corpora, the M3 charset and
-M4 host negative corpora, and all 213 rows here, uri-parse-validate and the
+Over the exhaustive sweep, the §1.1.2 / §5.4 positive corpora, the charset and
+host negative corpora, and all 213 rows here, uri-parse-validate and the
 independent oracle AGREE on every verdict, and both match this corpus's hand ABNF
-reading. No deviation was found. See the ledger (.superpowers/sdd/progress.md) and
-decision 0028 for the recorded verdict.
+reading. No deviation was found.

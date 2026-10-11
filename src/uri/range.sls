@@ -1,6 +1,6 @@
 #!r6rs
-;;; (uri range): the [start, end) contract every ranged judge shares (decisions
-;;; 0034, 0036). (uri charset)'s validate-component and (uri host)'s
+;;; (uri range): the [start, end) contract every ranged judge shares.
+;;; (uri charset)'s validate-component and (uri host)'s
 ;;; validate-authority / authority-host-span each judge bv[start, end) of a larger
 ;;; bytevector in place. This is the ONE statement of which ranges they accept, so
 ;;; no two judges can come to refuse different ones. PURE.

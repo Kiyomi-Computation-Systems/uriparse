@@ -1,11 +1,11 @@
 #!r6rs
 ;;; unit.normalize -- RFC 3986 §6.2.2 syntax-based normalization, the §6 policy
-;;; over `(uri percent)`'s mechanics. Graded against the M5 oracle (derived from
-;;; RFC 3986 independently of this code): the §6.2.2.1a scheme AND host fold (host
-;;; case is M4/decision 0025, closing decision 0020's deferral -- userinfo case is
-;;; preserved, a `%XX` triplet's hex kept uppercase), the §6.2.2.1b hex-uppercasing,
-;;; the §6.2.2.2 unreserved decoding, and the ONE remaining deferral pinned as a
-;;; test -- dot-segments are not removed (M6). The percent codec is judged in
+;;; over `(uri percent)`'s mechanics. Graded against an oracle (derived from
+;;; RFC 3986 independently of this code): the §6.2.2.1a scheme AND host fold
+;;; (userinfo case is preserved, a `%XX` triplet's hex kept uppercase), the
+;;; §6.2.2.1b hex-uppercasing, the §6.2.2.2 unreserved decoding, and the one
+;;; deliberate omission pinned as a test -- dot-segments are not removed (that
+;;; is resolution's job, §5.2.4). The percent codec is judged in
 ;;; unit.percent; here the question is the §6 policy and the assembly.
 (import (rnrs)
         (uri test harness)
@@ -58,13 +58,12 @@
         (let ((in (a "HTTP")))
           (normalize-scheme in)
           (check-equal "input still HTTP" in (a "HTTP")))))
-    ;; Decision 0010 item 5's named witness: the UTF-8 encoding of U+212A KELVIN
+    ;; The named witness: the UTF-8 encoding of U+212A KELVIN
     ;; SIGN (E2 84 AA) must survive the hand-written fold byte-identical. A
     ;; `string-downcase`-based fold would map it to ASCII `k` (Unicode folding),
-    ;; corrupting a host that contains it -- exactly why decision 0010 forbids
-    ;; `(rnrs unicode)`. `ascii-downcase` is that fold (shared with the host at
-    ;; M4), so the witness lands with the fold, here.
-    (harness-case "U+212A KELVIN SIGN survives the fold byte-identical (decision 0010)"
+    ;; corrupting a host that contains it -- exactly why the fold avoids
+    ;; `(rnrs unicode)`. `ascii-downcase` is that fold (shared with the host).
+    (harness-case "U+212A KELVIN SIGN survives the fold byte-identical"
       (lambda ()
         (check-equal "E2 84 AA unchanged"
                      (normalize-scheme (bytes 226 132 170)) (bytes 226 132 170))))))
@@ -97,7 +96,7 @@
                      (pct-normalize (a "%ab")) (a "%AB"))
         (check-equal "%63 -> c (contrast: c IS unreserved)"
                      (pct-normalize (a "%63")) (a "c"))))
-    ;; total: a malformed % is left byte-for-byte (decision 0011)
+    ;; total: a malformed % is left byte-for-byte
     (harness-case "a malformed % is left byte-for-byte"
       (lambda ()
         (check-equal "%ZZ" (pct-normalize (a "%ZZ")) (a "%ZZ"))
@@ -113,9 +112,10 @@
       (lambda ()
         (check-equal "/%7Efoo%2Fbar%7b -> /~foo%2Fbar%7B"
                      (pct-normalize (a "/%7efoo%2fbar%7b")) (a "/~foo%2Fbar%7B"))))
-    ;; M5 CREATES dot-segments: `.` (%2E) is an unreserved mark, so it decodes.
-    ;; This is exactly why M6 must resolve AFTER M5 (decision 0020): a resolver on
-    ;; raw components would let encoded `../` survive as live path traversal.
+    ;; Normalization CREATES dot-segments: `.` (%2E) is an unreserved mark, so
+    ;; it decodes. This is exactly why resolution must run AFTER normalization:
+    ;; a resolver on raw components would let encoded `../` survive as live path
+    ;; traversal.
     (harness-case "an unreserved-mark %XX manufactures a literal dot-segment"
       (lambda ()
         (check-equal "/a/%2E%2E/b -> /a/../b" (pct-normalize (a "/a/%2E%2E/b")) (a "/a/../b"))
@@ -145,17 +145,17 @@
 ;;; --- normalize-components: §6.2.2 per component, and no further --------------
 (harness-group "normalize-components"
   (lambda ()
-    ;; The §6.2.2 worked example, M5's portion. RFC 3986 §6.2.2 gives
-    ;; `eXAMPLE://a/./b/../b/%63/%7bfoo%7d` == `example://a/b/c/%7Bfoo%7D`. M5 does
-    ;; the scheme fold and the percent transforms but NOT dot-segment removal
-    ;; (that is §6.2.2.3 = §5.2.4 = M6), so the dots MUST survive here.
+    ;; The §6.2.2 worked example, minus dot-segment removal. RFC 3986 §6.2.2 gives
+    ;; `eXAMPLE://a/./b/../b/%63/%7bfoo%7d` == `example://a/b/c/%7Bfoo%7D`.
+    ;; normalize-components does the scheme fold and the percent transforms but
+    ;; NOT dot-segment removal (that is §6.2.2.3 = §5.2.4, resolution's job), so
+    ;; the dots MUST survive here.
     (harness-case "the §6.2.2 example: scheme + percent normalized, dot-segments kept"
       (lambda ()
         (check-components "§6.2.2 example"
           (normalize-components (comp "eXAMPLE" "a" "/./b/../b/%63/%7bfoo%7d" #f #f))
           "example" "a" "/./b/../b/c/%7Bfoo%7D" #f #f)))
-    ;; HOST CASE, now normalized (M4, decision 0025 item 8, closing decision 0020's
-    ;; deferral): the HOST folds to lowercase, but case-sensitive userinfo is left
+    ;; HOST CASE: the HOST folds to lowercase, but case-sensitive userinfo is left
     ;; ALONE. `User:S3cret` survives; `Example.COM` -> `example.com`. A regression
     ;; to lowercasing the WHOLE authority (corrupting userinfo) reddens here.
     (harness-case "the host case-folds to lowercase, userinfo case is preserved"
@@ -180,7 +180,7 @@
           "s" "Us~r@h%2Fx" "/" #f #f)))
     ;; A reserved octet that percent-DECODES to a delimiter stays encoded, so
     ;; whole-authority normalization can never synthesize or destroy a `@`/`:`
-    ;; boundary before M4's host split. The RFC 6874 IPv6 zone-id `%25` is the
+    ;; boundary before the host split. The RFC 6874 IPv6 zone-id `%25` is the
     ;; sharp case: `%25` decodes to `%` (0x25), which is not unreserved, so it is
     ;; kept encoded rather than collapsed.
     (harness-case "a reserved-decoding %XX in the authority stays encoded (zone-id safe)"

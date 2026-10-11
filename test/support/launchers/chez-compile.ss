@@ -18,29 +18,28 @@
 ;;; them are the same code chez-source.ss carries. The duplication is
 ;;; deliberate and it is not a candidate for extraction -- but not because a
 ;;; --script program has nowhere to `load` a shared file from. Measured
-;;; against Chez 10.4.1 on 2026-08-17: under --script, (car (command-line))
+;;; against Chez 10.4.1: under --script, (car (command-line))
 ;;; is this script's own path, so the absolute directory to `load` a sibling
 ;;; file from is derivable with no bootstrap argument. Chez's own defaults
 ;;; for both library-directories and source-directories are CWD-relative --
-;;; (("." . ".")) and (".") respectively, measured 2026-08-17 -- and a
+;;; (("." . ".")) and (".") respectively -- and a
 ;;; launcher must never inherit either, whatever directory a lane happens to
 ;;; launch from. Sharing this block would make every launcher's
 ;;; correctness depend on `load`ing another launcher file: a load-order
-;;; dependency between files that stand alone today, with its own new failure
+;;; dependency between files that stand alone, with its own new failure
 ;;; mode -- a `load` of the wrong file rather than a named refusal. That is
 ;;; not worth what sharing would save.
 ;;;
-;;; The cost of the copy is that a flag-vocabulary decision fixed in one
+;;; The cost of the copy is that a flag-vocabulary check fixed in one
 ;;; launcher is not fixed in the others: the copies are independent
-;;; decisions, not one decision spelled three times. That independence is
-;;; now partially witnessed: SchemeMutationSuite.cmake mutates this file's
-;;; own refusal -- pass 29, the unpaired-roots check. Passes 26-28 --
-;;; chez-aot.ss's library-path pairing, source-directories, missing-program,
-;;; and dirty-source-guard refusals -- mutate that file instead. The
-;;; verbatim flag-block loops below this decision remain witnessed only in
-;;; chez-source.ss's copy; a defect introduced into one copy alone would not
-;;; be caught here, and that residual is accepted, recorded here rather than
-;;; left implied.
+;;; checks, not one check spelled three times. That independence is
+;;; partially witnessed: SchemeMutationSuite.cmake mutates this file's
+;;; own refusal, the unpaired-roots check. chez-aot.ss's library-path pairing,
+;;; source-directories, missing-program, and dirty-source-guard refusals are
+;;; mutated against that file instead. The verbatim flag-block loops below
+;;; remain witnessed only in chez-source.ss's copy; a defect introduced into
+;;; one copy alone would not be caught here, and that residual is accepted,
+;;; recorded here rather than left implied.
 ;;;
 ;;; WHY compile-imported-libraries IS ON HERE AND OFF THERE
 ;;;
@@ -88,7 +87,7 @@
 
 (define args (command-line-arguments))
 
-;; Decision 1: every argument is a known flag followed by a value.
+;; Check 1: every argument is a known flag followed by a value.
 (let loop ((rest args))
   (cond ((null? rest) #t)
         ((not (member (car rest) known-flags))
@@ -97,21 +96,21 @@
          (die (string-append "flag has no value: " (car rest))))
         (else (loop (cddr rest)))))
 
-;; Safe only after decision 1: the list is known to be flag/value pairs.
+;; Safe only after check 1: the list is known to be flag/value pairs.
 (define (flag-values flag)
   (let loop ((rest args) (found (list)))
     (cond ((null? rest) (reverse found))
           ((string=? (car rest) flag) (loop (cddr rest) (cons (cadr rest) found)))
           (else (loop (cddr rest) found)))))
 
-;; Decision 2: every required flag appears.
+;; Check 2: every required flag appears.
 (for-each
  (lambda (flag)
    (if (null? (flag-values flag))
        (die (string-append "missing required flag: " flag))))
  required-flags)
 
-;; Decision 3: a single-valued flag appears at most once. flag-values returns
+;; Check 3: a single-valued flag appears at most once. flag-values returns
 ;; every occurrence in command-line order, and (car (flag-values flag)) below
 ;; always takes the first, so without this check the first occurrence would
 ;; silently win: a repeat would compile a different program, or write the
@@ -139,16 +138,14 @@
 ;; Declined, not merely left at its default: whole-program optimisation would
 ;; add a second compiled-artifact shape (a .wpo file) for the fingerprint
 ;; binding mechanism to track, and a portability proof does not need the
-;; extra optimisation it buys. See "Explicitly deferred" in the slice
-;; design, upstream docs/plans/milestone-0-slice-5b-5c-compiled-lanes.md section 10.
+;; extra optimisation it buys.
 (generate-wpo-files #f)
 
 ;; Nothing includes, so nothing resolves through source-directories at all
-;; (upstream decision 0006; measured inert for the aot launcher as mutation C3b, and
-;; extended here by the absence of any include form). Emptied rather than
-;; left at Chez's CWD-containing default: it still narrows what a later
-;; top-level load or include added to this file could reach, and an empty
-;; list costs nothing to state.
+;; (measured inert for the aot launcher, and here by the absence of any
+;; include form). Emptied rather than left at Chez's CWD-containing default:
+;; it still narrows what a later top-level load or include added to this file
+;; could reach, and an empty list costs nothing to state.
 (source-directories '())
 (library-directories (map cons library-roots object-dirs))
 

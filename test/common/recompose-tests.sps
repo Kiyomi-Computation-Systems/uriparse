@@ -2,7 +2,7 @@
 ;;; unit.recompose -- RFC 3986 §5.3 component recomposition: five-field
 ;;; `uri-components` back to a URI-reference bytevector.
 ;;;
-;;; The load-bearing rule is DEFINED, not nonempty (decision 0008): a delimiter
+;;; The load-bearing rule is DEFINED, not nonempty: a delimiter
 ;;; is emitted whenever its component is present, even empty. So the sharp cases
 ;;; here are the absent (`#f`) vs present-empty (`#vu8()`) pairs that the §5.4
 ;;; corpus does not reach -- an empty-but-present authority (`http://`), an
@@ -72,7 +72,7 @@
                      (recompose (comp (a "http") #f (a "") #f #f))
                      (a "http:"))))
     ;; query "" (present, empty) still emits ?; #f suppresses it. `http://a?`
-    ;; and `http://a` are different URIs (design §3.2).
+    ;; and `http://a` are different URIs.
     (harness-case "an empty-but-present query still emits ?"
       (lambda ()
         (check-equal "http://a? (query present, empty)"

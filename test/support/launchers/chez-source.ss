@@ -7,12 +7,11 @@
 ;;; WHY FLAGS RATHER THAN POSITIONS
 ;;;
 ;;; A lane needs one library root per library family it imports, and the count
-;;; grows as library families are added -- the harness today, the parser
-;;; libraries next. A positional protocol renumbers every caller at each
-;;; of those steps. A separator-joined list was rejected outright: it would
-;;; need a path separator that is `:` on Unix and `;` on Windows, which is the
-;;; open question in the upstream tree's milestone-0-portability-spike.md section 9, for no
-;;; benefit here.
+;;; grows as library families are added -- the harness, the parser libraries.
+;;; A positional protocol renumbers every caller at each of those steps. A
+;;; separator-joined list was rejected outright: it would need a path separator
+;;; that is `:` on Unix and `;` on Windows, which has no portable answer worth
+;;; the trouble, for no benefit here.
 ;;;
 ;;; THE OBJECT GUARD
 ;;;
@@ -39,7 +38,7 @@
 ;;; harness's own status-2 boundary: it surfaces however Chez happens to fail
 ;;; once library-directories can't resolve what was asked of it -- an unbound
 ;;; library, an uncaught condition -- which is Chez's own exit 255, not this
-;;; launcher's HARNESS-ERROR. Adding the check is a new decision needing a
+;;; launcher's HARNESS-ERROR. Adding the check would need a
 ;;; new lane and a new mutation, not a fix to something this file already
 ;;; tries and fails to do.
 
@@ -76,7 +75,7 @@
 
 (define args (command-line-arguments))
 
-;; Decision 1: every argument is a known flag followed by a value.
+;; Check 1: every argument is a known flag followed by a value.
 (let loop ((rest args))
   (cond ((null? rest) #t)
         ((not (member (car rest) known-flags))
@@ -85,21 +84,21 @@
          (die (string-append "flag has no value: " (car rest))))
         (else (loop (cddr rest)))))
 
-;; Safe only after decision 1: the list is known to be flag/value pairs.
+;; Safe only after check 1: the list is known to be flag/value pairs.
 (define (flag-values flag)
   (let loop ((rest args) (found (list)))
     (cond ((null? rest) (reverse found))
           ((string=? (car rest) flag) (loop (cddr rest) (cons (cadr rest) found)))
           (else (loop (cddr rest) found)))))
 
-;; Decision 2: every required flag appears.
+;; Check 2: every required flag appears.
 (for-each
  (lambda (flag)
    (if (null? (flag-values flag))
        (die (string-append "missing required flag: " flag))))
  required-flags)
 
-;; Decision 3: a single-valued flag appears at most once. flag-values returns
+;; Check 3: a single-valued flag appears at most once. flag-values returns
 ;; every occurrence in command-line order, and (car (flag-values flag)) below
 ;; always takes the first, so without this check the first occurrence would
 ;; silently win: a repeat would run a different program, or guard a different
@@ -128,11 +127,10 @@
 (compile-imported-libraries #f)
 
 ;; Nothing includes, so nothing resolves through source-directories at all
-;; (upstream decision 0006; measured inert for the aot launcher as mutation C3b, and
-;; extended here by the absence of any include form). Emptied rather than
-;; left at Chez's CWD-containing default: it still narrows what a later
-;; top-level load or include added to this file could reach, and an empty
-;; list costs nothing to state.
+;; (measured inert for the aot launcher, and here by the absence of any
+;; include form). Emptied rather than left at Chez's CWD-containing default:
+;; it still narrows what a later top-level load or include added to this file
+;; could reach, and an empty list costs nothing to state.
 (source-directories '())
 
 ;; Every root is paired with the same always-empty guard directory.

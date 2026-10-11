@@ -1,7 +1,6 @@
 #!r6rs
 ;;; determinism.generated-artifact -- the committed `(generated uri-scanner)` is
-;;; what this project ships, and this lane guards it three ways (decision 0002
-;;; items 3-4):
+;;; what this project ships, and this lane guards it three ways:
 ;;;   1. re-emitting the grammar reproduces the committed bytes exactly, so a
 ;;;      grammar edit not followed by `make parser-refresh` reddens here;
 ;;;   2. the committed text declares generated ABI 9, read out, never remembered;

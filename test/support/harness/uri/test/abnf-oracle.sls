@@ -1,11 +1,11 @@
 #!r6rs
 ;;; (uri test abnf-oracle): a WHOLE-URI recognizer of RFC 3986 Appendix A, read
 ;;; from the ABNF INDEPENDENTLY of the src `uri-parse-validate` it will grade, and
-;;; composed from the two component oracles M3 and M4 already landed (the RFC 3986
-;;; conformance audit, decision 0028, Slice ⓪).
+;;; composed from the two component oracles, charset and host (for the RFC 3986
+;;; conformance audit).
 ;;;
-;;; WHY A THIRD ORACLE, AND WHY WHOLE-URI. The charset oracle (M3) and the host
-;;; oracle (M4) each read one LAYER of the ABNF -- the component charsets and the
+;;; WHY A THIRD ORACLE, AND WHY WHOLE-URI. The charset oracle and the host
+;;; oracle each read one LAYER of the ABNF -- the component charsets and the
 ;;; authority interior -- and each grades its own validator byte-for-byte. What
 ;;; neither reads is the STRUCTURAL grammar that ties the layers into a URI: the
 ;;; `scheme ":" hier-part` split, the five path-types and their per-context
@@ -14,17 +14,17 @@
 ;;; diverge from the ABNF without any single component being wrong, so the audit
 ;;; needs an oracle that recognizes a WHOLE URI. This is that oracle: it adds ONLY
 ;;; the structural layer and defers every charset question to the two audited
-;;; component oracles it composes (decision 0028 item 2).
+;;; component oracles it composes.
 ;;;
-;;; ORACLE DISCIPLINE (decisions 0003, 0005, 0012). This is a reference the product
+;;; ORACLE DISCIPLINE. This is a reference the product
 ;;; is graded against, so it is written from RFC 3986 Appendix A
 ;;; (test/conformance/rfc3986/rfc3986.abnf), NOT from `uri-parse-validate`. It is a
 ;;; second, deliberately naive recognizer of exactly the language the product must
-;;; recognize; their agreement over a broad input space is the audit (Slice ①). In
-;;; Slice ⓪ the oracle is graded on its OWN first -- against the positive corpora it
-;;; must accept and a hand-built structural negative set it must reject -- the same
-;;; way the corpus loader and the two component oracles were graded before any
-;;; validator existed (decision 0005).
+;;; recognize; their agreement over a broad input space is the audit. The oracle
+;;; is graded on its OWN first -- against the positive corpora it must accept and
+;;; a hand-built structural negative set it must reject -- the same way the
+;;; corpus loader and the two component oracles are graded independently of any
+;;; validator.
 ;;;
 ;;; THE RECOGNITION MODEL. RFC 3986's `query` and `fragment` contain no "#", and
 ;;; `query` no unescaped "?" delimiter beyond its own first one; `hier-part` /
@@ -41,12 +41,11 @@
 ;;; the whole `URI` / `relative-ref` disambiguation: "g:h" is a `URI` (scheme "g",
 ;;; path-rootless "h"), is NOT a `relative-ref` (path-noscheme's first segment may
 ;;; not contain ":"), and so is a `URI-reference` only through the `URI` arm --
-;;; precisely decision 0028's worked example.
+;;; the canonical worked example.
 ;;;
 ;;; SCOPE. `URI` / `relative-ref` / `URI-reference` recognition per mode. RFC 9112
-;;; authority-form (M9) is a different grammar and out of scope (decision 0026).
-;;; Normalization (§6.2.2) and resolution (§5.4) are separately gated (M5/M6) and
-;;; not re-litigated here (decision 0028 item 1).
+;;; authority-form is a different grammar and out of scope. Normalization
+;;; (§6.2.2) and resolution (§5.4) are gated separately and not re-litigated here.
 ;;;
 ;;; PURE: every procedure is a function over bytevectors; nothing touches a port.
 (library (uri test abnf-oracle)
@@ -101,9 +100,10 @@
 
   ;; --- the composed component oracles --------------------------------------
   ;;
-  ;; charset-ok? defers a component's charset (and, for scheme, the leading-ALPHA
-  ;; and non-empty rules) to M3's oracle; authority-ok? defers the whole authority
-  ;; interior to M4's. "Valid" is simply "the component oracle raises no code".
+  ;; charset-ok? defers a component's charset (and, for scheme, the
+  ;; leading-ALPHA and non-empty rules) to the charset oracle; authority-ok?
+  ;; defers the whole authority interior to the host oracle. "Valid" is simply
+  ;; "the component oracle raises no code".
   (define (charset-ok? component bv)
     (let-values (((code idx) (oracle-scan component bv)))
       (not code)))
@@ -114,10 +114,11 @@
 
   ;; --- the five path-types (RFC 3986 §3.3) ---------------------------------
   ;;
-  ;; Each takes the WHOLE path byte-range and answers whether it is that type. The
-  ;; charset (pchar / "/" / pct-encoded) is M3's `path` component; these add the
-  ;; STRUCTURAL rules the ABNF states over that charset: emptiness, the leading
-  ;; byte, the "not //" rule, and path-noscheme's first-segment-no-colon.
+  ;; Each takes the WHOLE path byte-range and answers whether it is that type.
+  ;; The charset (pchar / "/" / pct-encoded) is the charset oracle's `path`
+  ;; component; these add the STRUCTURAL rules the ABNF states over that
+  ;; charset: emptiness, the leading byte, the "not //" rule, and
+  ;; path-noscheme's first-segment-no-colon.
   (define (all-path-chars? bv) (charset-ok? 'path bv))
 
   (define (path-empty? bv) (fx=? (bytevector-length bv) 0))
@@ -200,8 +201,9 @@
 
   ;; --- the recognizer ------------------------------------------------------
   ;;
-  ;; recognize peels [ "#" fragment ] then [ "?" query ] (validating each against
-  ;; its M3 charset), then applies the front predicate to what remains.
+  ;; recognize peels [ "#" fragment ] then [ "?" query ] (validating each
+  ;; against its charset-oracle component), then applies the front predicate to
+  ;; what remains.
   (define (recognize bv front?)
     (let* ((n (bytevector-length bv))
            (hash (index-of bv HASH)))

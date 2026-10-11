@@ -65,7 +65,7 @@ prod:   ## configure and build the release preset
 	$(CMAKE) --build --preset prod
 
 # test/conformance/rfc3986/ is DERIVED from the vendored RFC text and is never
-# hand-edited (decision 0005 item 2). This is the only way it is written: the
+# hand-edited. This is the only way it is written: the
 # initial derivation and every refresh run the same script, and the registered
 # lane uri.harness.corpus-provenance runs the same functions and compares, so a
 # refresh cannot drift from the check that guards it.
@@ -73,7 +73,7 @@ corpus-refresh:   ## re-derive the RFC 3986 corpus from the vendored text
 	$(CMAKE) -P cmake/UriCorpusRefresh.cmake
 
 # src/generated/uri-scanner.sls is DERIVED from src/uri/grammar.sls by one
-# emitter (decision 0002 item 4). This runs that emitter; the determinism lane
+# emitter. This runs that emitter; the determinism lane
 # runs the same one and compares, so a grammar edit without a refresh reddens.
 parser-refresh:   ## re-emit the committed URI scanner from the grammar
 	$(CMAKE) -P cmake/UriParserRefresh.cmake

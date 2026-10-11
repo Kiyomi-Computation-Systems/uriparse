@@ -1,11 +1,11 @@
-;;; M4 negative corpus -- authority inputs RFC 3986's host grammar REJECTS.
+;;; Host negative corpus -- authority inputs RFC 3986's host grammar REJECTS.
 ;;;
-;;; AUTHORED, NOT EXTRACTED. Like test/conformance/charset/ (M3) and unlike
+;;; AUTHORED, NOT EXTRACTED. Like test/conformance/charset/ and unlike
 ;;; test/conformance/rfc3986/ (derived from the vendored RFC text by
 ;;; cmake/UriCorpus.cmake), this file is HAND-DERIVED from the ABNF
 ;;; (test/conformance/rfc3986/rfc3986.abnf §3.2) -- the RFC lists no invalid URIs,
 ;;; so there is nothing to extract. Its provenance and separate count are recorded
-;;; in PROVENANCE beside it (decisions 0005 item 3, 0025 item 7). Every offset is
+;;; in PROVENANCE beside it. Every offset is
 ;;; defended from the ABNF in its note and cross-checked against
 ;;; (uri test host-oracle), an independent reading of the same ABNF.
 ;;;
@@ -15,17 +15,17 @@
 ;;;             a #vu8(...) bytevector for the > 0x7F and control-byte cases
 ;;;   component the authority SUB-part the offending byte falls in
 ;;;             (userinfo / reg-name / port / ip-literal / dec-octet)
-;;;   code      the core error code the validator must raise (decision 0025 item 6)
+;;;   code      the core error code the validator must raise
 ;;;   offset    the ABSOLUTE byte offset in `input` of the offending position --
 ;;;             the byte itself for a bad literal, the "%" for a malformed
 ;;;             pct-encoded, and the opening "[" for ANY IP-literal-interior fault
-;;;             (including a dec-octet range error) per decision 0025 items 3-4
+;;;             (including a dec-octet range error)
 ;;;   note      the ABNF ground for the rejection
 ;;;
 ;;; Every input is "http://<authority>...": "http://" is 7 bytes, so the authority
 ;;; begins at absolute offset 7. authority = [ userinfo "@" ] host [ ":" port ].
 ;;;
-;;; REACHABILITY (decision 0025 item 3): dec-octet is reached ONLY through a
+;;; REACHABILITY: dec-octet is reached ONLY through a
 ;;; bracketed literal -- a bare `999.1.1.1` is a valid reg-name (§3.2.2
 ;;; first-match-wins), NOT an error -- so every invalid-dec-octet row is inside
 ;;; "[" ... "]". The last two rows are MULTI-FAULT authorities that pin the

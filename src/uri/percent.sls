@@ -5,15 +5,15 @@
 ;;; A URI is a byte string and `%C3%A9` is two octets, so this library never
 ;;; leaves bytevector space: it decodes and encodes octets, and the §2.3
 ;;; unreserved test and the hex primitives it exports are all byte-level. Staying
-;;; in bytevectors is decision 0010 -- it keeps `(rnrs unicode)`'s length-changing
+;;; in bytevectors keeps `(rnrs unicode)`'s length-changing
 ;;; Unicode case fold out of reach, since reaching it would first require an
 ;;; explicit `utf8->string`, a visible seam this library never crosses.
 ;;;
-;;; TOTAL, NOT VALIDATING (decision 0011). v0.1 splits and resolves; it does not
-;;; reject. `pct-decode` therefore accepts any bytevector: a `%` that does not
-;;; begin two hex digits is copied through as the literal octet `%`, never an
-;;; error. `%ZZ` decodes to `%ZZ`. The charset a component actually admits is
-;;; M3/v0.2's question, deliberately not asked here.
+;;; TOTAL, NOT VALIDATING. Nothing here rejects input. `pct-decode` accepts any
+;;; bytevector: a `%` that does not begin two hex digits is copied through as
+;;; the literal octet `%`, never an error. `%ZZ` decodes to `%ZZ`. The charset a
+;;; component actually admits is `(uri charset)`'s question, deliberately not
+;;; asked here.
 ;;;
 ;;; This is the mechanics layer; the §6 policy that decides WHICH percent-triples
 ;;; to normalize and which case to fold lives in `(uri normalize)`, which imports
@@ -30,7 +30,7 @@
   (import (rnrs))
 
   ;; Byte constants, named so the loops below read as bytes rather than magic
-  ;; numbers. ASCII throughout: a URI's structural octets are ASCII (design §5).
+  ;; numbers. ASCII throughout: a URI's structural octets are ASCII.
   (define PERCENT 37)                    ; #\%
   (define ZERO 48) (define NINE 57)      ; #\0 .. #\9
   (define UP-A 65) (define UP-F 70) (define UP-Z 90)   ; #\A .. #\F .. #\Z
@@ -98,8 +98,8 @@
   ;; pct-encode : Bytevector (Octet -> Boolean) -> Bytevector
   ;; Copy every octet the `safe?` predicate accepts; replace every other octet
   ;; with `%` and its two UPPERCASE hex digits. The predicate is the component's
-  ;; allowed set -- the charset knowledge lives with the caller, not here
-  ;; (M3/v0.2), and `unreserved-byte?` is the conservative default.
+  ;; allowed set -- the charset knowledge lives with the caller, not here,
+  ;; and `unreserved-byte?` is the conservative default.
   (define (pct-encode bv safe?)
     (let ((n (bytevector-length bv)))
       (call-with-bytevector-output-port

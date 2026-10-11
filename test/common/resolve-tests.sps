@@ -4,10 +4,10 @@
 ;;; The §5.4 corpus (conformance.resolution) drives the same code end-to-end
 ;;; through the parser and recomposer; this suite isolates §5.2.2's decision tree
 ;;; so a branch bug cannot hide behind a parse or recompose bug, and it pins the
-;;; absent-vs-empty distinctions (decision 0008) the corpus does not reach: an
+;;; absent-vs-empty distinctions the corpus does not reach: an
 ;;; empty-but-present R.query, and an empty-but-present R.authority.
 ;;;
-;;; STRICT (decision 0015/0001): `http:g` keeps its scheme and resolves to
+;;; STRICT: `http:g` keeps its scheme and resolves to
 ;;; `http:g`, never the RFC-1630 backward-compatible `http://a/b/c/g`.
 ;;;
 ;;; The expected target components are the RFC-derived §5.2.2 hand-traces, graded
@@ -102,7 +102,7 @@
                         (comp (a "http") #f (a "g") #f #f))))
 
     ;; Excess `..` past root are discarded (§5.2.4 2C pops nothing on empty
-    ;; output), so ../../../g -> /g, not /../g (decision 0015 rejects erratum 4547).
+    ;; output), so ../../../g -> /g, not /../g (erratum 4547 is not adopted).
     (harness-case "excess up-levels are discarded, not leaked"
       (lambda ()
         (check-resolves "../../../g"

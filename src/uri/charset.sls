@@ -1,31 +1,32 @@
 #!r6rs
-;;; (uri charset): RFC 3986 charset validation of the split components (M3,
-;;; decision 0024). v0.1 SPLIT a URI without judging its bytes; this library is
-;;; the judge, for the components the core holds whole: scheme, path, query,
-;;; fragment, and the pct-encoded triples within them. PORT and every
-;;; authority-interior charset (userinfo, host, reg-name, IP-literal) are M4's --
-;;; the authority is one opaque span until then (decision 0024 item 2).
+;;; (uri charset): RFC 3986 charset validation of the split components. The
+;;; scanner SPLITS a URI without judging its bytes; this library is the judge,
+;;; for the components the core holds whole: scheme, path, query, fragment, and
+;;; the pct-encoded triples within them. PORT and every authority-interior
+;;; charset (userinfo, host, reg-name, IP-literal) belong to (uri host) -- the
+;;; authority is one opaque span to the scanner.
 ;;;
 ;;; PURE, and non-normative about STRUCTURE: it judges only the bytes of a
 ;;; component, never where the delimiters fell (that is the scanner's, and its
-;;; structural errors are distinct codes at the same byte -- decision 0009 item
-;;; 4). It reuses (uri percent)'s §2.3 unreserved test and hex primitive rather
-;;; than re-deriving them, so the validator and the codec cannot disagree about
-;;; what a byte is. It is written INDEPENDENTLY of the test-side oracle
+;;; structural errors are distinct codes at the same byte). It reuses
+;;; (uri percent)'s §2.3 unreserved test and hex primitive rather than
+;;; re-deriving them, so the validator and the codec cannot disagree about what
+;;; a byte is. It is written INDEPENDENTLY of the test-side oracle
 ;;; (uri test charset-oracle); the two agree on every byte, and that agreement is
-;;; the check (decisions 0005, 0012).
+;;; the check.
 (library (uri charset)
   (export uri-charset-error-codes uri-charset-error-code?
           validate-component)
   (import (rnrs) (uri percent) (uri range))
 
-  ;; The CORE error vocabulary (decision 0024 item 5): each names the ABNF
-  ;; production that failed, in the RFC's own spelling (0009 item 1), and lives
-  ;; here with the core, NOT in the scanner's (uri vocabulary) table.
+  ;; The CORE error vocabulary: each code names the ABNF production that failed,
+  ;; in the RFC's own spelling, and lives here with the core, NOT in the
+  ;; scanner's (uri vocabulary) table.
   (define uri-charset-error-codes
     '(invalid-scheme invalid-pchar invalid-query invalid-fragment
       invalid-pct-encoded))
 
+  ;; uri-charset-error-code? : Any -> Boolean
   (define (uri-charset-error-code? x) (and (memq x uri-charset-error-codes) #t))
 
   ;; --- byte constants (ASCII; a URI's structural octets are ASCII) ---------
@@ -63,12 +64,12 @@
   ;; #f #f when every byte of the component is valid; else the core error code
   ;; and the COMPONENT-RELATIVE index of the first offending position. A
   ;; malformed pct-encoded is reported at the "%" that opens it. The shell
-  ;; ((uri collect)) rebases the index to an absolute input offset (0024 item 3).
+  ;; ((uri collect)) rebases the index to an absolute input offset.
   ;;
   ;; The component is bv[start, end), by default the whole bytevector, so an
-  ;; embedder can judge a span of a larger buffer in place without copying it
-  ;; (decision 0034). Nothing outside [start, end) is read: a "%" whose HEXDIGs
-  ;; lie past end is malformed. The index is relative to start. A range that is
+  ;; embedder can judge a span of a larger buffer in place without copying it.
+  ;; Nothing outside [start, end) is read: a "%" whose HEXDIGs lie past end is
+  ;; malformed. The index is relative to start. A range that is
   ;; not within the bytevector is an assertion violation. An unknown component
   ;; is named first, before the range or the bytevector is looked at.
   (define validate-component
@@ -90,7 +91,7 @@
       ((query)    validate-query)
       ((fragment) validate-fragment)
       (else (assertion-violation 'validate-component
-                                 "not an M3-validated component" component))))
+                                 "not a validated component (scheme, path, query or fragment)" component))))
 
   (define (judge-range judge bv start end)
     (check-range 'validate-component bv start end)

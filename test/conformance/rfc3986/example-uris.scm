@@ -5,7 +5,7 @@
 ;;; Each row is (<section> <uri>). These carry no expected decomposition: the
 ;;; RFC gives them as illustrations, not as vectors, so what a lane may assert
 ;;; over them is that they parse -- never a component boundary the RFC never
-;;; stated (decision 0005 item 3).
+;;; stated.
 (uris
   ("1.1.2" "ftp://ftp.is.co.za/rfc/rfc1808.txt")
   ("1.1.2" "http://www.ietf.org/rfc/rfc2396.txt")

@@ -1,7 +1,7 @@
 #!r6rs
 ;;; (uri grammar): the byte-machine source machine for the URI scanner.
 ;;;
-;;; Build-time only (design §5): this library constructs the machine that the
+;;; Build-time only: this library constructs the machine that the
 ;;; emitter renders to `(generated uri-scanner)`. It imports `(byte-machine
 ;;; graph)` (the builder) and `(uri vocabulary)` (the agreed integers), and it is
 ;;; never on the shipped runtime path.
@@ -10,19 +10,18 @@
 ;;; RFC 3986 components. It opens `scheme`, `leading-token`, `authority`, `path`,
 ;;; `query`, `fragment` and fires `on-rooted`, `on-scheme-confirmed`,
 ;;; `on-segment-confirmed`. The `authority` span is the whole authority between
-;;; `//` and the path; userinfo/host/port are the CORE's, split from its bytes
-;;; (decision 0019). Mode 3 (uri-reference) opens `leading-token` for the
+;;; `//` and the path; userinfo/host/port are the CORE's, split from its bytes.
+;;; Mode 3 (uri-reference) opens `leading-token` for the
 ;;; scheme/first-segment ambiguity and names the verdict with an event.
 ;;;
-;;; THE `//` IMPOSSIBILITY AND `on-rooted` (decision 0018). A leading `/` after a
+;;; THE `//` IMPOSSIBILITY AND `on-rooted`. A leading `/` after a
 ;;; scheme is a delimiter in `//h` but path content in `/p`, and byte-machine
 ;;; cannot keep it both ways (forward-only, no rewind, the span mark is the
 ;;; cursor at open). So the authority span carries authority presence
 ;;; byte-perfectly and a path-absolute's leading `/` is dropped from the path
 ;;; span and recovered by the zero-width `on-rooted` event, which `(uri collect)`
-;;; reads to prepend the `/`. Verified in the session's verdict-spike; the
-;;; pre-open alternative fires a phantom `//` path fragment on every authority
-;;; case and is worse.
+;;; reads to prepend the `/`. The pre-open alternative fires a phantom `//` path
+;;; fragment on every authority case and is worse.
 ;;;
 ;;; GRAMMAR-AUTHOR RULE (verify.sls, non-eof-into-finish): a byte edge may not
 ;;; target `finish`; only an EOF transition may. Every arm reaches `done` through
@@ -48,10 +47,13 @@
   ;; a dispatch that consumes every byte until eof (the delimiter cases lead out)
   (define (scan name cases eof) (make-byte-dispatch-node name cases (adv name) eof #f))
 
+  ;; make-uri-scanner-machine : -> Machine
+  ;; Builds the (byte-machine graph) machine for the URI scanner; pure and
+  ;; deterministic, so the emitter can render it to the generated scanner.
   (define (make-uri-scanner-machine)
     (make-machine
      'uri-scanner 'm-dispatch
-     ;; fields: the mode selector (decision 0004), width from the vocabulary
+     ;; fields: the mode selector, width from the vocabulary
      (list (make-uint-field 'mode uri-mode-width 0 #t #f))
      ;; callbacks: six spans' data+complete, and three verdict events
      ;; (on-rooted, and the two mode-3 scheme/segment confirmations)
@@ -70,16 +72,16 @@
            (make-callback-declaration 'on-rooted           'event         #f '() #f #f)
            (make-callback-declaration 'on-scheme-confirmed  'event        #f '() #f #f)
            (make-callback-declaration 'on-segment-confirmed 'event        #f '() #f #f))
-     ;; spans: each carries both callbacks (decision 0008 item 5)
+     ;; spans: each carries both callbacks
      (list (make-span-declaration 'scheme   'on-scheme-data   'on-scheme-complete   #f)
            (make-span-declaration 'leading-token 'on-leading-token-data 'on-leading-token-complete #f)
            (make-span-declaration 'authority 'on-authority-data 'on-authority-complete #f)
            (make-span-declaration 'path     'on-path-data     'on-path-complete     #f)
            (make-span-declaration 'query    'on-query-data    'on-query-complete    #f)
            (make-span-declaration 'fragment 'on-fragment-data 'on-fragment-complete #f))
-     ;; errors: the scanner's four structural codes (decisions 0009, 0019).
-     ;; invalid-ip-literal and the other host/charset codes are the CORE's, not
-     ;; the scanner's (0019 item 5); unexpected-eof is the mandatory machine
+     ;; errors: the scanner's four structural codes. invalid-ip-literal and the
+     ;; other host/charset codes are the CORE's, not the scanner's;
+     ;; unexpected-eof is the mandatory machine
      ;; default.
      (list (make-error-declaration 'e-mode-unset      'mode-unset      "no parse mode was chosen" #f)
            (make-error-declaration 'e-scheme-required 'scheme-required "expected a scheme terminated by \":\"" #f)
@@ -95,17 +97,19 @@
                               'uriref-start 'e-mode-unset #f)
       ;; mode 0 (unset) and any value above 3 fall to e-mode-unset.
 
-      ;; --- mode 3: the leading-token scanner (decisions 0004, design §4) ---
+      ;; --- mode 3: the leading-token scanner ---
       ;; The scheme and the first path segment share a prefix language, decided
       ;; only by the delimiter. A neutral `leading-token` span opens over the
       ;; ambiguous prefix; at the delimiter it closes and a zero-width verdict
-      ;; fires -- `on-scheme-confirmed` (a `:` closed it) or `on-segment-confirmed`
-      ;; (a `/`/`?`/`#`/EOF did). Fact 2 (verify.sls:1798) is why the verdict comes
-      ;; AFTER the close; the three routes converge because all have closed the
-      ;; span. `(uri collect)` reads the verdict: scheme = the leading token, or
-      ;; path = the leading token stitched onto the path span. A leading `/`,
-      ;; `?`, `#` or EOF is a relative reference with no leading token, and joins
-      ;; the shared continuation directly.
+      ;; fires -- `on-scheme-confirmed` (a `:` closed it) or
+      ;; `on-segment-confirmed` (a `/`/`?`/`#`/EOF did). The verifier's
+      ;; `span-active-at-pause` rule (a callback node may not be reached with a
+      ;; span open) is why the verdict comes AFTER the close; the three routes
+      ;; converge because all have closed the span. `(uri collect)` reads the
+      ;; verdict: scheme = the leading token, or path = the leading token
+      ;; stitched onto the path span. A leading `/`, `?`, `#` or EOF is a
+      ;; relative reference with no leading token, and joins the shared
+      ;; continuation directly.
       (make-byte-dispatch-node 'uriref-start
         (list (kase (one SLASH) (adv 'hier-slash1))
               (kase (one QUESTION) (rex 'path-open))
@@ -148,7 +152,7 @@
       ;; the dropped leading "/" is announced here, then path opens past it
       (make-callback-node 'say-rooted 'on-rooted 'path-open '() 'path-open #f)
 
-      ;; --- the authority as one coarse span (decision 0019) ----------------
+      ;; --- the authority as one coarse span ----------------------------
       ;; The whole authority between "//" and the path; userinfo/host/port are
       ;; the core's, split from this span's bytes.
       (make-span-start-node 'auth-open 'authority 'auth-scan #f)

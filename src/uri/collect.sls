@@ -1,20 +1,20 @@
 #!r6rs
-;;; (uri collect): the imperative shell (design §2). It feeds bytes to the
+;;; (uri collect): the imperative shell. It feeds bytes to the
 ;;; generated scanner, copies the span fragments it reports -- copies, because
 ;;; byte-machine guarantees a delivered range only for the dynamic extent of the
 ;;; callback -- and assembles a `uri-components` value. It is the one library
 ;;; that allocates in proportion to its input, and it does so because its caller
 ;;; asked for the components.
 ;;;
-;;; It reads the scanner's two out-of-band signals (decisions 0018, 0004):
+;;; It reads the scanner's two out-of-band signals:
 ;;;   - `on-rooted`: a path-absolute's leading `/` was dropped from the path span
 ;;;     and must be prepended.
 ;;;   - `on-scheme-confirmed` / `on-segment-confirmed` (mode 3): the leading token
 ;;;     was a scheme, or the first path segment. So the scheme is the leading
 ;;;     token, or the path is the leading token stitched onto the path span.
 ;;;
-;;; The userinfo/host/port sub-split lives in the core over the `authority` field
-;;; (decision 0019); it is not this library's job.
+;;; The userinfo/host/port sub-split lives in the core over the `authority` field;
+;;; it is not this library's job.
 (library (uri collect)
   (export make-uri-collector uri-collect-feed! uri-collect-finish!
           uri-collector-reset!
@@ -33,6 +33,14 @@
           (uri charset)
           (uri host))
 
+  ;; uri-parse-result? : Any -> Boolean
+  ;; uri-parse-ok? : uri-parse-result -> Boolean
+  ;; uri-parse-components : uri-parse-result -> (Option uri-components)
+  ;; uri-parse-error-code : uri-parse-result -> (Option Symbol)
+  ;; uri-parse-error-offset : uri-parse-result -> (Option Nat)
+  ;; A parse outcome. When `ok?` the components are set and the error fields are
+  ;; #f; otherwise the components are #f and the error code and absolute input
+  ;; offset say what failed where.
   (define-record-type uri-parse-result
     (fields (immutable ok? uri-parse-ok?)
             (immutable components uri-parse-components)
@@ -40,8 +48,8 @@
             (immutable error-offset uri-parse-error-offset)
             ;; A component -> absolute-start-offset alist, holding only the
             ;; present components; #f on an error result. The shell's half of
-            ;; decision 0024 item 3 (the offset seam), so a core validator's
-            ;; component-relative index rebases to an absolute input offset.
+            ;; the offset seam, so a core validator's component-relative index
+            ;; rebases to an absolute input offset.
             (immutable offsets uri-parse-offsets)))
 
   ;; uri-parse-component-offset : uri-parse-result Symbol -> (Option Nat)
@@ -95,17 +103,17 @@
        query
        fragment)))
 
-  ;; --- the offset seam (decision 0024 item 3) -----------------------------
+  ;; --- the offset seam -----------------------------------------------------
   ;;
   ;; A component's absolute START offset, from the per-span offsets the shell
   ;; captured at each span's first fragment. It mirrors `assemble` exactly, so
   ;; the bytes and the offset of a component always agree on where it begins:
   ;;   - a mode-3 scheme/segment verdict rebases scheme/path onto the leading
   ;;     token's start (the token IS the scheme, or is stitched before the path);
-  ;;   - a rooted path (decision 0018) begins one byte BEFORE the path span,
+  ;;   - a rooted path begins one byte BEFORE the path span,
   ;;     where the dropped "/" was.
   ;; Absent components contribute no cell, so absent stays distinct from a
-  ;; present-empty component whose (possibly empty) span still fired (0008).
+  ;; present-empty component whose (possibly empty) span still fired.
   (define (span-offset offsets name) (hashtable-ref offsets name #f))
 
   (define (path-offset offsets rooted? verdict)
@@ -134,6 +142,7 @@
   ;; chunked. `make-uri-collector` takes one of the vocabulary's mode names
   ;; (`uri`, `relative-ref`, `uri-reference`; `unset` refuses).
 
+  ;; make-uri-collector : Symbol -> Collector
   (define (make-uri-collector mode-sym)
     (let ((table (make-eq-hashtable))
           (offsets (make-eq-hashtable))
@@ -148,7 +157,7 @@
           ;; The span's absolute start, captured at its FIRST fragment only:
           ;; the runtime commits `parser-stream-offset` (the fragment's END)
           ;; before the callback, so the start is that minus the fragment width.
-          ;; Witnessed against known offsets in unit.collect (decision 0024 §3).
+          ;; Witnessed against known offsets in unit.collect.
           (when (eq? (hashtable-ref offsets name 'unseen) 'unseen)
             (hashtable-set! offsets name (- (parser-stream-offset parser) (- to from))))
           callback-continue))
@@ -183,7 +192,7 @@
                    (make-uri-parse-result #f #f (parser-error-code err) (parser-error-offset err) #f)
                    (make-uri-parse-result #t (assemble table present rooted? verdict) #f #f
                                           (assemble-offsets offsets present rooted? verdict)))))
-            ;; Return to the just-constructed state for REUSE (decision 0029): reset
+            ;; Return to the just-constructed state for REUSE: reset
             ;; the parser (which PRESERVES the embedder-chosen mode -- it restores the
             ;; merged field-initials, not the bare declared ones), and clear the span
             ;; table, the offset table and the verdict flags IN PLACE. Nothing is
@@ -200,7 +209,7 @@
   ;; uri-collector-reset! : Collector -> unspecified
   ;; Return a collector to its just-constructed state so an embedder can REUSE one
   ;; collector across parses -- one per connection -- instead of allocating a parser
-  ;; and two hashtables per request (issue #11, decision 0029). A reset-and-reparse
+  ;; and two hashtables per request. A reset-and-reparse
   ;; yields the same result as a fresh collector, and the embedder-chosen mode
   ;; survives (parser-reset! restores the merged field-initials). `uri-parse`'s
   ;; one-shot behaviour is unchanged.
@@ -217,11 +226,11 @@
       (uri-collect-feed! c bv 0 (bytevector-length bv))
       (uri-collect-finish! c)))
 
-  ;; --- charset + host validation (M3 decision 0024, M4 decision 0025) ------
+  ;; --- charset + host validation -------------------------------------------
   ;;
   ;; component-bytes : Components Symbol -> (Option Bytevector)
-  ;; The bytes of a validated component. `authority` joined the map at M4: its
-  ;; interior (userinfo/host/port) is judged by (uri host), the others by
+  ;; The bytes of a validated component. The authority's interior
+  ;; (userinfo/host/port) is judged by (uri host), the other components by
   ;; (uri charset).
   (define (component-bytes c name)
     (case name
@@ -263,17 +272,17 @@
                         (loop (cdr names))))))))))
 
   ;; uri-parse-result-validate : uri-parse-result -> uri-parse-result
-  ;; JUDGE an already-parsed result (issue #18, decision 0032). Returns the result
-  ;; UNCHANGED -- the argument itself -- when it is not `ok?` (a structural error
-  ;; passes straight through; its components are #f and are not re-judged) or when
-  ;; every present component is valid; otherwise the validation ERROR result
-  ;; `validate-result` produces. This is the post-parse half of `uri-parse-validate`,
-  ;; lifted to a public seam so a REUSED collector (decision 0029) can be validated:
-  ;; `(uri-parse-result-validate (uri-collect-finish! c))` gives the same audited
-  ;; verdict (M3/M4, audited clean at 0028/0030) with no re-parse and no second
-  ;; implementation. Validation is a pure function of the result -- its components
-  ;; and its offset seam -- so a reused-collector result and a fresh `uri-parse`
-  ;; result validate identically.
+  ;; JUDGE an already-parsed result. Returns the result UNCHANGED -- the
+  ;; argument itself -- when it is not `ok?` (a structural error passes straight
+  ;; through; its components are #f and are not re-judged) or when every present
+  ;; component is valid; otherwise the validation ERROR result `validate-result`
+  ;; produces. This is the post-parse half of `uri-parse-validate`, lifted to a
+  ;; public seam so a REUSED collector can be validated:
+  ;; `(uri-parse-result-validate (uri-collect-finish! c))` gives the same
+  ;; verdict with no re-parse and no second implementation. Validation is a pure
+  ;; function of the result -- its components and its offset seam -- so a
+  ;; reused-collector result and a fresh `uri-parse` result validate
+  ;; identically.
   (define (uri-parse-result-validate r)
     (if (uri-parse-ok? r)
         (or (validate-result r) r)
@@ -281,18 +290,19 @@
 
   ;; uri-parse-validate : Symbol Bytevector -> uri-parse-result
   ;; Parse leniently, then JUDGE the component charsets and the authority host
-  ;; grammar (M3, M4). A structural error passes straight through; an otherwise-
-  ;; valid split whose bytes the ABNF rejects becomes a validation error result.
-  ;; `uri-parse` itself stays the lenient splitter M5/M6/M7 depend on (a malformed
-  ;; "%" is content there, not an error). The judgement is `uri-parse-result-validate`
-  ;; over a fresh one-shot parse (decision 0032).
+  ;; grammar. A structural error passes straight through; an otherwise-valid
+  ;; split whose bytes the ABNF rejects becomes a validation error result.
+  ;; `uri-parse` itself stays the lenient splitter that normalization,
+  ;; resolution and recomposition build on (a malformed "%" is content there, not
+  ;; an error). The judgement is `uri-parse-result-validate` over a fresh
+  ;; one-shot parse.
   (define (uri-parse-validate mode-sym bv)
     (uri-parse-result-validate (uri-parse mode-sym bv)))
 
-  ;; --- authority-form (RFC 9112 §3.2.3, decision 0026) ---------------------
+  ;; --- authority-form (RFC 9112 §3.2.3) ------------------------------------
   ;;
   ;; A CONNECT request-target is an AUTHORITY-FORM target -- `host:port`, with no
-  ;; scheme and no "//". It has NO RFC 3986 production, so no mode (decision 0004)
+  ;; scheme and no "//". It has NO RFC 3986 production, so no mode
   ;; parses it; but it reuses RFC 3986's own host/port -- it is "an authority in
   ;; isolation", NOT a separate machine -- so the reach is a SHELL SPLICE: prepend
   ;; "//", which opens an `authority` span in relative-ref mode, parse, and re-map the
@@ -302,13 +312,14 @@
 
   (define SLASH 47) (define AF-COLON 58) (define AF-AT 64) (define AF-LBRK 91)
 
-  ;; The three RFC 9112 authority-form error codes (decision 0026 item 5), living with
-  ;; the parser -- neither scanner codes ((uri vocabulary)) nor RFC 3986 host codes
-  ;; ((uri host)). Each names the §3.2.3 rule it enforces (0009's spelling;
-  ;; `port-required` / `userinfo-forbidden` echo the scanner's `scheme-required` /
-  ;; `scheme-forbidden`).
+  ;; The three RFC 9112 authority-form error codes, living with the parser --
+  ;; neither scanner codes ((uri vocabulary)) nor RFC 3986 host codes
+  ;; ((uri host)). Each names the §3.2.3 rule it enforces; `port-required` /
+  ;; `userinfo-forbidden` echo the scanner's `scheme-required` /
+  ;; `scheme-forbidden`.
   (define uri-authority-form-error-codes
     '(not-authority-form userinfo-forbidden port-required))
+  ;; uri-authority-form-error-code? : Any -> Boolean
   (define (uri-authority-form-error-code? x)
     (and (memq x uri-authority-form-error-codes) #t))
 
@@ -322,7 +333,7 @@
 
   ;; Re-map a spliced result back to the caller's coordinates: every captured offset
   ;; and the error-offset lose the 2 bytes "//" added. Safe because the authority
-  ;; opens at spliced offset 2, so no offset is < 2 (decision 0026 item 3).
+  ;; opens at spliced offset 2, so no offset is < 2.
   (define (unsplice-result r)
     (if (uri-parse-ok? r)
         (make-uri-parse-result
@@ -362,7 +373,7 @@
   ;; userinfo "@" is one before the first "[" (or with no "[" at all). Returns its
   ;; index, or #f. This is bracket-aware, unlike a bare first-"@" scan: `[a@b]:443`
   ;; (a MALFORMED literal, not userinfo) therefore has no userinfo and falls through
-  ;; to validate-authority (→ invalid-userinfo, as M4 reports for http://[a@b]),
+  ;; to validate-authority (→ invalid-userinfo, as for http://[a@b]),
   ;; instead of a misleading userinfo-forbidden.
   (define (find-first auth b)
     (let ((n (bytevector-length auth)))
@@ -380,8 +391,7 @@
   ;; (`validate-authority`), and `port-required` (authority-form requires a real
   ;; port -- an empty port `host:` is valid RFC 3986 but not RFC 9112). The authority
   ;; begins at offset 0, so `validate-authority`'s relative index IS the caller's
-  ;; offset, and `authority-host-span` gives the host end for the port check
-  ;; (decision 0026 item 4).
+  ;; offset, and `authority-host-span` gives the host end for the port check.
   (define (uri-parse-authority-form-validate bv)
     (let ((r (uri-parse-authority-form bv)))
       (if (not (uri-parse-ok? r))

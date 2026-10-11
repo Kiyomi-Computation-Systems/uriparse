@@ -1,7 +1,6 @@
 # Which RFC 3986 vectors this project claims to resolve correctly.
 #
-# TWO-WAY GATE (decision 0005, and the sibling's decision 0008 item 6). Three
-# things are violations, not one:
+# TWO-WAY GATE. Three things are violations, not one:
 #
 #   * a row recorded as passing whose vector failed  -- a regression
 #   * a row recorded as deferred whose vector passed -- an unrecorded gain
@@ -10,11 +9,10 @@
 # The third is what keeps the first two honest: without it, deleting a row is
 # a way to make either of the others disappear quietly.
 #
-# Every row was deferred at M1 by construction (the instrument, with no resolver
-# to ask). M6 built the resolver -- (uri path) + (uri resolve) + (uri recompose)
-# -- and flipped all 42 to passing (decision 0011 item 3). The two-way gate keeps
-# it honest from here: a passing row that regresses AND a row that starts passing
-# unrecorded are both violations, so this file cannot silently drift.
+# All 42 rows pass: the resolver is (uri path) + (uri resolve) + (uri
+# recompose). The two-way gate keeps the record honest: a passing row that
+# regresses AND a row that starts passing unrecorded are both violations, so
+# this file cannot silently drift.
 #
 # id = <section>/<reference>, derived from the vector rather than written
 # twice. Section 5.4.1's empty reference is therefore the row `5.4.1/`.

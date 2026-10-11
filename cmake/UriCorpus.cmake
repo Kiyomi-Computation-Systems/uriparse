@@ -1,17 +1,17 @@
 # Deriving this project's conformance corpus from RFC 3986's own text.
 #
-# Decision 0005 makes the RFC's vectors the anchor of the resolution layer and
-# says every vector cites its section. Hand transcription would make that a
-# claim; this makes it a derivation. The RFC text is vendored verbatim at
+# The RFC's vectors are the anchor of the resolution layer, and every vector
+# cites its section. Hand transcription would make that a claim; this makes it
+# a derivation. The RFC text is vendored verbatim at
 # test/vendor/rfc3986.txt with its digest recorded in the corpus PROVENANCE
 # file, and everything under test/conformance/rfc3986/ is produced from it by
 # the one function below.
 #
 # EVERY ANCHOR IS FOUND IN REVERSE. Each heading appears twice in an RFC --
 # once in the table of contents and once as the section -- and a forward FIND
-# lands on the TOC line, whose "region" contains no vectors at all. The first
-# run of this extractor emitted an empty corpus for exactly that reason, which
-# is why each function below also refuses a region it found nothing in.
+# lands on the TOC line, whose "region" contains no vectors at all and would
+# yield an empty corpus. That is why each function below also refuses a region
+# it found nothing in.
 #
 # ONE FUNCTION, TWO CALLERS, which is the rule that makes the provenance
 # falsifiable rather than asserted: `make corpus-refresh` writes the files
@@ -21,8 +21,7 @@
 # SECTION AND STEP LABELS ARE STRINGS, NOT BARE TOKENS. `5.4.1` and `2E` look
 # like natural datums and are not: R6RS forbids an identifier beginning with a
 # digit, and neither is a number, so a strict reader rejects both. Chez happens
-# to accept them; Racket and Guile are the reason not to rely on that
-# (decision 0007).
+# to accept them; Racket and Guile are the reason not to rely on that.
 #
 # THE SEMICOLON HAZARD. CMake's list separator is `;`, and RFC 3986's vectors
 # are full of it -- ";x", "g;x", the base's own "d;p?q". A MATCHALL result
@@ -109,11 +108,11 @@ function(uri_corpus_resolution rfc out)
 ;;;
 ;;; DERIVED from test/vendor/rfc3986.txt by cmake/UriCorpus.cmake. Do not edit:
 ;;; `make corpus-refresh` rewrites this file and a lane re-derives it and
-;;; compares, so a hand edit reddens rather than surviving (decision 0005).
+;;; compares, so a hand edit reddens rather than surviving.
 ;;;
 ;;; Each row is (<section> <reference> <target>), resolved against the base
-;;; section 5.4 declares. Decision 0015 rejects erratum 4547, which would
-;;; rewrite two of the 5.4.2 rows; they are here exactly as published.
+;;; section 5.4 declares. Erratum 4547, which would rewrite two of the 5.4.2
+;;; rows, is not adopted; they are here exactly as published.
 (base \"http://a/b/c/d;p?q\")
 (vectors
 ${normal_rows}${abnormal_rows})
@@ -121,7 +120,7 @@ ${normal_rows}${abnormal_rows})
 ;;; resolution (section 5.2.2 with strict = true) is what this project
 ;;; implements and is the row above; the loophole is recorded rather than
 ;;; silently dropped, because a reader who finds it in the RFC will look for it
-;;; here. RFC 1630 partial-URI compatibility is out of scope (decision 0001).
+;;; here. RFC 1630 partial-URI compatibility is out of scope.
 (note (\"5.4.2\" \"http:g\" backward-compatible \"http://a/b/c/g\"))
 " PARENT_SCOPE)
 endfunction()
@@ -129,10 +128,10 @@ endfunction()
 # uri_corpus_abnf(<rfc-text> <out>)
 #
 # RFC 3986 Appendix A, the collected ABNF, as an .abnf file. This is not a
-# vector set; it is the GRAMMAR, and decision 0012 makes it the source of the
-# generated positive corpus -- the observation that an ABNF is not only an
-# acceptor but a generator, and that a corpus generated from the normative
-# grammar has better provenance than one a parser author wrote.
+# vector set; it is the GRAMMAR, and it is the source of the generated positive
+# corpus -- an ABNF is not only an acceptor but a generator, and a corpus
+# generated from the normative grammar has better provenance than one a parser
+# author wrote.
 #
 # Extracted rather than transcribed for the same reason everything else here
 # is: a grammar retyped by hand is a grammar this project invented.
@@ -203,10 +202,9 @@ function(uri_corpus_abnf rfc out)
 ;
 ; DERIVED from test/vendor/rfc3986.txt by cmake/UriCorpus.cmake. Do not edit.
 ;
-; This is the NORMATIVE GRAMMAR, and decision 0012 makes it the source of the
-; generated positive corpus: an ABNF is not only an acceptor, it is a
-; generator, and a corpus generated from this file has the same provenance as
-; the parser's own specification.
+; This is the NORMATIVE GRAMMAR. The test oracles are transcribed from it,
+; independently of the parser, so they share the specification's provenance
+; and not the code under test.
 ;
 ; It is NOT self-contained. RFC 3986 leaves ALPHA, DIGIT and HEXDIG to RFC
 ; 5234 Appendix B, so a generator needs those three core rules alongside it;
@@ -215,7 +213,7 @@ function(uri_corpus_abnf rfc out)
 ;
 ; Appendix B's regular expression is deliberately absent. This project does
 ; not implement it, and four of the rejected errata against RFC 3986 are about
-; it (decision 0015 item 5).
+; it.
 
 ${body}" PARENT_SCOPE)
 endfunction()
@@ -251,7 +249,7 @@ function(uri_corpus_examples rfc out)
 ;;; Each row is (<section> <uri>). These carry no expected decomposition: the
 ;;; RFC gives them as illustrations, not as vectors, so what a lane may assert
 ;;; over them is that they parse -- never a component boundary the RFC never
-;;; stated (decision 0005 item 3).
+;;; stated.
 (uris
 ${rows})
 " PARENT_SCOPE)
@@ -260,8 +258,8 @@ endfunction()
 # uri_corpus_dot_segments(<rfc-text> <out>)
 #
 # RFC 3986 section 5.2.4: remove_dot_segments worked by hand on two inputs,
-# step by step. Transcribed AS STEP TRACES and not only as end results
-# (decision 0005), because the end result of the first example is reachable by
+# step by step. Transcribed AS STEP TRACES and not only as end results,
+# because the end result of the first example is reachable by
 # several wrong algorithms and the trace is not.
 function(uri_corpus_dot_segments rfc out)
   string(FIND "${rfc}" "5.2.4.  Remove Dot Segments" a REVERSE)
@@ -276,8 +274,8 @@ function(uri_corpus_dot_segments rfc out)
   # THE TABLE HAS FIXED COLUMNS, AND TOKEN ORDER IS NOT ENOUGH. Step 1's row
   # carries ONE field and it is the INPUT buffer (the output buffer starts
   # empty); a trace's LAST row also carries one field and it is the OUTPUT
-  # buffer. Splitting on whitespace reads the first as an output and inverts
-  # the whole first row, which is what the first run of this extractor did.
+  # buffer. Splitting on whitespace would read the first as an output and invert
+  # the whole first row.
   #
   # So the fields are read by column, and the columns are CHECKED against the
   # table's own header rather than trusted: "OUTPUT BUFFER" begins at 13 and

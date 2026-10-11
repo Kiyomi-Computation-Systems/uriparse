@@ -1,4 +1,4 @@
-# Specification: src/ is pure R6RS (decision 0007), asserted rather than trusted.
+# Specification: src/ is pure R6RS, asserted rather than trusted.
 #
 # The shipped surface is portable by default -- every library under src/ imports
 # only (rnrs), (byte-machine ...) and this project's own libraries -- but that is
@@ -9,15 +9,14 @@
 # text-level, so this needs no Scheme runtime and holds under the no-scheme
 # preset:
 #
-#   1. Every .sls under src/ LEADS WITH `#!r6rs` (design §8: Racket needs the
+#   1. Every .sls under src/ LEADS WITH `#!r6rs` (Racket needs the
 #      line, Chez and Guile accept it). The generated artifact is the file that
 #      most needs to read on another implementation, and it is included here.
 #   2. No .sls under src/ names `(chezscheme)`. Chez belongs in the harness, the
 #      emitter, a bench runner and the probe -- never in the shipped libraries.
 #
 # It does not whitelist the full import set; those two are the load-bearing
-# properties, and a broader import audit can extend this spec when a slice needs
-# one, the way the rename audit's forms grew.
+# properties, and a broader import audit can extend this spec when one is needed.
 
 cmake_minimum_required(VERSION 3.26)
 
@@ -40,7 +39,7 @@ if(IS_DIRECTORY "${_ia_src}")
       spec_record_failure()
       message(SEND_ERROR
         "uri-spec: '${_ia_rel}' does not lead with '#!r6rs'. Every .sls under "
-        "src/ must, so it reads on Racket and Guile as well as Chez (design §8). "
+        "src/ must, so it reads on Racket and Guile as well as Chez. "
         "A generated artifact gets its line from the emitter (tools/emit-machine.ss).")
     endif()
 
@@ -48,8 +47,8 @@ if(IS_DIRECTORY "${_ia_src}")
     if(_ia_lower MATCHES "\\(chezscheme")
       spec_record_failure()
       message(SEND_ERROR
-        "uri-spec: '${_ia_rel}' names (chezscheme). src/ is pure R6RS "
-        "(decision 0007): it imports only (rnrs), (byte-machine ...) and this "
+        "uri-spec: '${_ia_rel}' names (chezscheme). src/ is pure R6RS: "
+        "it imports only (rnrs), (byte-machine ...) and this "
         "project's own libraries. Chez belongs in the harness, the emitter, a "
         "bench runner or the probe -- move the code there.")
     endif()
@@ -57,7 +56,7 @@ if(IS_DIRECTORY "${_ia_src}")
 endif()
 
 # An audit that scanned nothing proves nothing (the empty-selection rule, one
-# layer up). src/ has held product libraries since M2 Slice ⓪.
+# layer up). src/ holds product libraries.
 if(_ia_scanned EQUAL 0)
   spec_record_failure()
   message(SEND_ERROR

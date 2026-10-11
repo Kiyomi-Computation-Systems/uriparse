@@ -1,21 +1,21 @@
 #!r6rs
-;;; conformance.resolution -- RFC 3986 §5.4, the milestone gate.
+;;; conformance.resolution -- RFC 3986 §5.4, the normative resolution gate.
 ;;;
-;;; This is the ONE normative corpus this project has (decision 0005), and M6 is
-;;; gated on all 42 rows passing (decision 0011 item 3). Each row resolves a
+;;; This is the ONE normative corpus this project has, and all 42 rows must
+;;; pass. Each row resolves a
 ;;; reference against the base §5.4 declares (http://a/b/c/d;p?q); the expected
 ;;; target is the RFC's own published string. The pipeline under test is the
 ;;; whole resolution stack end to end: `(uri collect)` parses the base (mode
 ;;; `uri`) and the reference (mode `uri-reference`), `(uri resolve)` transforms
 ;;; per §5.2.2 (strict), and `(uri recompose)` renders the target per §5.3 --
 ;;; then the recomposed bytes are compared BYTE-EXACT to the corpus string
-;;; (decision 0021: recompose-and-compare-strings keeps the corpus a pure string
+;;; (recompose-and-compare-strings keeps the corpus a pure string
 ;;; oracle, no parser in the grading path for the expected value).
 ;;;
-;;; The gate is TWO-WAY (the ratchet, decision 0005): every row is marked
-;;; `passing` in ratchet.txt, so a row that fails is a regression AND -- had any
-;;; been left `not-yet` -- a row that passes unrecorded is a violation too. The
-;;; milestone is done when `ratchet-violations` is empty over all 42.
+;;; The gate is TWO-WAY (the ratchet): every row is marked
+;;; `passing` in ratchet.txt, so a row that fails is a regression AND a row
+;;; marked `not-yet` that passes is a violation too. The
+;;; gate passes when `ratchet-violations` is empty over all 42.
 (import (rnrs)
         (uri test harness)
         (uri test corpus)
@@ -41,7 +41,7 @@
 ;; Parse the reference as a URI-reference (mode 3), resolve it against the base,
 ;; recompose the target, and read the bytes back as a string. #f if the
 ;; reference does not parse -- which `compare-target` reports as a difference,
-;; never as an equal-to-empty (decision 0008).
+;; never as an equal-to-empty.
 (define (target-of reference)
   (let ((pr (uri-parse 'uri-reference (string->utf8 reference))))
     (and (uri-parse-ok? pr)
@@ -101,14 +101,14 @@
                   (eq? (ratchet-status r (ratchet-entry-id e)) 'passing)))
          (ratchet-entries r))))))
 
-;;; --- the M5->M6 ordering, made a live property (decisions 0020, 0021) -------
+;;; --- the normalize-then-resolve ordering, made a live property --------------
 ;;; §6.2.2.2 normalization decodes `%2E` to a literal `.`, so `pct-normalize`
 ;;; MANUFACTURES dot-segments; §5.2.4 remove-dot-segments only acts on literal
 ;;; `.`/`..`. So normalize-BEFORE-resolve applies an encoded `../`, while
 ;;; resolving a RAW path leaves it encoded and inert. The order is
-;;; security-relevant, and here it is pinned rather than only documented: the
-;;; M5 review found the hazard, M5 pinned the normalize half (pct-normalize
-;;; `/a/%2E%2E/b` -> `/a/../b`), and this is the resolve half.
+;;; security-relevant, and here it is pinned rather than only documented:
+;;; unit.normalize pins the normalize half (pct-normalize `/a/%2E%2E/b` ->
+;;; `/a/../b`), and this is the resolve half.
 (harness-group "normalize-before-resolve neutralizes encoded traversal"
   (lambda ()
     (harness-case "normalized first, the encoded ../ is applied"

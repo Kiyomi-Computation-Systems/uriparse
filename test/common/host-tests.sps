@@ -1,12 +1,12 @@
 #!r6rs
-;;; unit.host -- the M4 host-grammar validator (decision 0025). Graded three ways,
+;;; unit.host -- the host-grammar validator. Graded three ways,
 ;;; like unit.charset: against the INDEPENDENT oracle (they agree on every input --
 ;;; a shape battery plus exhaustive dec-octet / h16 / group-count sweeps), against
 ;;; the negative corpus (every row rejected with the recorded code and ABSOLUTE
 ;;; offset, end to end through uri-parse-validate), and against the positive corpora
 ;;; (all accepted -- the reject-everything guard). The oracle (uri test host-oracle)
 ;;; and the product (uri host) are two independent readings of the same ABNF; their
-;;; agreement is the check (decisions 0005 / 0012 / 0025).
+;;; agreement is the check.
 (import (rnrs)
         (uri test harness)
         (uri host)
@@ -48,7 +48,7 @@
 
 (harness-begin "unit.host")
 
-;; --- the core error vocabulary (decision 0025 item 6) --------------------
+;; --- the core error vocabulary -------------------------------------------
 (harness-group "the core host error vocabulary"
   (lambda ()
     (harness-case "the six codes, named per ABNF production, out of the scanner set"
@@ -101,9 +101,9 @@
                   (loop (+ i 1) (string-append acc ":1")))))
           (check-equal "no group-count disagreements over 1..10" bad '()))))))
 
-;; --- over a range (issue #24, decision 0036) ------------------------------
+;; --- over a range ----------------------------------------------------------
 ;; A server holding a Host header value as [start, end) of its line judges it in
-;; place. As for validate-component (decision 0034): the verdict is the verdict on
+;; place. As for validate-component: the verdict is the verdict on
 ;; the span ALONE, nothing outside it is read, and every number returned -- the
 ;; fault index, the host bounds -- is relative to start.
 (harness-group "validate-authority and authority-host-span over a range"
@@ -121,7 +121,7 @@
       '(("" . "") (" " . "") ("" . " ") ("@" . "") ("[" . "") ("" . "]")
         ("" . "@x") ("" . "x:") ("" . " :1") ("" . "[") ("" . "41") ("ab@" . ":1")))
     ;; The host's [start, end) within an authority, derived by hand from the split
-    ;; (decision 0025 item 4): after the first "@" (or at 0), to the closing "]"
+    ;; after the first "@" (or at 0), to the closing "]"
     ;; inclusive for an IP-literal (to the end if unterminated), else to the first
     ;; ":" after it, else to the end.
     (define host-span-pins

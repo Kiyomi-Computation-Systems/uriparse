@@ -2,10 +2,9 @@
 ;
 ; DERIVED from test/vendor/rfc3986.txt by cmake/UriCorpus.cmake. Do not edit.
 ;
-; This is the NORMATIVE GRAMMAR, and decision 0012 makes it the source of the
-; generated positive corpus: an ABNF is not only an acceptor, it is a
-; generator, and a corpus generated from this file has the same provenance as
-; the parser's own specification.
+; This is the NORMATIVE GRAMMAR. The test oracles are transcribed from it,
+; independently of the parser, so they share the specification's provenance
+; and not the code under test.
 ;
 ; It is NOT self-contained. RFC 3986 leaves ALPHA, DIGIT and HEXDIG to RFC
 ; 5234 Appendix B, so a generator needs those three core rules alongside it;
@@ -14,7 +13,7 @@
 ;
 ; Appendix B's regular expression is deliberately absent. This project does
 ; not implement it, and four of the rejected errata against RFC 3986 are about
-; it (decision 0015 item 5).
+; it.
 
 URI           = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
 hier-part     = "//" authority path-abempty

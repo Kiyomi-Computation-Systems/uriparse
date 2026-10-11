@@ -3,16 +3,16 @@
 # WHY NOT WILL_FAIL
 #
 # CTest's WILL_FAIL only distinguishes zero from nonzero. The harness gives each
-# status a distinct meaning (upstream docs/plans/milestone-0-slice-2-test-harness.md
-# section 5.2), so a test proving "an assertion failed" must compare 1 exactly:
-# under WILL_FAIL a segfault, a missing library, or a launcher that never
-# started would all count as proof, and the test would keep passing after the
-# thing it was written to check stopped happening.
+# status a distinct meaning (see PROCESS STATUS in
+# test/support/harness/uri/test/harness.sls), so a test proving "an assertion
+# failed" must compare 1 exactly: under WILL_FAIL a segfault, a missing library,
+# or a launcher that never started would all count as proof, and the test would
+# keep passing after the thing it was written to check stopped happening.
 #
 # WHY AN OUT-OF-VOCABULARY STATUS IS ITS OWN VERDICT
 #
 # A status outside the declared set means the process died before the harness
-# could report -- an uncaught top-level raise (section 5.4), a crash, or a
+# could report -- an uncaught top-level raise, a crash, or a
 # program file the runtime could not find (Chez 10.4.1 exits 255 for the
 # last). Reporting that as "expected 1, got 255" sends the reader looking for
 # a failed assertion that never ran. Naming it separately points at the real
@@ -29,9 +29,8 @@ include_guard(GLOBAL)
 # them. Included, it sets the version the project already declared.
 cmake_policy(VERSION 3.26)
 
-# Every status the harness is allowed to produce. 3 is reserved for lane
-# provenance and is not produced until slice 5; it is declared here so the
-# number is not claimed by something else in the meantime. 77 is deliberately
+# Every status the harness is allowed to produce. 3 means the run could not
+# confirm it executed the intended text (lane provenance). 77 is deliberately
 # absent: uri has no optional lane to declare inapplicable.
 set(URI_EXIT_STATUS_VOCABULARY 0 1 2 3)
 
