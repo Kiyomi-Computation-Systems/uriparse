@@ -1151,6 +1151,27 @@ foreach(mode source aot)
     LABELS example)
 endforeach()
 
+# --- docs.akku-manifest: the Akku package against the tree ------------------
+#
+# Akku.manifest is what `akku publish` sends to the index. Its version must be
+# the latest release in CHANGELOG.md, and each dependency's range must start
+# at the version vendored under vendor/, the copy every other lane runs
+# against. Nothing is loaded from vendor/: the lane reads changelogs only.
+# `make check-akku` is the other half: it installs the package with Akku.
+foreach(mode source aot)
+  uri_add_scheme_lane(
+    NAME uri.docs.akku-manifest.chez.${mode}
+    BACKEND chez
+    PROGRAM "${CMAKE_CURRENT_LIST_DIR}/common/akku-manifest-tests.sps"
+    SOURCES ${URI_HARNESS_MANIFEST}
+            "${CMAKE_CURRENT_LIST_DIR}/common/akku-manifest-tests.sps"
+    ENVIRONMENT "URI_AKKU_MANIFEST=${CMAKE_SOURCE_DIR}/Akku.manifest"
+                "URI_CHANGELOG=${CMAKE_SOURCE_DIR}/CHANGELOG.md"
+                "URI_VENDOR_ROOT=${CMAKE_SOURCE_DIR}/vendor"
+    TIMEOUT 120
+    LABELS docs)
+endforeach()
+
 # --- (uri path): §5.2.4 remove-dot-segments + §5.2.3 merge ------------------
 #
 # The mechanics `(uri resolve)` (§5.2.2) is built on: two pure functions over
