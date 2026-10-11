@@ -4505,3 +4505,16 @@ NEXT. (1) #48: rebase onto 2cc18ed and re-test, then merge; then the maintainer 
 SUBMODULES_READ_TOKEN secret. (2) byte-machine on the Akku index, then chez-uri (0045). (3) Publish
 the site: enable Pages and restore Actions billing (fifteen PRs, #33 to #47, merged without a CI
 verdict). (4) Carried: the easy layer's optional extensions; the sibling items in #43's NEXT (5).
+
+CI: THE SUBMODULE WITHOUT A TOKEN (2026-10-11, session 94df59, on the maintainer's request; branch
+ci/anonymous-submodule off main cb11061). byte-machine went public (verified anonymously: API
+HTTP 200, `git ls-remote` with no credentials), so ci.yml no longer needs SUBMODULES_READ_TOKEN.
+The "Require the submodule read token" step and the GIT_CONFIG insteadOf rewrite that carried
+the secret are gone; `Init submodules` stays, before Chez is built, as an anonymous `git
+submodule update --init` with GIT_TERMINAL_PROMPT=0. The comment calling byte-machine private
+went with it. REHEARSED, since CI is still refused over billing: in ubuntu:24.04 amd64 with no
+credentials, a clone of uriparse ran the step as written at main (pin c338a57) and at #47's tip
+(pin c1f7791): exit 0, the pinned commit checked out, 6 runtime libraries each. Control: a fetch
+that needs credentials failed in 1s with "terminal prompts disabled", exit 128. actionlint clean.
+Separate from #47 (the pin moves alone, decision 0002 item 6). NEXT: once this merges, the
+maintainer can delete the SUBMODULES_READ_TOKEN Actions secret.
