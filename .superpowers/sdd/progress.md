@@ -4441,3 +4441,29 @@ failure (a submodule's relative .git path broken by copying the tree) stopped th
 which the old pipeline would also have masked. a1417a reproduced the defect independently (gtar:
 the old order copies 319 files from vendor/byte-machine, the new one 0) and was told the fix is
 here. chez-httparse's identical script is its own task there.
+
+PR #46 CLOSED OUT (2026-10-11, the closing ritual, on the maintainer's word). Squash-merged as
+96b47e1 on e244376, pinned by --match-head-commit 14bb1ab; main had not moved. Merged tree 9c33dc2
+= tested tree 9c33dc2 (hash compare). CI DID NOT RUN: run 38170016966 was refused over billing
+(annotation read); a PR comment records it with the local evidence (make test 91/91; check-akku
+witnessed three ways in ubuntu:24.04 amd64). Before fix/check-akku-gnu-tar was deleted (local and
+remote), no open PR was based on it (checked). The shared checkout, clean, fast-forwarded to
+96b47e1; the worktree was removed after both trees were checked clean and its tree compared equal
+to 96b47e1's.
+
+REFLECTION. Three things. (1) THE WITNESS HAD THE BUG IT WITNESSED. The first container run
+printed exit=0 for every case, failing ones included: `make ... | grep | sed; echo $?` reports
+sed's status, which is the very defect the patch fixes in copy_tracked. A verdict that checks the
+captured status and the expected message ("failed, for the expected reason") is what made the
+rerun trustworthy; see a-crash-can-count-as-a-catch. (2) A COPIED TREE IS NOT THE TREE. Copying
+the worktree broke the submodule's relative .git path, and two cases failed for that reason. Run
+in the mounted tree, and copy only for the mutant, which must stop at the new check before any
+submodule is read. (3) A PATCH FROM ELSEWHERE IS STILL READ IN FULL, and checked against its base:
+blob 5d1b4f4 matched before `git apply`. It went onto its own branch in its own worktree, not the
+shared checkout its command named.
+
+NEXT. (1) Publish the site: enable Pages (Settings → Pages → Source: GitHub Actions; a private
+repository needs a paid plan) and restore Actions billing. (2) CI billing: fourteen PRs (#33 to
+#46) have now merged without a CI verdict. (3) byte-machine public, then on the Akku index, then
+chez-uri (0045). (4) Carried: the easy layer's optional extensions; the sibling items in #43's
+NEXT (5); chez-httparse's identical check-akku script is its own task there.
