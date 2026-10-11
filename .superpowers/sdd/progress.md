@@ -4427,3 +4427,17 @@ repository needs a paid plan) and restore Actions billing. The first v* tag afte
 (2) check-akku on GNU tar (a1417a). (3) CI billing: thirteen PRs (#33 to #45) have now merged
 without a CI verdict. (4) byte-machine public, then on the Akku index, then chez-uri (0045).
 (5) Carried: the easy layer's optional extensions; the sibling items in #43's NEXT (5).
+
+FIX: check-akku ON GNU TAR (2026-10-11, session 94df59, on the maintainer's request; branch
+fix/check-akku-gnu-tar off main e244376). Closes NEXT (2) of the #44 close-out. The patch is the
+chez-httparse session's, applied unchanged (its base blob 5d1b4f4 matched): --no-recursion moves
+before -T, which GNU tar needs since the option is positional; the file list and the archive go
+through files in $work, so a failing git or tar trips set -e instead of hiding inside a
+pipeline; and a new check requires the package copy's vendor/<dep> to be an empty directory, as
+git tracks a submodule. WITNESSED in ubuntu:24.04 amd64, Akku 1.1.0: patched with GNU tar 1.35,
+pass (15 src/ libraries); the old pipeline with the new check, fail at that check, exit 2, where
+the old script had passed; patched with bsdtar 3.7.2 as tar, pass. While witnessing, a git
+failure (a submodule's relative .git path broken by copying the tree) stopped the patched script,
+which the old pipeline would also have masked. a1417a reproduced the defect independently (gtar:
+the old order copies 319 files from vendor/byte-machine, the new one 0) and was told the fix is
+here. chez-httparse's identical script is its own task there.

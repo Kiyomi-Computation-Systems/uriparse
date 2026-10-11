@@ -31,10 +31,15 @@ fail() { echo "check-akku: $*" >&2; exit 1; }
 
 # copy_tracked SRC DEST: the files git tracks in SRC, as they are on disk.
 # --no-recursion keeps a submodule's directory empty, as it is in an archive.
+# GNU tar applies it only to the names after it, so it comes before -T. A
+# pipeline's status is its last command's, so the list and the archive go
+# through files in $work instead: under set -e, a failing git or tar fails
+# the script.
 copy_tracked() {
   mkdir -p "$2"
-  (cd "$1" && git ls-files -z | tar --null -T - --no-recursion -cf -) |
-    (cd "$2" && tar -xf -)
+  (cd "$1" && git ls-files -z) > "$work/tracked"
+  (cd "$1" && tar --null --no-recursion -T - -cf -) < "$work/tracked" > "$work/tracked.tar"
+  (cd "$2" && tar -xf -) < "$work/tracked.tar"
 }
 
 # The package's name and version, then one dependency name per line.
@@ -62,6 +67,9 @@ lock="((name \"$package\") (location (directory \"$work/pkg/$package\")))"
 for dep in $depends; do
   [ -f "$root/vendor/$dep/.git" ] || [ -d "$root/vendor/$dep/.git" ] ||
     fail "dependency $dep is not vendored at vendor/$dep (git submodule update --init?)"
+  sub="$work/pkg/$package/vendor/$dep"
+  [ -d "$sub" ] && [ -z "$(ls -A "$sub")" ] ||
+    fail "vendor/$dep in the copy of $package is not an empty directory, as git tracks a submodule"
   copy_tracked "$root/vendor/$dep" "$work/pkg/$dep"
   lock="$lock ((name \"$dep\") (location (directory \"$work/pkg/$dep\")))"
 done
