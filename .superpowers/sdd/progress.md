@@ -4467,3 +4467,16 @@ repository needs a paid plan) and restore Actions billing. (2) CI billing: fourt
 #46) have now merged without a CI verdict. (3) byte-machine public, then on the Akku index, then
 chez-uri (0045). (4) Carried: the easy layer's optional extensions; the sibling items in #43's
 NEXT (5); chez-httparse's identical check-akku script is its own task there.
+
+PIN: byte-machine v0.7.0 -> v0.8.0 (2026-10-11, session 94df59, on the maintainer's request;
+branch chore/byte-machine-0.8.0 off main cb11061). byte-machine went public and released v0.8.0
+(c1f7791), its first public release. The pin moves alone (decision 0002 item 6): the gitlink and
+Akku.manifest's dependency floor, nothing under src/. EVIDENCE: `make parser-refresh` at the new
+pin exited 0 and wrote 28766 bytes, and src/generated/uri-scanner.sls came out byte-identical
+(the URI grammar has no integer-accumulate node, the one emitted shape 0.8.0 changes). With the
+floor still ^0.7.0, uri.docs.akku-manifest failed in both modes with (range-floor-mismatch
+"byte-machine" "0.7.0" "0.8.0"); at ^0.8.0 it passes. A ^0.7.0 floor could not have been met from
+the Akku index anyway: caret on 0.x admits no 0.8.x. MEASURED (macOS arm64, Chez 10.4.1, CMake
+4.3.3, byte-machine c1f7791): test-all 91/91, no-scheme 13/13; `make check-akku` in ubuntu:24.04
+amd64 with Akku 1.1.0: 15 src/ libraries, consumer green, with byte-machine 0.8.0's own manifest
+and .akkuignore in the dependency. NEXT: byte-machine on the Akku index, then chez-uri (0045).

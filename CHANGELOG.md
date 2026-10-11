@@ -43,6 +43,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   dependency of the library. `.github/workflows/pages.yml` publishes the site to GitHub
   Pages on a `v*` tag.
 
+### Changed
+
+- **The pin moves to byte-machine `v0.8.0`** (`c338a57..c1f7791`), its first public
+  release. Upstream adds an Akku manifest, user docs and `#!r6rs` on every library, makes
+  `emit-machine` refuse an output binding `(rnrs)` exports, and moves the overflow check
+  of an integer-accumulate node to generation time. The generated-runtime ABI is still 9,
+  and the URI grammar has no integer-accumulate node: `make parser-refresh` at the new pin
+  rewrites `src/generated/uri-scanner.sls` byte-identical. Nothing under `src/` changes.
+  `Akku.manifest`'s dependency moves with the pin, to `^0.8.0`: the
+  `uri.docs.akku-manifest` lane holds its floor to the vendored version, and refused the
+  bump until it moved. A `^0.7.0` floor also could never be met from the Akku index,
+  since it admits no 0.8.x and byte-machine's first release there is 0.8.0.
+
 ## [0.7.0] - 2026-10-11
 
 Released on macOS arm64 evidence only. CI has run before (the first funded run passed on
