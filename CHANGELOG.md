@@ -22,8 +22,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   holds the manifest's version to the latest release here and its dependency floor to
   the vendored copy. `make check-akku` installs the package into a throwaway project and
   checks that exactly the libraries in `src/` land, that no program does, and that a
-  program reads a URI through both layers with only Akku's library path. Nothing is
-  published yet: byte-machine has to be on the index first (decision 0045).
+  program reads a URI through both layers with only Akku's library path. It copies a
+  submodule as the empty directory an archive holds, and checks that it did, with GNU
+  `tar` as well as BSD `tar`. Nothing is published yet: byte-machine has to be on the
+  index first (decision 0045).
 - **User docs in `docs/`, as Markdown.** `docs/README.md` is the index, with guides to
   installing, URIs as strings (`docs/easy.md`, which replaces `docs/easy.org`), parsing
   bytes, validating, resolving and normalizing, queries and percent-encoding, and errors.
