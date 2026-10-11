@@ -3947,3 +3947,15 @@ piece, the OLD in-place rewrite fails only the new "neither reading modifies its
 under the same split. Counts after: unit.easy 24 cases / 274 checks, unit.query 6 / 106. Measured
 on 8922cd2 plus this commit (macOS arm64, Chez 10.4.1 tarm64osx, CMake 4.3.3, byte-machine
 c338a57): test-all 83/83, no-scheme 13/13.
+
+SLICE ⓪ PR #37 CLOSED OUT (2026-10-11). Squash-merged as 18f528a on 145bc08, pinned by
+--match-head-commit b981dde. Merged tree 3c1eb8b = tested tree 3c1eb8b (hash compare). CI DID
+NOT RUN: both pushes (runs 38157173938, 38158823366) were refused over billing; a PR comment
+records it with the local counts. The ledger's order held: #38 retargeted to main FIRST, then
+`git rebase --onto origin/main b981dde feat/uri-query` and `git rebase --onto feat/uri-query
+ff06dcc feat/uri-easy-read`, both clean, each rebased tree byte-identical to its old head (empty
+`git diff --stat`); test-all 83/83 on the top; force-pushed with leases on the old heads; then
+docs/easy-layer-slice0 deleted local and remote. #38 now targets main (head 682ac92), #39 sits
+on it (head ec67047 before this commit). This close-out is committed on #39's branch, the top of
+the stack, so no later rebase meets it at the end of the file the way #36's met slice ①'s.
+NEXT MERGE: #38 the same way (retarget #39 first, rebase --onto, then delete feat/uri-query).
