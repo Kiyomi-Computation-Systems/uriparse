@@ -199,9 +199,22 @@ make check-akku # install with Akku as a consumer would (needs akku)
 The Scheme examples in this README and in ~docs/~ are run by the tests, so
 they print what they say they print. Another test holds
 ~docs/reference.md~ to the libraries' exports: a new export needs an entry.
+
+*** What is distributed
+
 ~Akku.manifest~ describes the package for the [[https://akkuscm.org/][Akku]]
-index; ~make check-akku~ installs it into a throwaway project and checks that
-exactly the libraries in ~src/~ land.
+index. The Akku package and a GitHub source archive are both built the way
+~git archive~ builds them, so they leave out what ~.gitattributes~ marks
+~export-ignore~: ~.plans/~, ~.superpowers/~ and ~AGENTS.md~. Those are the
+design records and agent instructions, kept here for working on uriparse,
+not for using it.
+
+From the package, Akku installs only the libraries in ~src/~. ~.akkuignore~
+keeps the docs site generator's ~site/~ libraries off a consumer's library
+path.
+
+~make check-akku~ checks all three: what the package holds, which libraries
+install, and that a program reads a URI with only Akku's library path.
 
 *** The docs site
 
@@ -261,6 +274,8 @@ regenerates them and compares. Edit the source, not the output:
 | ~test/support/~     | the test harness and the build-layer specifications                 |
 | ~test/akku/~        | the Akku install check and the program it runs                      |
 | ~vendor/~           | the byte-machine submodule                                          |
+| ~.plans/~           | plans and decision records; not distributed                         |
+| ~.superpowers/~     | the development ledger; not distributed                             |
 
 Release history is in [[file:CHANGELOG.md][CHANGELOG.md]].
 

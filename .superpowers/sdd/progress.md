@@ -4569,3 +4569,7 @@ export-ignore, passed, 15 src/ libraries; W3 .akkuignore emptied (bind-mounted),
 8 site/ libraries and ".akkuignore must list site", exit 2. NOT FIXED HERE: chez-cmark-gfm's
 published 2.0.0 ships its .plans/ and AGENTS.md, and chez-httparse should get the same lines before
 it publishes.
+README.org, on the maintainer's request in the same PR: a "What is distributed" section (what the
+package and a source archive leave out, what Akku installs, what check-akku checks) replaces the
+one-line check-akku description, and the Layout table gains .plans/ and .superpowers/ rows,
+each marked not distributed.
