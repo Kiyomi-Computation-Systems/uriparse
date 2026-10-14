@@ -8,12 +8,25 @@
 # and, for each dependency Akku.manifest names, the tracked files of the copy
 # vendored at vendor/<name>. Tracked files are copied from the working tree,
 # so uncommitted edits to them are what gets tested; a file git does not track
-# yet is left out, as the archive would leave it out. After `akku install`:
+# yet is left out, as the archive would leave it out. Before installing:
+#
+#   0. the package the archive would build must leave out the repository's
+#      process records (.plans/, .superpowers/, AGENTS.md) and still hold the
+#      libraries. Akku's archive builds a package the way `git archive` does,
+#      leaving out every path .gitattributes marks export-ignore: byte-machine
+#      0.8.0's package lacks exactly its export-ignored .plans, .decisions and
+#      AGENTS.md. So git archive itself answers, at HEAD, with this tree's
+#      .gitattributes. Everything the package unpacks lands in a consumer's
+#      .akku/src/, not only its libraries.
+#
+# After `akku install`:
 #
 #   1. this package's libraries in .akku/list must be exactly the .sls files
 #      git tracks under src/. A test, site or tool library would land on
 #      every consumer's library path, and a missing one would fail at import.
-#      Apart from those it may install its legal notices and nothing else.
+#      The docs site generator's (site ...) libraries, tracked under site/,
+#      are named first: .akkuignore must list site. Apart from its libraries
+#      the package may install its legal notices and nothing else.
 #   2. every dependency must have installed at least one library.
 #   3. test/akku/consumer.sps, run with only the library path that
 #      .akku/bin/activate sets, must read a URI through both layers.
@@ -41,6 +54,18 @@ copy_tracked() {
   (cd "$1" && tar --null --no-recursion -T - -cf -) < "$work/tracked" > "$work/tracked.tar"
   (cd "$2" && tar -xf -) < "$work/tracked.tar"
 }
+
+# 0. What the archive would ship.
+(cd "$root" && git archive --worktree-attributes --format=tar HEAD) > "$work/archive.tar"
+tar -tf "$work/archive.tar" > "$work/archive.txt"
+awk -F/ '{ print $1 }' "$work/archive.txt" | sort -u > "$work/archive-top.txt"
+for record in .plans .superpowers AGENTS.md; do
+  if grep -qxF "$record" "$work/archive-top.txt"; then
+    fail "the package would ship $record; .gitattributes must mark it export-ignore"
+  fi
+done
+grep -qxF src/uri/easy.sls "$work/archive.txt" ||
+  fail "git archive holds no src/uri/easy.sls, so it cannot be what the package is built from"
 
 # The package's name and version, then one dependency name per line.
 cat > "$work/manifest.ss" <<'EOF'
@@ -95,6 +120,9 @@ echo "check-akku: installing $package $version and its dependencies: $depends"
 # 1. This package's libraries are exactly src/.
 awk -F '\t' -v p="$package" '$2 == p && $3 == "r6rs-library" { sub("^\\.akku/lib/", "", $1); print $1 }' \
   .akku/list | sort > installed.txt
+site=$(grep '^site/' installed.txt | tr '\n' ' ' || true)
+[ -z "$site" ] ||
+  fail "$package installs the docs site generator's libraries ($site): .akkuignore must list site"
 (cd "$root" && git ls-files -- 'src/*.sls' | sed 's#^src/##' | sort) > expected.txt
 diff -u expected.txt installed.txt > libraries.diff ||
   { cat libraries.diff >&2; fail "$package installs a different set of libraries than src/ (- missing, + extra)"; }

@@ -61,6 +61,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   missing is gone, and so is the URL rewrite that carried it; nothing reads the secret
   any more. `GIT_TERMINAL_PROMPT=0` makes a fetch that would need credentials fail at
   once instead of waiting for a password.
+- **What is distributed leaves out the design records.** `.gitattributes` marks
+  `.plans/`, `.superpowers/` and `AGENTS.md` `export-ignore`, so a GitHub source archive
+  and the Akku package, both built the way `git archive` builds them, no longer carry
+  them; they stay in the repository. `akku install` unpacks the whole package into a
+  consumer's `.akku/src/`, so this is what a consumer would have received. `make
+  check-akku` now asks `git archive` what the package would hold and fails if any of
+  the three would ship, and it names the docs site generator's `site/` libraries if
+  `.akkuignore` ever stops keeping them off a consumer's library path.
 
 ## [0.7.0] - 2026-10-11
 

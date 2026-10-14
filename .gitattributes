@@ -12,17 +12,25 @@
 # so no filter, no autocrlf setting, and no future .gitattributes edit can touch
 # them. eol=lf above would be enough today; -text is enough forever.
 #
-# HTTP is the reason this matters concretely: request fixtures are
-# CRLF-framed, and a fixture whose CRLFs became LFs would still parse as a
-# plausible message while testing the wrong grammar.
+# test/fixtures/ holds the fingerprint sample the harness's digest is checked
+# against, and a stale library root the staleness lane loads; a changed byte in
+# either changes what those lanes measure.
 test/fixtures/** -text
 *.expected -text
 
-# The vendored llhttp corpus (decision 0007) is upstream's bytes, checksummed
-# in test/vendor/llhttp/PROVENANCE and verified by a registered spec. It is
-# marked binary for the same reason as the fixtures above, one step earlier:
-# no fixture in it contains a CR byte *today*, so eol=lf would be harmless
-# now -- but these are HTTP fixtures, upstream adds to them, and the first one
-# carrying a literal CR would either break every checksum or, worse, parse as
-# a plausible message while testing the wrong grammar. -text is enough forever.
+# The vendored RFC 3986 text (decision 0005) is the IETF's bytes. Its sha256 is
+# recorded in test/conformance/rfc3986/PROVENANCE, and the corpus-provenance
+# lane re-derives the corpus from it and compares. It carries 61 form feeds, the
+# RFC's page breaks, and a translated byte would change the digest and every
+# line the extractor reads. -text is enough forever.
 test/vendor/** -text
+
+# Kept in the repository, left out of what is distributed. A GitHub source
+# archive and the Akku package are both built the way `git archive` builds
+# them, which leaves out every path marked export-ignore, and `akku install`
+# unpacks the whole package into a consumer's .akku/src/. The design records
+# and agent instructions are for working on uriparse, not for using it.
+# `make check-akku` fails if any of them would ship.
+.plans export-ignore
+.superpowers export-ignore
+AGENTS.md export-ignore
