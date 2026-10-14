@@ -4573,3 +4573,30 @@ README.org, on the maintainer's request in the same PR: a "What is distributed" 
 package and a source archive leave out, what Akku installs, what check-akku checks) replaces the
 one-line check-akku description, and the Layout table gains .plans/ and .superpowers/ rows,
 each marked not distributed.
+
+PR #49 CLOSED OUT (2026-10-14, the closing ritual, on the maintainer's word). Squash-merged as
+8f46fc4 on 31f2d44, pinned by --match-head-commit 5fb1563; main had not moved. Merged tree 19a7b76
+= tested tree (hash compare). CI DID NOT RUN: run 38549367773 was refused over billing (annotation
+read); a PR comment records it with the local evidence (make test 91/91 on the merged tree,
+no-scheme 13/13, check-akku witnessed three ways in ubuntu:24.04 amd64). Before
+chore/dist-export-ignore was deleted (local and remote), no open PR was based on it (checked). The
+shared checkout, clean, fast-forwarded to 8f46fc4; its submodule already matched the pin. The
+worktree was removed after both trees were checked clean and its tree compared equal to 8f46fc4's.
+
+REFLECTION. Three things. (1) CHECK WHAT THE CONSUMER RECEIVES, NOT ONLY WHAT INSTALLS. check-akku
+modelled the package as every tracked file and judged only .akku/lib, so .plans/ could ride along
+into every consumer's .akku/src/ with the check green. Check 0 now asks git archive, the archive's
+own rule, what the package holds. (2) PUBLISHED ARTIFACTS SETTLED IT. Two real repacks, one with
+export-ignore and one without, showed how the archive builds a package, and they turned up a
+sibling's live leak (chez-cmark-gfm 2.0.0). Spawned tasks now carry that to chez-httparse and
+chez-cmark-gfm. (3) A COPIED FILE'S CLAIMS NEED READING, NOT ONLY ITS NAMES. The rename audit hunts
+one token, and .gitattributes passed it while describing an llhttp corpus and HTTP fixtures this
+tree never had.
+
+NEXT. (1) The v0.8.0 release, when the maintainer asks: [Unreleased] -> [0.8.0], CMakeLists and
+Akku.manifest to 0.8.0, a release record like 0043, a signed tag and a GitHub Release. (2) uriparse
+public, then the maintainer's `akku publish` from that tag (0045 step 3); then docs/installing.md
+can offer `akku install chez-uri`. (3) The sibling tasks for chez-httparse and chez-cmark-gfm's
+export-ignore. (4) Delete the SUBMODULES_READ_TOKEN secret. (5) Actions billing (seventeen PRs, #33
+to #49, merged without a CI verdict) and Pages. (6) Carried: the easy layer's optional extensions;
+the sibling items in #43's NEXT (5).
