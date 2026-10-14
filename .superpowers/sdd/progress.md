@@ -4548,3 +4548,24 @@ NEXT. (1) The maintainer can delete the SUBMODULES_READ_TOKEN Actions secret: no
 GIT_TERMINAL_PROMPT=0) before anything else; sixteen PRs (#33 to #48) have merged without a CI
 verdict. (3) byte-machine on the Akku index, then chez-uri (0045). (4) Publish the site: enable
 Pages. (5) Carried: the easy layer's optional extensions; the sibling items in #43's NEXT (5).
+
+DISTRIBUTION: THE DESIGN RECORDS STAY HOME (2026-10-14, session 94df59, on the maintainer's
+request; branch chore/dist-export-ignore off main 31f2d44). Asked to make sure .plans and the like
+are not distributed, and that site/ libraries are not installed. FOUND: .gitattributes had no
+export-ignore, so a GitHub source archive and the Akku package would both carry .plans/ (54
+entries, among them a spike .sps and a .c file), .superpowers/ and AGENTS.md. The Akku archive builds
+a package the way `git archive` does: byte-machine 0.8.0's repack (sha256 matched the index) lacks
+exactly its export-ignored .plans, .decisions and AGENTS.md and keeps .reference/;
+chez-cmark-gfm 2.0.0 has no .gitattributes, and its published repack ships its .plans/ and
+AGENTS.md. `akku install` unpacks the whole package into .akku/src/<name>/ (akku's fetch.scm),
+so all of it reaches a consumer. .gitattributes's comments were chez-httparse's (an llhttp corpus,
+"decision 0007", HTTP fixtures) and are rewritten for this tree: the RFC text's PROVENANCE digest
+and 61 form feeds, the fingerprint sample and stale root. CHANGE: export-ignore for .plans,
+.superpowers and AGENTS.md. check-akku gains check 0 (git archive --worktree-attributes at HEAD
+must leave out the three and hold src/uri/easy.sls) and a named site/ check ahead of the exact
+library diff. WITNESSED in ubuntu:24.04 amd64, Akku 1.1.0, each verdict on status AND message:
+W1 the new checks with no export-ignore, failed "the package would ship .plans", exit 2; W2 with
+export-ignore, passed, 15 src/ libraries; W3 .akkuignore emptied (bind-mounted), failed naming all
+8 site/ libraries and ".akkuignore must list site", exit 2. NOT FIXED HERE: chez-cmark-gfm's
+published 2.0.0 ships its .plans/ and AGENTS.md, and chez-httparse should get the same lines before
+it publishes.
