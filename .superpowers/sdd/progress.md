@@ -4694,3 +4694,28 @@ commit and its push, which runs pages.yml with SITE_REF=v0.8.0. (3) A GitHub Rel
 CHANGELOG [0.8.0] body. (4) The maintainer's `akku publish` from the tag, then
 docs/installing.md's Akku path in its own PR. (5) Carried: the sibling export-ignore tasks;
 deleting SUBMODULES_READ_TOKEN; the easy layer's optional extensions; #43's NEXT (5).
+
+PR #52 CLOSED OUT (2026-10-16, session 94df59, the closing ritual, on the maintainer's word).
+Squash-merged as 9416299 on 6271256, pinned by --match-head-commit 445d829; main had not moved.
+Merged tree 7c6b919 = tested tree (hash compare). CI passed on 445d829 (run 38888521944,
+linux-amd64: ubuntu-24.04, Chez 10.4.1 ta6le, CMake 3.31.6; pr 91/91, release 91/91, no-scheme
+13/13, read from the run's log). It is the first release PR with its own CI verdict since #31
+(v0.6.2, run 36895939900). A PR comment records the run and the local gate. No open PR was based on chore/release-v0.8.0
+(checked), and it was deleted locally and on the remote. The shared checkout, clean, was
+fast-forwarded to 9416299; its submodule stayed at c1f7791 (v0.8.0). The worktree was removed after
+it was checked clean and tree-equal to 7c6b919.
+
+REFLECTION. Three things. (1) LET THE RELEASE'S OWN CHECK SAY WHAT MUST MOVE. The manifest lane
+named the stale version once the CHANGELOG moved, so the bump was test-first rather than remembered.
+CMakeLists' VERSION has no such check: it moved because the checklist said so. (2) A RELEASE
+REREADS ITS UNRELEASED NOTES. Four [Unreleased] lines were true when written and false at the tag
+(a floor, "nothing is published yet", a file format, an account of the bump). Each PR's entry is
+written for its moment, and the release is where they are read together. (3) STATE EVIDENCE THAT
+EXISTS. The CHANGELOG preamble cites #50 and #51's runs, not the release PR's own, which had not
+run when it was written. The tag message, written after, carries that run.
+
+NEXT. (1) The signed annotated tag v0.8.0 on 9416299 and its push, on the maintainer's word. The
+push runs pages.yml with SITE_REF=v0.8.0. The tag message names run 38888521944. (2) A GitHub
+Release with the CHANGELOG [0.8.0] body. (3) The maintainer's `akku publish` from the tag, then
+docs/installing.md's Akku path in its own PR. (4) Carried: the sibling export-ignore tasks;
+deleting SUBMODULES_READ_TOKEN; the easy layer's optional extensions; #43's NEXT (5).
