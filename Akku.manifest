@@ -15,7 +15,7 @@
 ;; CHANGELOG.md, and that floor to the vendored copy's.
 ;;
 ;; No `scripts` clause: there is nothing to build.
-(akku-package ("chez-uri" "0.7.0")
+(akku-package ("chez-uri" "0.8.0")
   (synopsis "An RFC 3986 URI parser for Chez Scheme, in portable R6RS")
   (description
    "Parse, validate, resolve and normalize URIs as RFC 3986 defines them. (uri easy) takes a URI as a string and answers with strings: the host, the port as a number, decoded path segments and query pairs."

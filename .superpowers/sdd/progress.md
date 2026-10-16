@@ -4665,3 +4665,32 @@ publish` from that tag (0045 step 3); then docs/installing.md can offer `akku in
 (4) The sibling tasks for chez-httparse and chez-cmark-gfm's export-ignore. (5) Delete the
 SUBMODULES_READ_TOKEN secret. (6) Carried: the easy layer's optional extensions; the sibling items
 in #43's NEXT (5). Actions billing is no longer an item: CI runs again.
+
+RELEASE v0.8.0 OPENED (2026-10-16, session 94df59, on the maintainer's request; branch
+chore/release-v0.8.0 off main 6271256). Decision 0046 records it. The checklist is 0043's: a
+MINOR bump, 0.7.0 -> 0.8.0, although nothing under src/ changed since v0.7.0 (`git diff v0.7.0
+-- src/` is empty). The bump is for the dependency: byte-machine moved 0.7.0 -> 0.8.0, and
+`^0.8.0` admits no 0.7.x. It is also the first public release and the first on Akku. TESTS FIRST:
+CHANGELOG [Unreleased] -> [0.8.0] alone turned uri.docs.akku-manifest red in both modes, with
+"diagnostics -- expected (), got ((version-mismatch "0.7.0" "0.8.0"))". Akku.manifest -> 0.8.0
+turned it green ("version 0.8.0, dependencies checked against vendor/: 1"). CMakeLists VERSION
+-> 0.8.0 (nothing checks it). The CHANGELOG [0.8.0] preamble gives the evidence: CI linux-amd64
+on #50 and #51 (91/91, 91/91, 13/13; ubuntu-24.04, Chez 10.4.1 ta6le, CMake 3.31.6, read from
+run 38887375980's log), and #42 to #49 on macOS arm64 only. Four stale [Unreleased] lines were
+corrected: the Akku entry's ^0.7.0 and "nothing is published yet"; the doc lane's docs/*.org;
+the pin entry's floor account. The site entry gained its URL. Gate on the release tree, macOS
+arm64, Chez 10.4.1 tarm64osx, CMake/CTest 4.3.3:
+- make check-site, with chez-cmark-gfm v2.0.0 (exact tag) and SITE_REF=v0.8.0: site 49/49,
+  render 9/9, all four invariants green.
+- make check-akku: "installing chez-uri 0.8.0 and its dependencies: byte-machine", "15 libraries
+  from src/, and a consumer read a URI through both layers".
+- make test-all: 91/91. make no-scheme: 13/13. 0 failures.
+Live Pages, before this: dispatched from main 6271256 (run 38887893921, build and deploy green).
+The live index carries the Source code link, both metas, and the docs link to blob/main/docs.
+
+NEXT. (1) The release PR's CI, then the closing ritual on the maintainer's word: merge pinned to
+the tested head, merged tree = tested tree. (2) The signed annotated tag v0.8.0 on the merge
+commit and its push, which runs pages.yml with SITE_REF=v0.8.0. (3) A GitHub Release with the
+CHANGELOG [0.8.0] body. (4) The maintainer's `akku publish` from the tag, then
+docs/installing.md's Akku path in its own PR. (5) Carried: the sibling export-ignore tasks;
+deleting SUBMODULES_READ_TOKEN; the easy layer's optional extensions; #43's NEXT (5).

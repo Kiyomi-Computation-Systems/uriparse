@@ -6,9 +6,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-16
+
+The first public release. CI runs again: #50 and #51 passed on linux-amd64 (ubuntu-24.04,
+Chez Scheme 10.4.1 ta6le, CMake 3.31.6), the pull-request and complete selections 91/91
+and the no-Scheme layer 13/13. #42 to #49 merged before the repository went public, each
+refused CI over billing, on macOS arm64 evidence. Measured on the release commit on macOS
+arm64 (Chez Scheme 10.4.1, tarm64osx; CMake/CTest 4.3.3): the complete selection 91/91,
+the no-Scheme layer 13/13, and `make check-site` and `make check-akku` green.
+No library under `src/` changed: every export and signature is v0.7.0's, and the
+generated scanner is byte-identical at the new byte-machine pin. What is new is how
+uriparse is distributed and documented: an Akku package, `chez-uri`, that depends on
+byte-machine `^0.8.0`; user guides in `docs/` whose examples run as tests; an API
+reference held to the exports; and a docs site on GitHub Pages. It states **no new
+conformance claim**; the scoped claim reads as in v0.3.0 to v0.7.0 (decision 0046).
+
 ### Added
 
-- **`uri.example.docs`**: every Scheme example in `README.org` and `docs/*.org` is run by
+- **`uri.example.docs`**: every Scheme example in `README.org` and `docs/` is run by
   the test suite, and must print what the doc says it prints. A program must print the
   `#+begin_example` after it, and an expression must give the value on its `;; =>` line.
   The lane checks its own checker first, on inline docs whose verdicts are known, and a
@@ -18,14 +33,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   with no guide.
 - **An Akku package manifest.** `Akku.manifest` describes chez-uri for the
   [Akku](https://akkuscm.org/) package index. The package installs the 15 libraries
-  under `src/` and depends on byte-machine `^0.7.0`. The `uri.docs.akku-manifest` lane
+  under `src/` and depends on byte-machine `^0.8.0`. The `uri.docs.akku-manifest` lane
   holds the manifest's version to the latest release here and its dependency floor to
   the vendored copy. `make check-akku` installs the package into a throwaway project and
   checks that exactly the libraries in `src/` land, that no program does, and that a
   program reads a URI through both layers with only Akku's library path. It copies a
   submodule as the empty directory an archive holds, and checks that it did, with GNU
-  `tar` as well as BSD `tar`. Nothing is published yet: byte-machine has to be on the
-  index first (decision 0045).
+  `tar` as well as BSD `tar`. byte-machine 0.8.0 is on the index, so chez-uri can be
+  published from this release's tag (decision 0045).
 - **User docs in `docs/`, as Markdown.** `docs/README.md` is the index, with guides to
   installing, URIs as strings (`docs/easy.md`, which replaces `docs/easy.org`), parsing
   bytes, validating, resolving and normalizing, queries and percent-encoding, and errors.
@@ -40,8 +55,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   generator, copied into `site/`; `make check-site` tests the generator and checks the
   nav, every link and anchor. Both take chez-cmark-gfm 2.0.0 in `CMARK_GFM_ROOT`, either a
   git checkout or a directory where `akku install chez-cmark-gfm` ran; it is not a
-  dependency of the library. `.github/workflows/pages.yml` publishes the site to GitHub
-  Pages on a `v*` tag.
+  dependency of the library. `.github/workflows/pages.yml` publishes the site to
+  [GitHub Pages](https://kiyomi-computation-systems.github.io/uriparse/) on a `v*` tag,
+  or when run by hand.
 
 ### Changed
 
@@ -51,10 +67,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   of an integer-accumulate node to generation time. The generated-runtime ABI is still 9,
   and the URI grammar has no integer-accumulate node: `make parser-refresh` at the new pin
   rewrites `src/generated/uri-scanner.sls` byte-identical. Nothing under `src/` changes.
-  `Akku.manifest`'s dependency moves with the pin, to `^0.8.0`: the
-  `uri.docs.akku-manifest` lane holds its floor to the vendored version, and refused the
-  bump until it moved. A `^0.7.0` floor also could never be met from the Akku index,
-  since it admits no 0.8.x and byte-machine's first release there is 0.8.0.
+  `Akku.manifest`'s dependency is `^0.8.0` to match: the `uri.docs.akku-manifest` lane
+  holds its floor to the vendored version, and refused the pin until it moved. A `^0.7.0`
+  floor could never be met from the Akku index anyway, since it admits no 0.8.x and
+  byte-machine's first release there is 0.8.0.
 - **CI fetches byte-machine without a token.** byte-machine is now public, so the
   `Init submodules` step clones `vendor/byte-machine` anonymously, as anyone cloning
   uriparse does. The step that failed a run when the `SUBMODULES_READ_TOKEN` secret was
@@ -680,7 +696,8 @@ host grammar are v0.2 (decisions 0011, 0023, and the README caveats).
   always agrees, and a ratchet that fails in only one direction, are both
   caught.
 
-[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.0...v0.6.1
