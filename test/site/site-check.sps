@@ -13,7 +13,8 @@
 ;;; Asserts four invariants directly on render-site's return value -- no
 ;;; filesystem write, no `build/site/` dependency:
 ;;;   1. nav completeness -- (site pages) names exactly docs/*.md on disk.
-;;;   2. anchor resolution -- render-site left no dangling intra-site link.
+;;;   2. link resolution -- render-site left no dangling link: no missing
+;;;      anchor, and no root-relative link that would leave the site.
 ;;;   3. no relative .md leak -- every serialized href/src either resolves
 ;;;      to .html, is a same-page #anchor, or is an absolute (http...) URL;
 ;;;      none is a relative link still ending in .md.
@@ -88,14 +89,17 @@
 (define ref (or (getenv "SITE_REF") "main"))
 (define result (render-site (read-site-inputs) ref))
 
-;; --- (2) anchor resolution -------------------------------------------------
+;; --- (2) link resolution ---------------------------------------------------
 ;; site-result-leaked is render-site's own accumulator of every href/src
-;; whose target -- a same-page #slug or a cross-page page.md#slug -- was not
-;; found in the id-registry built from every page's actual headings. An
+;; that cannot resolve on the site: a same-page #slug or a cross-page
+;; page.md#slug not found in the id-registry built from every page's actual
+;; headings, or a root-relative /path, which leaves the site's subpath. An
 ;; empty list here is also the only mechanism proving the slug algorithm
 ;; (site/slug.sls) matches the anchors docs/*.md hand-wrote in prose.
 (unless (null? (site-result-leaked result))
-  (die "check-site: anchor resolution FAILED. danglers=" (site-result-leaked result)))
+  (die "check-site: link resolution FAILED (a missing anchor, or a root-relative "
+       "link that leaves the site; write ../path instead). danglers="
+       (site-result-leaked result)))
 
 ;; --- (3) no relative .md leak ----------------------------------------------
 ;; Find every href="..."/src="..." VALUE in a serialized page and flag one

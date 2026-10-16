@@ -8,7 +8,7 @@ normalize two URIs so you can compare them.
 It follows [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986), the standard
 that says what a URI is. It is portable R6RS Scheme, tested on Chez Scheme.
 
-💡 These pages were generated from [Markdown](/docs) with
+💡 These pages were generated from [Markdown](../docs) with
 [chez-cmark-gfm](https://github.com/Kiyomi-Computation-Systems/chez-cmark-gfm).
 
 ## A taste
@@ -55,5 +55,3 @@ one into the other.
 - [Queries and percent-encoding](queries.md): `key=value` pairs and `%XX`.
 - [Errors](errors.md): every error, what it means, and where it points.
 - [API reference](reference.md): every library and every binding.
-
-These pages are generated from the Markdown in [docs/](../docs).

@@ -4616,3 +4616,16 @@ Behaviour: chez-libuv's .plans/theme-storage-probe.js under node 20 with the ren
 old one is unwired when the storage getter throws or setItem throws; the new one wires and toggles
 in all three modes and still stores when storage works. make check-site green (chez-cmark-gfm
 v2.0.0), the site built, and the browser pane showed the link, the hover and the metas.
+
+FIX: A ROOT-RELATIVE LINK ON THE SITE (2026-10-16, session 94df59, on the maintainer's request;
+branch fix/docs-root-relative-link off main 4b414ea). The maintainer's 4b414ea added "These pages
+were generated from [Markdown](/docs)" to docs/README.md. GitHub resolves /docs from the
+repository root; the site is served under /uriparse/, where it is the account's /docs, a 404.
+check-site passed it: (site links) left any link it did not recognise alone and never counted it.
+Now a root-relative target is a dangler (reported, never rewritten) and a protocol-relative //
+one stays external. TESTS FIRST: the dangler case failed on the old rule and passes on the new; the
+protocol-relative case pins that the rule does not over-reach. check-site, with the link still
+/docs, then failed by name, "link resolution FAILED ... danglers=((README.md . /docs))" (the
+message was "anchor resolution", which no longer covered it). Fixed to ../docs, which the site
+rewrites to the GitHub blob at SITE_REF; the page's old closing line, now redundant, is gone.
+check-site green; the built index links .../uriparse/blob/main/docs.
