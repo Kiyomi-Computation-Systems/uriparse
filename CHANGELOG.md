@@ -69,6 +69,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   check-akku` now asks `git archive` what the package would hold and fails if any of
   the three would ship, and it names the docs site generator's `site/` libraries if
   `.akkuignore` ever stops keeping them off a consumer's library path.
+- **The docs site's top bar links to the source, and every page describes uriparse.**
+  A "Source code" link to the repository sits beside the theme toggle, each page's head
+  carries a `description` and `keywords`, sidebar links underline in the link colour on
+  hover, and the wordmark has a little more room below it. Carried over from chez-libuv's
+  site (its #144).
+
+### Fixed
+
+- **The docs site's theme toggle works when the browser refuses storage.** The theme
+  script read and wrote `localStorage` with no `try`. A browser that refuses site storage
+  (site data blocked, some private modes) throws there, the script stopped before it
+  wired the toggle, and the toggle did nothing. Each access is now inside a `try`: the
+  toggle works for the page's life and is not remembered. The site's unit suite holds
+  every access to a `try` block. Carried over from chez-libuv (its #142).
 
 ## [0.7.0] - 2026-10-11
 

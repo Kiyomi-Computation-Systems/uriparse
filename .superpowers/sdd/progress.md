@@ -4600,3 +4600,19 @@ can offer `akku install chez-uri`. (3) The sibling tasks for chez-httparse and c
 export-ignore. (4) Delete the SUBMODULES_READ_TOKEN secret. (5) Actions billing (seventeen PRs, #33
 to #49, merged without a CI verdict) and Pages. (6) Carried: the easy layer's optional extensions;
 the sibling items in #43's NEXT (5).
+
+SITE: CHEZ-LIBUV'S LAYOUT CARRIED OVER (2026-10-16, session 94df59, on the maintainer's request;
+branch fix/site-layout-from-chez-libuv off main 7dbce0f). From chez-libuv #144: a "Source code" link
+in the top bar ahead of the theme toggle, a description and keywords meta on every page (uriparse's
+own wording), `a.source-link` styles, the wordmark's margin 3px -> 6px, and sidebar links that
+underline in the link colour on hover. From chez-libuv #142 (also chez-cmark-gfm #25): the theme
+script's localStorage reads and writes inside try blocks. NOT carried: chez-libuv's hard-coded
+README.md (uriparse routes the home page through page-html-name) and its stylesheet's lack of
+uriparse's td alignment and td-code nowrap rules. Equivalent colour notation (rgb() for the same
+hex) was left alone. TESTS FIRST: three new test/site/test-site.sps cases (the source link ahead of
+the toggle, both metas inside <head>, localStorage twice and each inside a try) failed on the old
+template, then 47/47. A mutant with setItem outside its try failed the try case with (2 (211)).
+Behaviour: chez-libuv's .plans/theme-storage-probe.js under node 20 with the rendered scripts: the
+old one is unwired when the storage getter throws or setItem throws; the new one wires and toggles
+in all three modes and still stores when storage works. make check-site green (chez-cmark-gfm
+v2.0.0), the site built, and the browser pane showed the link, the hover and the metas.
