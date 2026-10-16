@@ -4719,3 +4719,35 @@ push runs pages.yml with SITE_REF=v0.8.0. The tag message names run 38888521944.
 Release with the CHANGELOG [0.8.0] body. (3) The maintainer's `akku publish` from the tag, then
 docs/installing.md's Akku path in its own PR. (4) Carried: the sibling export-ignore tasks;
 deleting SUBMODULES_READ_TOKEN; the easy layer's optional extensions; #43's NEXT (5).
+
+v0.8.0 TAGGED, RELEASED, DEPLOYED AND SUBMITTED TO AKKU (2026-10-16, session 94df59, on the
+maintainer's word). TAG: annotated, signed v0.8.0 (tag object 80f8f39) on 9416299. Signed with
+the default key D4D955D55C8853D7 (tag.gpgSign); `git tag -v` reported a good signature from
+DarrenN (yuzu). The tag message names #52's CI run 38888521944. RELEASE: "v0.8.0 — the first
+public release", https://github.com/Kiyomi-Computation-Systems/uriparse/releases/tag/v0.8.0. Its
+body is the CHANGELOG [0.8.0] section read from the tag (`git show v0.8.0:CHANGELOG.md`), and it
+is marked latest (releases/latest = v0.8.0). PAGES: the tag push ran pages.yml (run 38889290189,
+event push, ref v0.8.0, build and deploy green). The live index's ../ links now name
+blob/v0.8.0. AKKU: published on the maintainer's request, signed with the Kiyomi release key
+(Kiyomi Computation Systems LLC (software releases), fingerprint
+CC2923E50902E936049B696B9EBA259B8EAC5130). How:
+- `akku publish` runs a bare `gpg --sign --detach --no-armor`, which signs with the default key.
+  A scratchpad `gpg` wrapper on PATH added `--local-user` with that fingerprint, only for this
+  command; nothing in ~/.gnupg changed. A probe file signed through the wrapper first verified
+  as the Kiyomi key.
+- akku refuses a worktree: is-git-repository? (lib/git.scm) wants `.git` to be a directory. So
+  it ran from a fresh `git clone --branch v0.8.0` of the public https URL, HEAD 9416299, tag
+  exact, clean.
+- A dry run answered "n" first. It printed the index fragment and stopped before signing: name
+  chez-uri, version 0.8.0, location git https://github.com/Kiyomi-Computation-Systems/uriparse.git,
+  tag v0.8.0, revision 94162999e7b91568a0925bd95a9d5ff2b6353476, depends byte-machine ^0.8.0.
+- Then "y". akku signed, submitted to https://akkuscm.org/, and the archive answered "Queued" for
+  both chez-uri_0.8.0.akku and its .sig. `gpg --verify` on the pair: good signature from the
+  Kiyomi key.
+Before the upload, byte-machine's page answered 200 and chez-uri's 404. Right after, chez-uri was
+still 404 and absent from Akku-index.scm: the archive queues, then repacks.
+
+NEXT. (1) Once https://akkuscm.org/packages/chez-uri/ answers 200, check the install: a throwaway
+project, `akku update && akku install chez-uri`, and a program importing (uri easy). Then
+docs/installing.md's Akku path, in its own PR (0045, 0046). (2) Carried: the sibling export-ignore
+tasks; deleting SUBMODULES_READ_TOKEN; the easy layer's optional extensions; #43's NEXT (5).
