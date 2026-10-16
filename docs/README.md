@@ -8,6 +8,9 @@ normalize two URIs so you can compare them.
 It follows [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986), the standard
 that says what a URI is. It is portable R6RS Scheme, tested on Chez Scheme.
 
+💡 These pages were generated from [Markdown](/docs) with
+[chez-cmark-gfm](https://github.com/Kiyomi-Computation-Systems/chez-cmark-gfm).
+
 ## A taste
 
 ```scheme
