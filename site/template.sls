@@ -38,7 +38,7 @@
         '()))
 
   ;; theme: prefers-color-scheme + a persisted toggle (localStorage). Pinned
-  ;; on load so the CSS and the label never disagree (see the preview bug).
+  ;; on load so the CSS and the label never disagree (no flash of the wrong mode).
   ;;
   ;; This string is emitted verbatim inside a <script> element by the
   ;; pre-safe serializer (site serializer), which HTML-escapes every text
@@ -47,14 +47,28 @@
   ;; with === and nested ternaries instead of &&/</> so it survives
   ;; serialization byte-for-byte. Do not introduce any of those characters
   ;; here without giving the serializer script-awareness first.
+  ;;
+  ;; A browser that refuses the page storage (site data blocked, some private
+  ;; modes) throws from localStorage, so g and p reach it only inside a try:
+  ;; the toggle then works for the life of the page and is not remembered.
+  ;; test/site/test-site.sps holds every access to a try block.
   (define theme-script
     (string-append
      "(function(){var r=document.documentElement,b=document.getElementById('theme'),"
-     "l=document.getElementById('theme-label');function m(){var s=localStorage.getItem('theme');"
+     "l=document.getElementById('theme-label');"
+     "function g(){try{return localStorage.getItem('theme');}catch(e){return null;}}"
+     "function p(x){try{localStorage.setItem('theme',x);}catch(e){}}"
+     "function m(){var s=g();"
      "return s?s:(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');}"
-     "function a(x){r.setAttribute('data-mode',x);localStorage.setItem('theme',x);"
+     "function a(x){r.setAttribute('data-mode',x);p(x);"
      "l.textContent=x==='dark'?'Light mode':'Dark mode';}a(m());"
      "b.addEventListener('click',function(){a(r.getAttribute('data-mode')==='dark'?'light':'dark');});})();"))
+
+  ;; What every page says about the project, for search engines and link
+  ;; previews, and where its source lives.
+  (define description "An RFC 3986 URI parser for Chez Scheme, in portable R6RS")
+  (define keywords "uri url rfc3986 parser scheme chez r6rs")
+  (define source-url "https://github.com/Kiyomi-Computation-Systems/uriparse")
 
   (define (page->document nav current title body toc prev next)
     `(*TOP*
@@ -62,10 +76,13 @@
        (head
         (meta (^ (charset "utf-8")))
         (meta (^ (name "viewport") (content "width=device-width, initial-scale=1")))
+        (meta (^ (name "description") (content ,description)))
+        (meta (^ (name "keywords") (content ,keywords)))
         (title ,title)
         (link (^ (rel "stylesheet") (href "style.css"))))
        (body
         (div (^ (class "topbar"))
+             (a (^ (class "source-link") (href ,source-url)) "Source code")
              (button (^ (id "theme") (class "toggle") (aria-label "Toggle theme"))
                      (span (^ (class "knob") (aria-hidden "true")))
                      (span (^ (id "theme-label")) "Dark mode")))
