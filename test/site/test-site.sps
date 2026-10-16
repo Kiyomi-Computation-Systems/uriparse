@@ -89,6 +89,18 @@
 (test-equal "a ../ escape is pinned to the GitHub blob at the ref"
   '(*TOP* (p (a (^ (href "https://github.com/Kiyomi-Computation-Systems/uriparse/blob/v2.0.0/src/uri/easy.sls")) "x")))
   (rw '(*TOP* (p (a (^ (href "../src/uri/easy.sls")) "x"))) "usage.md"))
+;; The site is served under a subpath (/uriparse/ on GitHub Pages), so a
+;; link from the site's root resolves outside it: `/docs` is the account's
+;; /docs, not the repository's. GitHub's own Markdown view reads the same
+;; link from the repository root, so it looks fine there.
+(let-values (((b d) (rewrite-links
+                      '(*TOP* (p (a (^ (href "/docs")) "x"))) reg "usage.md" "v2.0.0")))
+  (test-equal "a root-relative link is a dangler: it leaves the site's subpath"
+    '(("usage.md" . "/docs")) d))
+(let-values (((b d) (rewrite-links
+                      '(*TOP* (p (a (^ (href "//example.com/x")) "x"))) reg "usage.md" "v2.0.0")))
+  (test-equal "a protocol-relative link is external, not root-relative"
+    '() d))
 (test-equal "an absolute URL is untouched"
   '(*TOP* (p (a (^ (href "https://example.com")) "x")))
   (rw '(*TOP* (p (a (^ (href "https://example.com")) "x"))) "ast.md"))

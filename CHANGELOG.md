@@ -83,6 +83,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   wired the toggle, and the toggle did nothing. Each access is now inside a `try`: the
   toggle works for the page's life and is not remembered. The site's unit suite holds
   every access to a `try` block. Carried over from chez-libuv (its #142).
+- **A root-relative link on the docs site's home page.** `docs/README.md` linked its
+  Markdown as `/docs`. GitHub reads that from the repository root, but the site is served
+  under `/uriparse/`, where it pointed at the account's `/docs`, a 404. It is `../docs`
+  now, which the site rewrites to the GitHub page. The page's closing line, which said
+  the same thing, is gone. `make check-site` now fails on any root-relative link and names
+  it; it passed this one before.
 
 ## [0.7.0] - 2026-10-11
 

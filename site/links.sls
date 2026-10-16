@@ -36,6 +36,12 @@
                (not (registry-has? registry page (substring target 1 (string-length target))))))
       ((prefix? "../" target)                            ; escape -> GitHub blob
        (values (string-append repo-blob ref "/" (substring target 3 (string-length target))) #f))
+      ((prefix? "//" target) (values target #f))         ; protocol-relative: external
+      ;; Root-relative: the site is served under a subpath (/uriparse/ on
+      ;; GitHub Pages), where "/docs" is the account's /docs. GitHub's own
+      ;; Markdown view reads it from the repository root, so it looks right
+      ;; there and is broken here. Reported, never rewritten: write ../docs.
+      ((prefix? "/" target) (values target #t))
       (else
        (let-values (((path anchor) (split-anchor target)))
          (if (suffix? ".md" path)
