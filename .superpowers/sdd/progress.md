@@ -4629,3 +4629,39 @@ protocol-relative case pins that the rule does not over-reach. check-site, with 
 message was "anchor resolution", which no longer covered it). Fixed to ../docs, which the site
 rewrites to the GitHub blob at SITE_REF; the page's old closing line, now redundant, is gone.
 check-site green; the built index links .../uriparse/blob/main/docs.
+
+PRs #50 AND #51 CLOSED OUT (2026-10-16, session 94df59, the closing ritual, on the maintainer's
+word). #50 squash-merged as 1152732 on 4b414ea, pinned by --match-head-commit fc08a84. Merged tree
+d578331 = tested tree (hash compare). CI passed on fc08a84 (run 38886417570) and on main after the
+merge (run 38887229085). #51 was then rebased onto 1152732 as aec26ba. The ledger conflicted, and
+CHANGELOG.md came out with two "### Fixed" headings without a conflict marker; they were folded
+into one. Re-tested on aec26ba: test-site 49/49 (#50's 47 and #51's 2 together), check-site and
+render 9/9 green, make test 91/91. Force-pushed with lease from 8e84ae2. CI passed on aec26ba
+(run 38887375980), as it had on 8e84ae2. #51 squash-merged as 1d4c8aa on 1152732, pinned by
+--match-head-commit aec26ba. Merged tree 8e032af = tested tree (hash compare). Each PR has a
+comment recording its CI run and local evidence. Neither branch had a PR based on it (checked)
+before it was deleted, locally and on the remote. The shared checkout, clean, was fast-forwarded to
+1d4c8aa; its submodule stayed at c1f7791 (v0.8.0). Both worktrees were removed after each was
+checked clean and tree-equal to its merge. These are the first PRs since #32 to merge with a CI
+verdict; main has been green since the repository went public (ci runs on 4b414ea and df54fea too).
+
+REFLECTION. Three things. (1) A VALIDATOR'S PASS-THROUGH DEFAULT IS A SILENT PASS. (site links)
+left any target it did not recognise alone and never counted it, so check-site was green on a link
+that 404s on the published site. The fix names root-relative targets as their own case, and the
+protocol-relative test pins that the new rule doesn't over-reach. The invariant's name moved with
+it ("anchor resolution" -> "link resolution"): a failure message that names the wrong cause sends
+the reader the wrong way. (2) A CLEAN REBASE CAN STILL BE WRONG. Git found no conflict in
+CHANGELOG.md, and the result had two "### Fixed" sections. Read the merged sections, not only the
+markers, and re-test the combined tree: 49 is a count only the combination has. (3) PIN THE MERGE
+TO THE HEAD CI JUDGED. After a rebase the earlier green run is evidence about a different commit;
+#51 waited for aec26ba's own run before merging.
+
+NEXT. (1) Redeploy Pages: the live site is still the 7dbce0f build (pages.yml runs on v* tags or
+workflow_dispatch), so it has neither #50's top bar nor #51's link fix, and it predates 4b414ea's
+index text. A dispatch from main, or the v0.8.0 tag, publishes them. (2) The v0.8.0 release, when
+the maintainer asks: [Unreleased] -> [0.8.0], CMakeLists and Akku.manifest to 0.8.0, a release
+record like 0043, a signed tag and a GitHub Release. (3) uriparse is public: the maintainer's `akku
+publish` from that tag (0045 step 3); then docs/installing.md can offer `akku install chez-uri`.
+(4) The sibling tasks for chez-httparse and chez-cmark-gfm's export-ignore. (5) Delete the
+SUBMODULES_READ_TOKEN secret. (6) Carried: the easy layer's optional extensions; the sibling items
+in #43's NEXT (5). Actions billing is no longer an item: CI runs again.
