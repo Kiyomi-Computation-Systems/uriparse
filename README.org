@@ -5,6 +5,17 @@
 A URI parser for Chez Scheme, written in portable R6RS. It follows
 [[https://www.rfc-editor.org/rfc/rfc3986][RFC 3986]].
 
+It's built with a byte-level state machine useful for web servers reading bytes
+off the wire. It also includes an ergonomic library for reading URIs as strings
+and parsing them into a record of components.
+
+You could combine this with [[https://github.com/Kiyomi-Computation-Systems/chez-libuv][chez-libuv]] and [[https://github.com/Kiyomi-Computation-Systems/chez-httparse][chez-httparse]] to build an HTTP/1.x server.
+
+This library was generated with [[https://kiyomi-computation-systems.github.io/byte-machine/][byte-machine]] [[https://github.com/Kiyomi-Computation-Systems/byte-machine][(source)]] a Scheme state machine
+generator modeled after [[https://github.com/nodejs/llparse][llparse]].
+
+📖 [[https://kiyomi-computation-systems.github.io/uriparse/][Read the docs]]
+
 #+begin_quote
 ✨ *AI Disclosure:* LLMs are used extensively in the planning and development of this project.
 #+end_quote
