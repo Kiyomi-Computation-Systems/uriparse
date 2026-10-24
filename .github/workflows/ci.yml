@@ -34,6 +34,12 @@ jobs:
       # the submodule.
       - uses: actions/checkout@v7
 
+      # Needs only make and a shell, so it runs before anything is fetched or
+      # built: every target has a `make help` line, and CONTRIBUTING.md and the
+      # pull-request template quote only targets that exist.
+      - name: Check make help and the targets the contributor docs quote
+        run: make check-help
+
       # vendor/byte-machine at the commit the gitlink pins. byte-machine is a
       # public repository, so the clone needs no token: anyone cloning uriparse
       # with --recurse-submodules fetches it the same way. GIT_TERMINAL_PROMPT=0
