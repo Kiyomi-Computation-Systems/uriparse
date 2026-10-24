@@ -4809,3 +4809,39 @@ Gate:
   "danglers=((installing.md . #a-first-programme))".
 - make test 91/91. uri.example.docs read docs/installing.md (programs=1) and README.org
   (programs=2) with differences=0.
+
+PRs #53 AND #54 CLOSED OUT (2026-10-24, session 94df59, the closing ritual, on the maintainer's
+word). #53 squash-merged as c60ab0d on 3c16793, pinned by --match-head-commit 4819c9d. Merged tree
+12c95d7 = tested tree (hash compare). CI passed on 4819c9d (run 40099620952), and its new "Check
+make help and the targets the contributor docs quote" step passed (read from the jobs API). #54
+was then rebased onto c60ab0d, from e833e6e to 476ad8c:
+- CHANGELOG.md's [Unreleased] and this ledger conflicted. Each kept both sides, #53's first. The
+  CHANGELOG has one ### Added, with its three entries in order.
+- README.org merged cleanly and kept both PRs' sections ("Using it" with Akku; Contributing;
+  Security).
+- Re-tested on the combined tree: check-help green, make test 91/91, no-scheme 13/13, check-site
+  green (chez-cmark-gfm by Akku).
+- Force-pushed with lease from e833e6e. CI passed on 476ad8c (run 40111534872), check-help
+  included.
+#54 squash-merged as 2db1b1f on c60ab0d, pinned by --match-head-commit 476ad8c. Merged tree
+149eb8f = tested tree (hash compare, from the git commits API). Each PR has a comment with its CI
+run and local evidence. Neither branch had a PR based on it (checked), and each was deleted,
+locally and on the remote. The shared checkout, clean, was fast-forwarded to 2db1b1f; its
+submodule stayed at c1f7791. Both worktrees were removed after each was checked clean and
+tree-equal to its merge. An SSH-agent signing warning appeared on one fetch, so main's position
+before the #54 merge was confirmed through the API. The fetch itself completed, slowly.
+
+REFLECTION. Three things. (1) A COPIED DOC CARRIES ITS SOURCE'S FACTS. Two drafts of
+CONTRIBUTING.md and the bug template held claims true of chez-httparse and false here: a
+parser-refresh that configures, and an export, `collect-uri`, that does not exist. Each was found
+only by reading the code the sentence describes. check-help verifies the targets the docs quote;
+nothing verifies their prose, so that read has to happen. (2) THE REAL ARTIFACT, NOT ONLY ITS
+MODEL. check-akku models the package as git archive. Installing from the index showed the
+archive's actual repack leaving out .plans/, .superpowers/ and AGENTS.md, which no local check had
+seen. (3) TWO PRs, ONE SECTION. Both appended to [Unreleased] and the ledger, so the second needed
+a rebase. Here the resolution is mechanical (keep both, first-merged first), but it still needs
+the one-heading check and a re-test on the combined tree before its own CI run.
+
+NEXT. (1) Carried: the sibling export-ignore tasks (chez-cmark-gfm, chez-httparse); deleting the
+SUBMODULES_READ_TOKEN secret; the easy layer's optional extensions; #43's NEXT (5); akku in CI, so
+check-akku stops being a manual gate (0046).
