@@ -205,6 +205,7 @@ make test       # the pull-request selection
 make test-all   # every test
 make no-scheme  # the CMake layer alone, on a machine with no Scheme
 make check-akku # install with Akku as a consumer would (needs akku)
+make check-help # every target is described, and the contributor docs name real ones
 #+end_src
 
 The Scheme examples in this README and in ~docs/~ are run by the tests, so
@@ -289,6 +290,15 @@ regenerates them and compares. Edit the source, not the output:
 | ~.superpowers/~     | the development ledger; not distributed                             |
 
 Release history is in [[file:CHANGELOG.md][CHANGELOG.md]].
+
+** Contributing
+
+[[file:CONTRIBUTING.md][CONTRIBUTING.md]] says how to set up, which checks a pull request must
+pass, and the house rules.
+
+** Security
+
+Report a vulnerability privately; [[file:SECURITY.md][SECURITY.md]] says how.
 
 ** License
 

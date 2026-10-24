@@ -34,7 +34,7 @@ SITE_LIBDIRS = .:test/site:test/support/harness:$(CMARK_GFM_LIBDIR)
 # Bare 'make' prints the target list rather than building; 'make all' still builds.
 .DEFAULT_GOAL := help
 
-.PHONY: all help doctor configure build dev test test-all no-scheme prod clean corpus-refresh parser-refresh check-akku site check-site cmark-gfm-root
+.PHONY: all help doctor configure build dev test test-all no-scheme prod clean corpus-refresh parser-refresh check-akku site check-site cmark-gfm-root check-help
 
 all: build   ## build the development preset
 
@@ -44,7 +44,7 @@ all: build   ## build the development preset
 # it appears here automatically.
 help:   ## list these targets (shown when you run a bare 'make')
 	@echo "chez-uri make targets:"
-	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z][a-zA-Z_-]*:.*## / {printf "  %-11s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z][a-zA-Z_-]*:.*## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
 	@echo "If discovery cannot find a runtime, point it at one explicitly:"
 	@echo "  cmake --preset dev -DURI_CHEZ_EXECUTABLE=/absolute/path/to/scheme"
@@ -103,7 +103,7 @@ check-akku:   ## install with Akku as a consumer would, and check what lands
 
 # Each site target first checks that chez-cmark-gfm was found, so a missing or
 # wrong path fails with a sentence rather than a library-not-found.
-cmark-gfm-root:
+cmark-gfm-root:   ## check that CMARK_GFM_ROOT names a chez-cmark-gfm checkout or Akku install
 	@test -n "$(CMARK_GFM_ROOT)$(CMARK_GFM_LIBDIR)" || { echo "set CMARK_GFM_ROOT to a chez-cmark-gfm checkout, or to where 'akku install chez-cmark-gfm' ran" >&2; exit 2; }
 	@test -f "$(CMARK_GFM_LIBDIR)/cmark/gfm.sls" || { echo "$(CMARK_GFM_ROOT) holds neither src/cmark/gfm.sls (a chez-cmark-gfm checkout) nor .akku/lib/cmark/gfm.sls (an 'akku install chez-cmark-gfm')" >&2; exit 2; }
 
@@ -128,3 +128,26 @@ check-site: cmark-gfm-root   ## test the site generator, then check docs/ with i
 
 clean:   ## remove all build trees
 	$(CMAKE) -E rm -rf build
+
+# CONTRIBUTING.md and the pull-request template tell people which targets to
+# run, so each `make TARGET` they quote, in backticks, must be one of these.
+# A file that quotes none fails too: a misread file holds no bad target either.
+# Every .PHONY target needs a '## ' note, or 'help' leaves it out.
+check-help:   ## fail if a target has no description, or the contributor docs quote one that is not a target
+	@missing=0; \
+	targets=$$(awk '/^\.PHONY:/ { $$1=""; print }' Makefile); \
+	for t in $$targets; do \
+	  grep -qE "^$$t:.*## " Makefile || { echo "check-help: '$$t' has no '## ' description" >&2; missing=1; }; \
+	done; \
+	for f in CONTRIBUTING.md .github/PULL_REQUEST_TEMPLATE.md; do \
+	  [ -f "$$f" ] || { echo "check-help: $$f is missing" >&2; missing=1; continue; }; \
+	  quoted=$$(grep -oE '`[^`]*`' "$$f" | grep -oE '(^|[` ])make [a-z][a-z0-9-]*' | awk '{ print $$2 }' | sort -u); \
+	  [ -n "$$quoted" ] || { echo "check-help: $$f quotes no make target, so this check read nothing in it" >&2; missing=1; }; \
+	  for t in $$quoted; do \
+	    case " $$targets " in \
+	      *" $$t "*) ;; \
+	      *) echo "check-help: $$f quotes 'make $$t', and $$t is not a target" >&2; missing=1 ;; \
+	    esac; \
+	  done; \
+	done; \
+	exit $$missing

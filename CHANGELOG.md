@@ -6,6 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **CONTRIBUTING.md, SECURITY.md and GitHub templates.** CONTRIBUTING.md says how
+  to set up, which checks a pull request must pass, what to do when changing the
+  grammar, the pin, the corpus, an export, a doc example or `docs/`, and the house
+  rules. SECURITY.md says how to report a vulnerability privately. `.github/` gains
+  a pull-request template and bug and feature issue templates. README.org links
+  both files.
+- **`make check-help`.** It fails when a target has no description in `make help`,
+  or when CONTRIBUTING.md or the pull-request template quotes a `make` target the
+  Makefile lacks. CI runs it first. `cmark-gfm-root` gains the description it
+  lacked, so `make help` lists it.
+
 ## [0.8.0] - 2026-10-16
 
 The first public release. CI runs again: #50 and #51 passed on linux-amd64 (ubuntu-24.04,

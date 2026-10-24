@@ -4751,3 +4751,31 @@ NEXT. (1) Once https://akkuscm.org/packages/chez-uri/ answers 200, check the ins
 project, `akku update && akku install chez-uri`, and a program importing (uri easy). Then
 docs/installing.md's Akku path, in its own PR (0045, 0046). (2) Carried: the sibling export-ignore
 tasks; deleting SUBMODULES_READ_TOKEN; the easy layer's optional extensions; #43's NEXT (5).
+
+CONTRIBUTING.md, SECURITY.md AND TEMPLATES (2026-10-24, session 94df59, on the maintainer's request;
+branch docs/contributing off main 3c16793). Modelled on chez-httparse #80 and chez-http-server
+#213, both merged that day. CONTRIBUTING.md is adapted to uriparse's own checks and lanes:
+- RFC 3986 is the judge;
+- the checks CI runs (make test, test-all, no-scheme, check-help) and the two it can't
+  (check-site, check-akku);
+- what to do when changing the grammar, the pin (0002 item 6 and the manifest floor), the
+  corpus, an export, a doc example, the Makefile, docs/ or what ships;
+- the house rules for code, tests and pull requests.
+SECURITY.md lists the reports most welcome for a URI parser that servers route by: a different
+host, port, path or query; a path that climbs; decoding the input doesn't spell; unbounded work.
+.github/ gains a PR template and bug and feature issue templates. README.org gains Contributing
+and Security sections and lists `make check-help`; AGENTS.md says to change both files with the
+rules they restate. TESTS FIRST: `make check-help` (copied from chez-httparse's, with its
+quotes-no-target guard) failed before either file existed, naming three faults: cmark-gfm-root
+had no '## ' description, and both files were missing. cmark-gfm-root got a description, and the
+help column widened to 15. Then 8 verdicts were entered and 8 returned, each judged on its exit
+status and its message:
+- the unmutated tree and a prose "make frobnicate" outside backticks passed;
+- each of these failed with its own message: a misspelt target in each file; either file
+  removed; a template that quotes no target; a new .PHONY target with no '## '.
+CI runs check-help first, before the submodule is fetched; actionlint passed. Checked against the
+code while writing:
+- `collect-uri`, which a draft bug template named, is not an export, so it reads `uri-parse`;
+- parser-refresh does not configure here (chez-httparse's does), so that sentence was dropped;
+- README.org's examples print through #+begin_example, not ```text.
+Gate: make test 91/91, make no-scheme 13/13, make check-akku green.
