@@ -43,7 +43,7 @@ one into the other.
 
 ## Read next
 
-- [Installing](installing.md): get the code and run a first program.
+- [Installing](installing.md): install with Akku or from a clone, and run a first program.
 - [URIs as strings](easy.md): parse, read, decode, resolve and compare with
   `(uri easy)`.
 - [Parsing bytes](parsing.md): split a URI held as bytes, all at once or

@@ -63,13 +63,21 @@ takes strings and gives back strings.
 
 ** Using it
 
-The libraries live in ~src/~ and depend on
-[[https://github.com/Kiyomi-Computation-Systems/byte-machine][byte-machine]],
-included as a git submodule in ~vendor/byte-machine~.
+Install it with [[https://akkuscm.org/packages/chez-uri/][Akku]], which also fetches
+[[https://github.com/Kiyomi-Computation-Systems/byte-machine][byte-machine]], the runtime it depends on:
+
+#+begin_src sh
+akku update && akku install chez-uri
+#+end_src
+
+Or clone it. The libraries live in ~src/~, and byte-machine is a git
+submodule in ~vendor/byte-machine~:
 
 #+begin_src sh
 git clone --recurse-submodules https://github.com/Kiyomi-Computation-Systems/uriparse.git
 #+end_src
+
+[[file:docs/installing.md][docs/installing.md]] has both ways in full.
 
 Read a URI from a string:
 

@@ -1,14 +1,43 @@
 # Installing
 
+There is nothing to build. Either let [Akku](https://akkuscm.org/), a Scheme
+package manager, fetch uriparse and set Chez's library path, or clone this
+repository and put two of its folders on the path yourself.
+
 ## What you need
 
 - [Chez Scheme](https://cisco.github.io/ChezScheme/) 10.4.1 or newer. The
   libraries are plain R6RS, but Chez is the only Scheme they are tested on.
 - [byte-machine](https://github.com/Kiyomi-Computation-Systems/byte-machine),
-  the runtime the generated URI scanner runs on. It comes along as a git
-  submodule.
+  the runtime the generated URI scanner runs on. Akku installs it with
+  uriparse, and a clone brings it as a git submodule.
 
-## Get the code
+## With Akku
+
+From your project's folder:
+
+```sh
+akku update
+akku install chez-uri
+. .akku/bin/activate
+```
+
+`akku update` fetches the package index. `akku install chez-uri` adds
+uriparse to your project's `Akku.manifest`, creating one if there is none,
+and records the exact versions in `Akku.lock`. It puts the `(uri ...)`
+libraries, the generated scanner and byte-machine under `.akku/lib/`.
+
+`activate` sets `CHEZSCHEMELIBDIRS` to that folder for the rest of your
+shell session, so a program needs no `--libdirs`:
+
+```sh
+scheme --program hello.sps
+```
+
+Your Chez may be called `chez` or `chezscheme` instead of `scheme`. Skip to
+[A first program](#a-first-program).
+
+## From a clone
 
 Clone with the submodule:
 
@@ -22,14 +51,12 @@ If you cloned without it, fetch it now:
 git submodule update --init
 ```
 
-There is nothing to build. The libraries are source files in two folders:
+The libraries are source files in two folders:
 
 | Folder                    | Holds                                    |
 |---------------------------|------------------------------------------|
 | `src/`                    | uriparse: `(uri ...)` and `(generated uri-scanner)` |
 | `vendor/byte-machine/src` | byte-machine's runtime                   |
-
-## Tell Chez where they are
 
 Chez finds libraries through its library path. Put both folders on it, with
 `--libdirs`:
@@ -63,7 +90,7 @@ Save this as `hello.sps`:
 (display (uri-fragment u)) (newline)
 ```
 
-Run it with the `scheme` command above. It prints:
+Run it with the `scheme` command for your install, above. It prints:
 
 ```text
 https
