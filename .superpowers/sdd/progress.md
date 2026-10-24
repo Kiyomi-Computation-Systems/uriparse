@@ -4779,3 +4779,33 @@ code while writing:
 - parser-refresh does not configure here (chez-httparse's does), so that sentence was dropped;
 - README.org's examples print through #+begin_example, not ```text.
 Gate: make test 91/91, make no-scheme 13/13, make check-akku green.
+
+CHEZ-URI IS ON THE AKKU INDEX, AND THE DOCS SAY SO (2026-10-24, session 94df59, on the
+maintainer's request; branch docs/akku-install off main 3c16793). By 2026-10-24
+https://akkuscm.org/packages/chez-uri/ answered 200 (it was 404 at the 2026-10-16 upload). This
+completes 0045 step 3, so the docs may now offer the install. `akku update` (good signature from
+the archive key) and `akku show chez-uri` list 0.8.0: byte-machine ^0.8.0 (>=0.8.0 <0.9.0), repack
+chez-uri_0.8.0_repack.tar.xz, sha256 f426ab07…. INSTALL CHECKED in an empty scratch project
+(akku 1.1.1-beta.0, Chez 10.4.1 tarm64osx):
+- `akku install chez-uri` wrote Akku.manifest (depends chez-uri ^0.8.0) and Akku.lock, then
+  fetched and installed byte-machine and chez-uri.
+- .akku/lib/ holds the 14 uri/*.sls, generated/uri-scanner.sls and byte-machine's libraries,
+  and no site/.
+- .akku/src/chez-uri/ holds no .plans/, .superpowers/ or AGENTS.md: export-ignore held in the
+  real archive's repack, not only in check-akku's model. site/ is there, unpacked but off the
+  library path.
+- docs/installing.md's hello.sps, extracted from the doc, printed exactly the doc's ```text
+  block through `.akku/env`. `. .akku/bin/activate` and then `chez --program hello.sps` gave the
+  same output in sh, bash and zsh with CHEZSCHEMELIBDIRS unset beforehand.
+- test/akku/consumer.sps printed "example.com /b" through both layers.
+DOCS: docs/installing.md now leads with "With Akku" (akku update, akku install chez-uri,
+activate, then `scheme --program hello.sps`), then "From a clone" (the old text). The shape is
+chez-httparse's. README.org's "Using it" offers Akku first, then the clone, and links
+docs/installing.md. docs/README.md's entry names both ways. CHANGELOG [Unreleased] Added.
+Gate:
+- make check-site green. The scratch chez-cmark-gfm clone had lost its files again, so
+  CMARK_GFM_ROOT was a fresh `akku install chez-cmark-gfm` (^2.0.0).
+- A mutant link #a-first-programme failed check-site by name:
+  "danglers=((installing.md . #a-first-programme))".
+- make test 91/91. uri.example.docs read docs/installing.md (programs=1) and README.org
+  (programs=2) with differences=0.

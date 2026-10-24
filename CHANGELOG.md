@@ -18,6 +18,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   or when CONTRIBUTING.md or the pull-request template quotes a `make` target the
   Makefile lacks. CI runs it first. `cmark-gfm-root` gains the description it
   lacked, so `make help` lists it.
+- **Installing with Akku.** chez-uri 0.8.0 is on the
+  [Akku](https://akkuscm.org/packages/chez-uri/) index, so `akku install chez-uri` installs
+  uriparse and byte-machine, and `.akku/bin/activate` puts them on Chez's library path.
+  `docs/installing.md` and README.org now show this alongside a clone.
 
 ## [0.8.0] - 2026-10-16
 
