@@ -4865,3 +4865,28 @@ NEXT. (1) This PR: the closing ritual on the maintainer's word.
 (2) v0.9.0, once byte-machine 0.9.0 is on the Akku index and check-akku passes against it:
 chez-http-server needs it to move to byte-machine 0.9.
 
+PR #55 CLOSED OUT (2026-11-10, the closing ritual, on the maintainer's word). Squash-merged as
+d81871d on 99f0019, pinned by --match-head-commit 0097565 (the full SHA: the API refuses an
+abbreviated one); main had not moved. Merged tree 20ab410 = tested tree 20ab410 (hash compare).
+CI passed on both of the PR's heads (runs 42729107043 and 42731219525). No open PR was based on
+chore/byte-machine-0.9.0 (checked), and it was deleted, locally and on the remote. The shared
+checkout, clean, was fast-forwarded to d81871d, and `git submodule update --init` moved
+vendor/byte-machine with it, to fdd4da0 (v0.9.0).
+
+REFLECTION. Three things. (1) A PIN THAT CHANGES THE ARTIFACT IS REVIEWED BY WHAT IT REMOVES.
+At v0.8.0 the regenerated scanner was byte-identical, so the diff was empty. At v0.9.0 it
+grows by 5332 bytes, so "nothing changed" can't be the check. A script read every removed
+line instead: all 7 are self-advancing transitions, (%sN (+ pos 1) N (+ off 1) 'boundary),
+now each a loop's entry, and no line holding the ABI or the fingerprint moved. (2) NO LOCK
+DOES NOT MEAN NO WAIT. chez-uri has no Akku.lock, so this PR could merge before the index
+lists byte-machine 0.9.0. Its release can't: check-akku installs byte-machine from the index.
+(3) CARET ON 0.x COUPLES THE SIBLINGS. ^0.8.0 and ^0.9.0 share no version, so chez-uri,
+chez-httparse and chez-http-server must all admit byte-machine 0.9 before an application can
+install any of them beside jsonparse, which needs it.
+
+NEXT. (1) v0.9.0, once byte-machine 0.9.0 is on the Akku index and check-akku passes against
+it; chez-http-server's own move to byte-machine 0.9 waits for it, and for chez-httparse 0.6.0.
+(2) Carried: the sibling export-ignore tasks (chez-cmark-gfm, chez-httparse); deleting the
+SUBMODULES_READ_TOKEN secret; the easy layer's optional extensions; #43's NEXT (5); akku in CI,
+so check-akku stops being a manual gate (0046).
+
