@@ -4845,3 +4845,21 @@ the one-heading check and a re-test on the combined tree before its own CI run.
 NEXT. (1) Carried: the sibling export-ignore tasks (chez-cmark-gfm, chez-httparse); deleting the
 SUBMODULES_READ_TOKEN secret; the easy layer's optional extensions; #43's NEXT (5); akku in CI, so
 check-akku stops being a manual gate (0046).
+
+PIN: byte-machine v0.8.0 -> v0.9.0 (2026-11-09, on the maintainer's request; branch
+chore/byte-machine-0.9.0 off main 99f0019). byte-machine released v0.9.0 (fdd4da0): a state
+that advances back to itself on a class of bytes renders as a loop beside it (its decision
+0059). The pin moves alone (decision 0002 item 6): the gitlink, the regenerated artifact and
+Akku.manifest's dependency floor. EVIDENCE: `make parser-refresh` at the new pin exited 0 and
+wrote 34098 bytes (28766 at v0.8.0). The diff adds 7 loops and 4 class tables and changes only
+the 7 transitions that enter them; no line holding the ABI or the fingerprint changes. With
+the floor still ^0.8.0, uri.docs.akku-manifest failed in both modes with
+(range-floor-mismatch "byte-machine" "0.8.0" "0.9.0"); at ^0.9.0 it passes. MEASURED (Linux
+amd64, Chez 10.4.1 ta6le from jsonparse's pinned Guix, at fdd4da0): test-all 91/91,
+no-scheme 13/13. NOT YET RUN: macOS arm64 test-all; check-akku, which installs byte-machine
+from the Akku index, where 0.9.0 is not yet listed (submitted 2026-11-09).
+
+NEXT. (1) This PR: macOS arm64 test-all, then the closing ritual on the maintainer's word.
+(2) v0.9.0, once byte-machine 0.9.0 is on the Akku index and check-akku passes against it:
+chez-http-server needs it to move to byte-machine 0.9.
+

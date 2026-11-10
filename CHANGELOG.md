@@ -23,6 +23,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   uriparse and byte-machine, and `.akku/bin/activate` puts them on Chez's library path.
   `docs/installing.md` and README.org now show this alongside a clone.
 
+### Changed
+
+- **byte-machine `v0.9.0`.** `vendor/byte-machine` moves from `v0.8.0` (`c1f7791`) to
+  `v0.9.0` (`fdd4da0`), and the Akku dependency with it, from `^0.8.0` to `^0.9.0`.
+  byte-machine 0.9.0 renders a state that loops on a class of bytes as a loop of its
+  own (its decision 0059), so the regenerated `(generated uri-scanner)` reads 7 runs
+  that way, through 4 byte tables. The ABI is still 9, and nothing a caller sees
+  changes. Akku reads `^0.8.0` as below 0.9.0, so this is what lets an application
+  install chez-uri beside a library that needs byte-machine 0.9.
+
 ## [0.8.0] - 2026-10-16
 
 The first public release. CI runs again: #50 and #51 passed on linux-amd64 (ubuntu-24.04,
