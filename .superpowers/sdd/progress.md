@@ -4856,10 +4856,12 @@ the 7 transitions that enter them; no line holding the ABI or the fingerprint ch
 the floor still ^0.8.0, uri.docs.akku-manifest failed in both modes with
 (range-floor-mismatch "byte-machine" "0.8.0" "0.9.0"); at ^0.9.0 it passes. MEASURED (Linux
 amd64, Chez 10.4.1 ta6le from jsonparse's pinned Guix, at fdd4da0): test-all 91/91,
-no-scheme 13/13. NOT YET RUN: macOS arm64 test-all; check-akku, which installs byte-machine
-from the Akku index, where 0.9.0 is not yet listed (submitted 2026-11-09).
+no-scheme 13/13; CI passed on the PR (run 42729107043). On macOS arm64 (the maintainer's M1,
+vendor/byte-machine at v0.9.0): test-all 91/91, no-scheme 13/13. NOT YET RUN: check-akku,
+which installs byte-machine from the Akku index, where 0.9.0 is not yet listed (submitted
+2026-11-09).
 
-NEXT. (1) This PR: macOS arm64 test-all, then the closing ritual on the maintainer's word.
+NEXT. (1) This PR: the closing ritual on the maintainer's word.
 (2) v0.9.0, once byte-machine 0.9.0 is on the Akku index and check-akku passes against it:
 chez-http-server needs it to move to byte-machine 0.9.
 
