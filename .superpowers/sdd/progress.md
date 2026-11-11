@@ -4890,28 +4890,28 @@ it; chez-http-server's own move to byte-machine 0.9 waits for it, and for chez-h
 SUBMODULES_READ_TOKEN secret; the easy layer's optional extensions; #43's NEXT (5); akku in CI,
 so check-akku stops being a manual gate (0046).
 
-RELEASE v0.9.0 OPENED (2026-11-11, on the maintainer's request; branch chore/release-v0.9.0 off
-main af64f39). Decision 0047 records it. The checklist is 0046's: a MINOR bump, 0.8.0 -> 0.9.0,
-for the dependency. byte-machine moved 0.8.0 -> 0.9.0 (#55), `^0.9.0` admits no 0.8.x, and Akku
-reads chez-uri 0.8.0's `^0.8.0` as <0.9.0, so it can't be installed beside jsonparse or
-chez-httparse. byte-machine 0.9.0 is on the Akku index (listed 2026-11-10); its archive's 215
-files matched tag v0.9.0 byte for byte (sha256 eda6417c…). Since v0.8.0: #53, #54 and #55. `git
-diff v0.8.0 -- src/uri` is empty; src/generated/uri-scanner.sls is #55's regenerated scanner.
-TESTS FIRST: with Akku.manifest still 0.8.0, uri.docs.akku-manifest passed in both modes. CHANGELOG
-[Unreleased] -> [0.9.0] alone turned it red in both, with "diagnostics -- expected (), got
-((version-mismatch "0.8.0" "0.9.0"))". Akku.manifest -> 0.9.0 turned it green ("version 0.9.0,
-dependencies checked against vendor/: 1"). CMakeLists VERSION -> 0.9.0 (nothing checks it).
-VERSION SURFACES, by search: every file git tracks outside vendor/, grepped for 0.8.0, v0.8, ^0.8
-and 0.9, then for version, release and chez-uri. Only CMakeLists.txt and Akku.manifest hold the
-package's version. The other hits are a self-test's manifest literal
-(test/common/akku-manifest-tests.sps) and a comment on byte-machine 0.8.0's package
+RELEASE v0.9.0 OPENED (2026-11-11, on the maintainer's request; branch chore/release-v0.9.0 off main
+af64f39). Decision 0047 records it. The checklist is 0046's: a MINOR bump, 0.8.0 -> 0.9.0, for the
+dependency. byte-machine moved 0.8.0 -> 0.9.0 (#55), `^0.9.0` admits no 0.8.x, and Akku reads
+chez-uri 0.8.0's `^0.8.0` as <0.9.0, so it can't be installed beside a library that needs
+byte-machine 0.9, as jsonparse's main and chez-httparse 0.6.0 do. byte-machine 0.9.0 is on the Akku
+index (listed 2026-11-10); its archive's 215 files matched tag v0.9.0 byte for byte (sha256
+eda6417c…). Since v0.8.0: #53, #54 and #55. `git diff v0.8.0 -- src/uri` is empty;
+src/generated/uri-scanner.sls is #55's regenerated scanner. TESTS FIRST: with Akku.manifest still
+0.8.0, uri.docs.akku-manifest passed in both modes. CHANGELOG [Unreleased] -> [0.9.0] alone turned
+it red in both, with "diagnostics -- expected (), got ((version-mismatch "0.8.0" "0.9.0"))".
+Akku.manifest -> 0.9.0 turned it green ("version 0.9.0, dependencies checked against vendor/: 1").
+CMakeLists VERSION -> 0.9.0 (nothing checks it). VERSION SURFACES, by search: every file git tracks
+outside vendor/, grepped for 0.8.0, v0.8, ^0.8 and 0.9, then for version, release and chez-uri. Only
+CMakeLists.txt and Akku.manifest hold the package's version. The other hits are a self-test's
+manifest literal (test/common/akku-manifest-tests.sps) and a comment on byte-machine 0.8.0's package
 (test/akku/check-akku.sh). docs/ and README.org name no version. The [Unreleased] entries were
 reread together; none is stale at the tag ("chez-uri 0.8.0 is on the index" stays true, since
-publishing 0.9.0 leaves 0.8.0 there), so none changed. The [0.9.0] preamble names each PR's CI run on its merged head,
-linux-amd64 (ubuntu-24.04, Chez 10.4.1 ta6le, CMake 3.31.6; pr 91/91, release 91/91, no-scheme
-13/13, read from each log): #53 40099620952, #54 40111534872, #55 42731219525. main at af64f39
-passed too (run 42731710645). Gate on the release tree, Linux amd64 (Intel Core Ultra 5 125H),
-Chez 10.4.1 ta6le from jsonparse's pinned Guix, CMake/CTest 4.1.3:
+publishing 0.9.0 leaves 0.8.0 there), so none changed. The [0.9.0] preamble names each PR's CI run
+on its merged head, linux-amd64 (ubuntu-24.04, Chez 10.4.1 ta6le, CMake 3.31.6; pr 91/91, release
+91/91, no-scheme 13/13, read from each log): #53 40099620952, #54 40111534872, #55 42731219525. main
+at af64f39 passed too (run 42731710645). Gate on the release tree, Linux amd64 (Intel Core Ultra 5
+125H), Chez 10.4.1 ta6le from jsonparse's pinned Guix, CMake/CTest 4.1.3:
 - make test-all: 91/91. make no-scheme: 13/13. make check-help: green (exit 0, no output).
 - make check-site, with chez-cmark-gfm 2.0.0 (jsonparse's build/akku/chez-cmark-gfm) and
   SITE_REF=v0.9.0: cmark-gfm-root 5 ok, site 49/49, render 9/9, all four invariants green.
@@ -4921,19 +4921,24 @@ Chez 10.4.1 ta6le from jsonparse's pinned Guix, CMake/CTest 4.1.3:
 ENVIRONMENT. The Guix profile has scheme and chez-scheme but no chez, the Makefile's default CHEZ.
 So check-site and check-akku, run with the defaults, stopped at "chez: command not found" (exit
 127). Both then ran with CHEZ=$GUIX_ENVIRONMENT/bin/scheme, and check-site also with
-CHEZ_CMARK_GFM_LIBS naming the profile's libcmark-gfm and libcmark-gfm-extensions. CHECK-AKKU
-NEEDS NO INDEX. It writes an Akku.lock that points each package at a copy of its tracked files,
+CHEZ_CMARK_GFM_LIBS naming the profile's libcmark-gfm and libcmark-gfm-extensions. CHECK-AKKU NEEDS
+NO INDEX. It writes an Akku.lock that points each package at a copy of its tracked files,
 byte-machine's from vendor/. A bare `akku install` installs from the lock (akku 1.2.0,
 bin/akku.sps), and only `akku lock` reads the index (lib/lock.sls). The wrapper's state directory
-held only the archive key before the gate and after it. So #55's "Not yet run: check-akku, which
-needs byte-machine 0.9.0 on the Akku index" was wrong: it could have run then.
+held only the archive key before the gate and after it. So #55's body was wrong ("Not yet: `make
+check-akku`, which installs byte-machine from the Akku index, where 0.9.0 is not yet listed."), and
+so is this ledger's #55 entry and close-out, which say the same ("check-akku passes against it",
+"check-akku installs byte-machine from the index"): it could have run then.
 
-NEXT. (1) The release PR's CI, then the closing ritual on the maintainer's word: merge pinned to
-the tested head, merged tree = tested tree. (2) The signed annotated tag v0.9.0 on the merge
-commit and its push, which runs pages.yml with SITE_REF=v0.9.0. The tag message names the PR's
-CI run. (3) A GitHub Release with the CHANGELOG [0.9.0] body. (4) The maintainer's `akku publish`
-from the tag, as for v0.8.0; once chez-uri 0.9.0 is listed, an install in a throwaway project.
-Then chez-http-server can move to byte-machine 0.9. (5) Carried: the sibling export-ignore tasks
-(chez-cmark-gfm, chez-httparse); deleting the SUBMODULES_READ_TOKEN secret; the easy layer's
-optional extensions; #43's NEXT (5); akku in CI, so check-akku stops being a manual gate (0046).
+NEXT. (1) The release PR's CI, then the closing ritual on the maintainer's word: merge pinned to the
+tested head, merged tree = tested tree. (2) The annotated tag v0.9.0 on the merge commit, made with
+`git tag -s` (no tag.gpgSign is set here) and checked with `git tag -v`, and its push, which runs
+pages.yml with SITE_REF=v0.9.0. The tag message names the PR's CI run. (3) A GitHub Release with the
+CHANGELOG [0.9.0] body. (4) The maintainer's `akku publish` from the tag, as for v0.8.0 and as 0047
+item 6 spells out: a fresh clone, a gpg wrapper adding --local-user for the Kiyomi key, a dry run,
+then gpg --verify; once chez-uri 0.9.0 is listed, an install in a throwaway project. Once chez-uri
+0.9.0 and chez-httparse 0.6.0 are both listed, chez-http-server moves its three ranges together. (5)
+Carried: the sibling export-ignore task for chez-cmark-gfm (chez-httparse's landed in #67); deleting
+the SUBMODULES_READ_TOKEN secret; the easy layer's optional extensions; #43's NEXT (5); akku in CI,
+so check-akku stops being a manual gate (0046).
 

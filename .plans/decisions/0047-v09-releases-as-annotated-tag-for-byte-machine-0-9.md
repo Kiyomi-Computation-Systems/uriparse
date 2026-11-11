@@ -1,4 +1,4 @@
-# 0047: v0.9 releases as the annotated tag v0.9.0, for byte-machine 0.9, with no library change
+# 0047: v0.9 releases as the annotated tag v0.9.0, for byte-machine 0.9, with no `(uri …)` library change
 
 Date: 2026-11-11
 Status: accepted
@@ -30,8 +30,8 @@ still 91 lanes. `CMakeLists.txt` declares `VERSION 0.8.0`, and `Akku.manifest` n
 `chez-uri` `0.8.0`, depending on byte-machine `^0.9.0`.
 
 Akku reads a caret range on 0.x by its minor: `^0.8.0` is `>=0.8.0 <0.9.0`. So chez-uri
-0.8.0, the version on the index, can't be installed beside jsonparse or chez-httparse, which
-now need byte-machine 0.9. byte-machine 0.9.0 is on the Akku index (listed 2026-11-10), and
+0.8.0, the version on the index, can't be installed beside a library that needs byte-machine
+0.9, as jsonparse's `main` and chez-httparse 0.6.0, its release in review, do. byte-machine 0.9.0 is on the Akku index (listed 2026-11-10), and
 its archive's 215 files match tag `v0.9.0` byte for byte.
 
 CI passed on each pull request's merged head, on linux-amd64 (ubuntu-24.04, Chez 10.4.1
@@ -42,13 +42,14 @@ arm64: test-all 91/91, no-scheme 13/13.
 
 ## Decision
 
-1. **The bump is MINOR, 0.8.0 → 0.9.0,** for 0046 item 1's reason. No library changed, so
-   the code alone would allow a patch. The dependency does not: the vendored byte-machine
+1. **The bump is MINOR, 0.8.0 → 0.9.0,** for 0046 item 1's reason. No `(uri …)` library
+   changed, and the regenerated scanner keeps its export and ABI 9, so the code alone would
+   allow a patch. The dependency does not: the vendored byte-machine
    crossed a 0.x minor, and `^0.9.0` admits no 0.8.x. `CMakeLists.txt` `VERSION` and the
    manifest's version move to `0.9.0`. A search found no other version surface: every file
    git tracks outside `vendor/`, grepped for `0.8.0`, `v0.8`, `^0.8` and `0.9`. `docs/` and
    README.org name no version. The `(uri …)` libraries stay unversioned. The tag is
-   annotated `v0.9.0` on the squash-merged release commit; signing follows `tag.gpgSign`.
+   annotated `v0.9.0` on the squash-merged release commit, signed with `git tag -s`.
 
 2. **`CHANGELOG.md`: `[Unreleased]` becomes `[0.9.0] - 2026-11-11`,** with a preamble
    giving the evidence basis and a fresh `[Unreleased]`. Its entries were reread together,
@@ -78,16 +79,26 @@ arm64: test-all 91/91, no-scheme 13/13.
 
 6. **The publish steps are the maintainer's, each asked for first,** as in 0046 item 6.
    1. The release PR's squash merge, as the closing ritual (AGENTS.md).
-   2. The signed tag `v0.9.0` and its push. The push runs `pages.yml`, which publishes the
-      site with `SITE_REF=v0.9.0`.
+   2. The tag `v0.9.0`, made with `git tag -s` and checked with `git tag -v` before its push.
+      No `tag.gpgSign` is set on the NUC, so a plain `git tag -a` there would be unsigned.
+      v0.7.0 and v0.8.0 were signed by D4D955D55C8853D7, a key the NUC doesn't hold. The
+      push runs `pages.yml`, which publishes the site with `SITE_REF=v0.9.0`. It runs
+      apt-get, so check that the deploy went green; `workflow_dispatch` reruns it on the tag.
    3. A GitHub Release whose body is the CHANGELOG's `[0.9.0]` section.
-   4. `akku publish` from the tag (0045 step 3), as for v0.8.0. It needs the maintainer's
-      GPG key.
+   4. `akku publish` from the tag (0045 step 3), as for v0.8.0:
+      - from a fresh `git clone --branch v0.9.0`, since Akku refuses a worktree;
+      - with a `gpg` wrapper on `PATH` that adds `--local-user
+        CC2923E50902E936049B696B9EBA259B8EAC5130`, the Kiyomi key. Akku runs a bare
+        `gpg --sign`, which takes the default key, and on the NUC that is another key;
+      - after a dry run answered "n";
+      - then `gpg --verify` of the `.sig` must name the Kiyomi key.
 
 ## Consequences
 
-- Once 0.9.0 is on the index, an application can install chez-uri beside jsonparse or
-  chez-httparse. chez-http-server's own move to byte-machine 0.9 waits for it.
+- Once 0.9.0 is on the index, an application can install chez-uri beside a library that
+  needs byte-machine 0.9. chez-http-server moves its chez-uri, chez-httparse and
+  byte-machine ranges together, once chez-uri 0.9.0 and chez-httparse 0.6.0 are both
+  listed.
 - chez-uri 0.8.0 stays on the index, for programs that still pin byte-machine 0.8.
 - `make check-akku` does not wait on the index. It writes an `Akku.lock` that points each
   package at a copy of its tracked files, byte-machine's from `vendor/`, and a bare
