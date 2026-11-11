@@ -6,6 +6,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-11
+
+The byte-machine 0.9 release. The vendored byte-machine moves to 0.9.0, and the Akku
+package's dependency with it, to `^0.9.0`. Akku reads `^0.8.0` as below 0.9.0, so
+chez-uri 0.8.0 cannot be installed beside a library that needs byte-machine 0.9; this
+release can. #53, #54 and #55 each passed CI on linux-amd64 (ubuntu-24.04, Chez Scheme
+10.4.1 ta6le, CMake 3.31.6) on the head that merged, in runs 40099620952, 40111534872
+and 42731219525: the pull-request and complete selections 91/91 and the no-Scheme layer
+13/13. Measured on the release tree on Linux amd64 (Chez Scheme 10.4.1 ta6le, from Guix;
+CMake/CTest 4.1.3): the complete selection 91/91, the no-Scheme layer 13/13, and
+`make check-help`, `make check-site` and `make check-akku` green. No `(uri ...)` library
+changed: every export and signature is v0.8.0's. The generated scanner, regenerated at
+the new pin, reads 7 runs of bytes as loops, and nothing a caller sees changes. Beside
+the pin are contributor docs, `make check-help`, and the Akku install in the docs. It
+states **no new conformance claim**; the scoped claim reads as in v0.3.0 to v0.8.0
+(decision 0047).
+
 ### Added
 
 - **CONTRIBUTING.md, SECURITY.md and GitHub templates.** CONTRIBUTING.md says how
@@ -723,7 +740,8 @@ host grammar are v0.2 (decisions 0011, 0023, and the README caveats).
   always agrees, and a ratchet that fails in only one direction, are both
   caught.
 
-[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/Kiyomi-Computation-Systems/uriparse/compare/v0.6.1...v0.6.2
