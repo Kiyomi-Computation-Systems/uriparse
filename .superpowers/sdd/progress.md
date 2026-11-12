@@ -4942,3 +4942,32 @@ Carried: the sibling export-ignore task for chez-cmark-gfm (chez-httparse's land
 the SUBMODULES_READ_TOKEN secret; the easy layer's optional extensions; #43's NEXT (5); akku in CI,
 so check-akku stops being a manual gate (0046).
 
+PR #56 CLOSED OUT (2026-11-11, the closing ritual, on the maintainer's word). Squash-merged as
+335b0ba on af64f39, pinned by --match-head-commit 7c55b94 (the full SHA); main had not moved.
+Merged tree 00b8a16 = tested tree 00b8a16 (hash compare). CI passed on both of the PR's heads,
+linux-amd64 (ubuntu-24.04, Chez 10.4.1 ta6le, CMake 3.31.6; pr 91/91, release 91/91, no-scheme
+13/13, read from each log): 7adafe0 in run 43047029081 and 7c55b94 in run 43050194453. main at
+335b0ba passed too (run 43123633995, the same counts). 7c55b94 took the fixes from an Opus review
+of this PR and chez-httparse #83 together: the after-merge steps spelled out, "no (uri ...)
+library change" for "no library change", what needs byte-machine 0.9 today, chez-http-server
+waiting for both releases, #55 quoted exactly, and chez-httparse dropped from the carried
+export-ignore task. No PR was based on chore/release-v0.9.0 (checked), and it was deleted,
+locally and on the remote. The shared checkout, clean, was fast-forwarded to 335b0ba;
+vendor/byte-machine stayed at fdd4da0 (v0.9.0). chez-httparse #83 (v0.6.0) merged just before,
+as 46a38cb.
+
+REFLECTION. Three things. (1) A RELEASE RECORD SPELLS OUT ITS SIGNING. The first draft said
+signing "follows `tag.gpgSign`" and the publish went "as for v0.8.0". This host sets no
+tag.gpgSign, so `git tag -a` here makes an unsigned tag, and akku's bare `gpg --sign` takes gpg's
+default key, which here is not the Kiyomi key. "As last time" carries over neither, so 0047 item
+6 names each command. (2) "NO CHANGE" NAMES WHAT DID NOT CHANGE. "No library change" was false:
+the regenerated scanner is a library under src/. "No (uri ...) library changed" is what `git diff
+v0.8.0 -- src/uri` shows. (3) A CLAIM ABOUT ANOTHER REPOSITORY IS CHECKED THERE. The draft had
+chez-http-server waiting for chez-uri; it moves three ranges together, so it waits for
+chez-httparse 0.6.0 too. And of jsonparse, only its unreleased main needs byte-machine 0.9.
+
+NEXT. (1) The signed tag v0.9.0 and its push, the GitHub Release, and the Akku submission, as
+0047 item 6 spells out. (2) Carried, as before: the sibling export-ignore task for chez-cmark-gfm;
+deleting the SUBMODULES_READ_TOKEN secret; the easy layer's optional extensions; #43's NEXT (5);
+akku in CI, so check-akku stops being a manual gate (0046).
+
