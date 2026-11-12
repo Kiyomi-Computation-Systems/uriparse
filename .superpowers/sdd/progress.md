@@ -4971,3 +4971,43 @@ NEXT. (1) The signed tag v0.9.0 and its push, the GitHub Release, and the Akku s
 deleting the SUBMODULES_READ_TOKEN secret; the easy layer's optional extensions; #43's NEXT (5);
 akku in CI, so check-akku stops being a manual gate (0046).
 
+v0.9.0 TAGGED, RELEASED, DEPLOYED AND SUBMITTED TO AKKU (2026-11-11, on the maintainer's word:
+"You're able to do the tags", then "Both" for the Release and the Akku submission). TAG:
+annotated, signed v0.9.0 (tag object 2225c0d) on 335b0ba, named with -u for the Kiyomi release key
+(Kiyomi Computation Systems LLC (software releases), fingerprint
+CC2923E50902E936049B696B9EBA259B8EAC5130). ~/.config/git/.gitconfig-kiyomi, which this host's git
+includes for Kiyomi repositories, already makes it user.signingkey, with gpg.format openpgp and
+user.email releases@kiyomicomputation.systems, so the tagger is DarrenN
+<releases@kiyomicomputation.systems>. v0.7.0 and v0.8.0 were signed by
+6362A78F235A85658E26D319D4D955D55C8853D7, which this host doesn't hold. `git tag -v` reported a
+good signature from the Kiyomi key. The tag message names #56's CI run 43050194453 and the release
+gate. RELEASE: "v0.9.0 — chez-uri on byte-machine 0.9",
+https://github.com/Kiyomi-Computation-Systems/uriparse/releases/tag/v0.9.0. Its body is the
+CHANGELOG [0.9.0] section read from the tag (`git show v0.9.0:CHANGELOG.md`), the same but for a
+final newline, and it is marked latest (releases/latest = v0.9.0). PAGES: the tag push ran
+pages.yml (run 43125005564, event push, ref v0.9.0, build and deploy green). The live index links
+blob/v0.9.0 and no longer names v0.8.0. AKKU: as for v0.8.0, with Akku 1.2.0 (jsonparse's
+akku-uriparse wrapper, on this host's Chez 10.4.0):
+- a scratch `gpg` wrapper on PATH added `--local-user` with the Kiyomi fingerprint, only for this
+  command; a probe signed through it verified as the Kiyomi key (VALIDSIG);
+- a fresh `git clone --branch v0.9.0` of the public https URL: HEAD 335b0ba, tag exact, clean;
+- a dry run answered "n" printed the index fragment and stopped before signing: name chez-uri,
+  version 0.9.0, location git https://github.com/Kiyomi-Computation-Systems/uriparse.git, tag
+  v0.9.0, revision 335b0babdfc30c1562634cb2ed149155fb3918f1, depends byte-machine ^0.9.0;
+- then "y". akku signed, attached the public key as a .key file (Akku 1.2.0 uploads one beside the
+  .sig), submitted to https://akkuscm.org/, and the archive answered "Queued" for
+  chez-uri_0.9.0.akku.key, .sig and .akku. `gpg --verify` on the pair: a good signature from the
+  Kiyomi key.
+chez-httparse 0.6.0 went the same way just before, and was queued too. Right after, chez-uri's page
+answered 200 and listed only 0.8.0: the archive queues, then repacks.
+
+NEXT. (1) Once https://akkuscm.org/packages/chez-uri/ lists 0.9.0, check the install: a throwaway
+project, `akku update && akku install chez-uri`, and a program importing (uri easy). (2) Once
+chez-uri 0.9.0 and chez-httparse 0.6.0 are both listed, chez-http-server moves its three ranges
+together. (3) CMakeLists.txt's VERSION still has no check (#52's reflection (1)); chez-httparse's
+said 0.1.0 through v0.5.0. (4) CONTRIBUTING.md links AGENTS.md, which .gitattributes
+export-ignores, so the link is dead in the Akku package and the source archives. (5) Carried: the
+sibling export-ignore task for chez-cmark-gfm; deleting the SUBMODULES_READ_TOKEN secret; the easy
+layer's optional extensions; #43's NEXT (5); akku in CI, so check-akku stops being a manual gate
+(0046).
+
